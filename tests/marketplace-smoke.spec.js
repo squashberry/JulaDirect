@@ -298,6 +298,28 @@ test("Fixed mobile purchase bars stay viewport-anchored during persistent route 
   expect(revisitedBottom).toBeGreaterThan(744);
 });
 
+test("Rapid navigation waits for an in-flight page initializer instead of interleaving scripts", async ({ page }) => {
+  await mockBackend(page, { products: [] });
+  await page.route("**/js/jd-cart.js", async route => {
+    await new Promise(resolve => setTimeout(resolve, 450));
+    await route.continue();
+  });
+  await page.goto("/explore.html");
+
+  const cartScriptRequest = page.waitForRequest(request =>
+    new URL(request.url()).pathname === "/js/jd-cart.js"
+  );
+  await page.evaluate(() => { void window.JD.router.navigate("/cart.html"); });
+  await cartScriptRequest;
+
+  /* The cart page is still initializing when this second navigation is requested. */
+  await page.evaluate(() => { void window.JD.router.navigate("/wishlist.html"); });
+  await expect(page).toHaveURL(/\/wishlist\.html$/);
+  await expect(page.locator("#jd-wl")).toBeVisible();
+  await expect(page.locator("main h1")).toHaveText("Your wishlist");
+  await expect(page.locator("body")).not.toHaveClass(/has-cartbar/);
+});
+
 test("Product overlays and scroll locks are cleared when leaving the product pane", async ({ page }) => {
   await mockBackend(page, { products: [iphone] });
   await page.setViewportSize({ width: 390, height: 844 });
