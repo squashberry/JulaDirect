@@ -1091,3 +1091,11 @@ form:has(input[name="q"]:not(:placeholder-shown)) .sx-clear { width: 30px; heigh
   body.has-cartbar .jd-mobilebar .jd-btn { min-height: 48px; }
 }
 #jd-fnav:not(.has-items) .jd-fnav__fab { width: 0; margin-left: -10px; transform: translateX(-26px) scale(.15); opacity: 0; visibility: hidden; pointer-events: none; box-shadow: none; transition: width .5s cubic-bezier(.5, 0, .2, 1), margin .5s cubic-bezier(.5, 0, .2, 1), transform .5s cubic-bezier(.5, 0, .2, 1), opacity .25s ease, visibility 0s .5s; }
+
+/* tiny preview of the last image search, living in the camera slot */
+form.sx-hasvs button.sx-cam { width: 38px !important; opacity: 1 !important; transform: none !important; pointer-events: auto !important; margin: 0 4px 0 0 !important; padding: 0; background: transparent !important; box-shadow: none !important; }
+.sx-vthumb { width: 30px; height: 30px; border-radius: 9px; object-fit: cover; display: block; box-shadow: 0 0 0 2px #fff, 0 0 0 3.5px var(--jd-blue-600), 0 4px 10px rgba(20, 81, 230, .3); animation: sxThumb .5s cubic-bezier(.3, 1.8, .5, 1) both; }
+form.sx-hasvs button.sx-cam > svg { display: none; }
+form.sx-hasvs.vs-on button.sx-cam .sx-vthumb { transform: scale(1.08); }
+@keyframes sxThumb { from { transform: scale(.2) rotate(-12deg); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .sx-vthumb { animation: none; } }

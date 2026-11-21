@@ -58,7 +58,7 @@
       '<section class="vs__view" data-view="crop" hidden>' +
       '<div class="vs__stagewrap"><div class="vs__stage"><img alt="Your photo" draggable="false"><div class="vs__crop" tabindex="0" aria-label="Crop area. Drag to move, drag the corners to resize.">' +
       '<i class="vs__h" data-h="tl"></i><i class="vs__h" data-h="tr"></i><i class="vs__h" data-h="bl"></i><i class="vs__h" data-h="br"></i><b class="vs__grid"></b></div><div class="vs__scan" aria-hidden="true"></div></div></div>' +
-      '<div class="vs__tools"><button type="button" class="vs__chip" data-vs="retake">' + I.retake + 'Retake</button><button type="button" class="vs__chip" data-vs="rotate">' + I.rot + 'Rotate</button><button type="button" class="vs__chip" data-vs="reset">Reset crop</button></div>' +
+      '<div class="vs__tools"><button type="button" class="vs__chip" data-vs="retake">' + I.retake + 'Retake</button><button type="button" class="vs__chip" data-vs="rotate">' + I.rot + 'Rotate</button><button type="button" class="vs__chip" data-vs="reset">Reset crop</button><button type="button" class="vs__chip vs__chip--x" data-vs="remove" hidden>Clear image search</button></div>' +
       '<div class="vs__colors" aria-label="Colours found in the selection"></div>' +
       '<label class="vs__hint"><span>What is it? <small>(optional, helps us search)</small></span><input type="text" inputmode="search" enterkeyhint="search" placeholder="e.g. sneakers, phone, blender" maxlength="60"></label>' +
       '<p class="vs__note" role="status" aria-live="polite" hidden></p>' +
@@ -125,6 +125,8 @@
       kids.forEach(function (k, i) { if (k.animate) k.animate([{ opacity: 0, transform: "translateY(10px) scale(.94)" }, { opacity: 1, transform: "none" }], { duration: 420, delay: 380 + i * 55, easing: "cubic-bezier(.2,.9,.3,1.3)", fill: "backwards" }); });
     }
     bindSession();
+    var rec = form.classList.contains("sx-hasvs") && saved();
+    if (rec) restore(rec);
     setTimeout(function () { var b = root.querySelector('[data-vs="camera"]'); if (b) b.focus({ preventScroll: true }); }, 380);
   }
 
@@ -307,6 +309,31 @@
     box.innerHTML = S.colors.length ? '<small>Colours found</small>' + S.colors.map(function (c) { return '<button type="button" class="vs__sw" data-color="' + c.name + '"><i style="background:' + c.hex + '"></i>' + c.name + "</button>"; }).join("") : "";
   }
 
+  /* ---------- remember the last search so the bar can show it ---------- */
+  var KEY = "jd-visual-last";
+  function save(hint) {
+    try {
+      var t = document.createElement("canvas"), o = cropCanvas(), k = 96 / Math.max(o.width, o.height);
+      t.width = Math.max(1, Math.round(o.width * k)); t.height = Math.max(1, Math.round(o.height * k));
+      t.getContext("2d").drawImage(o, 0, 0, t.width, t.height);
+      sessionStorage.setItem(KEY, JSON.stringify({ thumb: t.toDataURL("image/jpeg", .8), src: S.canvas.toDataURL("image/jpeg", .82), crop: S.crop, hint: hint }));
+    } catch (e) { /* storage full or blocked: the search still works, just without the preview */ }
+  }
+  function saved() { try { return JSON.parse(sessionStorage.getItem(KEY) || "null"); } catch (e) { return null; } }
+  function forget() { try { sessionStorage.removeItem(KEY); } catch (e) {} if (JD.search && JD.search.syncThumb) JD.search.syncThumb(); }
+  function restore(rec) {
+    var im = new Image();
+    im.onload = function () {
+      if (!S) return;
+      var c = document.createElement("canvas"); c.width = im.naturalWidth; c.height = im.naturalHeight; c.getContext("2d").drawImage(im, 0, 0);
+      useCanvas(c); S.crop = rec.crop || S.crop; paintCrop(); computeColors();
+      S.root.querySelector(".vs__hint input").value = rec.hint || "";
+      S.root.querySelector('[data-vs="remove"]').hidden = false;
+      S.root.querySelector(".vs__head b").textContent = "Your image search";
+    };
+    im.src = rec.src;
+  }
+
   /* ---------- search ---------- */
   function go() {
     var hint = S.root.querySelector(".vs__hint input").value.trim(), out = cropCanvas(), note = S.root.querySelector(".vs__note");
@@ -314,6 +341,7 @@
     var stage = S.root.querySelector(".vs__stage"); stage.classList.add("is-scanning");
     S.root.querySelector('[data-vs="go"] span').textContent = "Scanning…";
     S.root.classList.add("is-busy");
+    save(hint);
     out.toBlob(function (blob) {
       var detail = { blob: blob, dataUrl: out.toDataURL("image/jpeg", .85), colors: colors, hint: hint, form: form, handled: false };
       document.dispatchEvent(new CustomEvent("jd:visual-search", { detail: detail }));
@@ -322,7 +350,7 @@
         stage.classList.remove("is-scanning"); S.root.classList.remove("is-busy");
         S.root.querySelector('[data-vs="go"] span').textContent = "Search with this photo";
         if (detail.handled) { close(); return; }
-        if (hint) { close(); var url = "explore.html?q=" + encodeURIComponent(hint); if (JD.router && JD.router.navigate) JD.router.navigate(url); else location.href = url; return; }
+        if (hint) { close(); var url = "explore.html?q=" + encodeURIComponent(hint) + "&vs=1"; if (JD.router && JD.router.navigate) JD.router.navigate(url); else location.href = url; return; }
         note.hidden = false;
         note.textContent = "Photo matching is still being switched on. Add a word like \"sneakers\" or tap a colour and we will search for it now.";
         var inp = S.root.querySelector(".vs__hint input"); inp.focus();
@@ -349,6 +377,7 @@
       else if (k === "rotate") rotate();
       else if (k === "reset") { S.crop = { x: .08, y: .08, w: .84, h: .84 }; paintCrop(); computeColors(); }
       else if (k === "go") go();
+      else if (k === "remove") { forget(); close(); var u = new URL(location.href); if (u.searchParams.get("vs")) { u.searchParams.delete("vs"); history.replaceState(history.state, "", u.pathname + u.search); if (JD.search) JD.search.syncThumb(); } }
     });
     root.querySelector(".vs__hint input").addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); go(); } });
     fileIn.addEventListener("change", function () { useFile(fileIn.files[0]); fileIn.value = ""; });

@@ -175,3 +175,4 @@ The dark hero with the search box is replaced by a four-slide, auto-rotating cam
 - The cropped photo is announced with `document` event `jd:visual-search` (`detail.blob`, `dataUrl`, `colors`, `hint`, `form`). Set `detail.handled = true` in a listener to take over and close the panel.
 - Until a matcher is attached, a typed word (or colour chip) runs the normal text search via `explore.html?q=`.
 - Camera stream is stopped on every view change and on close.
+- After an image search the bar shows a 30px preview in the camera slot (URL `?vs=1` + `sessionStorage["jd-visual-last"]`: thumbnail, 1280px source, crop, word). Tapping it reopens the panel on the crop view to recrop, rotate, retake or "Clear image search".

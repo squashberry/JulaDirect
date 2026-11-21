@@ -309,10 +309,30 @@
     }, { threshold: [0, 1] }).observe(sentinel);
   }
 
+  /* The last image search shows as a tiny preview in the bar (only while its results are on screen). */
+  const VS_KEY = "jd-visual-last";
+  function vsRecord() { try { return JSON.parse(sessionStorage.getItem(VS_KEY) || "null"); } catch (e) { return null; } }
+  function syncThumb() {
+    const rec = vsRecord(), on = !!(rec && rec.thumb && new URLSearchParams(location.search).get("vs") === "1");
+    JD.$$("form[data-sx]").forEach(form => {
+      const cam = form.querySelector(".sx-cam"); if (!cam) return;
+      let img = cam.querySelector(".sx-vthumb");
+      if (on) {
+        if (!img) { img = document.createElement("img"); img.className = "sx-vthumb"; img.alt = ""; cam.appendChild(img); }
+        if (img.src !== rec.thumb) img.src = rec.thumb;
+        cam.setAttribute("aria-label", "Your image search. Tap to change, retake or recrop.");
+      } else if (img) { img.remove(); cam.setAttribute("aria-label", "Search by image"); }
+      form.classList.toggle("sx-hasvs", on);
+    });
+  }
+  window.addEventListener("jd:pane:show", () => setTimeout(syncThumb, 0));
+  window.addEventListener("popstate", () => setTimeout(syncThumb, 0));
+
   function mount() {
+    syncThumb();
     JD.$$("form[data-sx]").forEach(f => { if (!f.__sx) { f.__sx = 1; Box(f); } });
     stickyPhoneBar();
   }
-  JD.search = { mount, recents, remember };
+  JD.search = { mount, recents, remember, syncThumb };
   mount();
 })();
