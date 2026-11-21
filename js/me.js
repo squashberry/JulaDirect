@@ -5,7 +5,11 @@
 (function () {
   "use strict";
   var JD = window.JD;
-  var $ = function (id) { return document.getElementById(id); };
+  var root = document.querySelector('.jd-pane[data-route="me"]') || document;
+  var elements = new Map();
+  root.querySelectorAll("[id]").forEach(function (el) { elements.set(el.id, el); });
+  // Keep page-owned references even when the router strips IDs from hidden panes.
+  var $ = function (id) { return elements.get(id) || root.querySelector('[id="' + id + '"]'); };
   var esc = JD.esc;
   var NOTE_KEY = "gambasket_notifications";
   var busy = false;
