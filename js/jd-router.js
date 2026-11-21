@@ -331,6 +331,10 @@
     /* Anything placed above the active pane must be closed before the next pane
        becomes interactive. Page modules get jd:pane:hide first; this is the
        defensive cleanup for a missed close handler or a same-pane URL change. */
+    /* Close component-owned overlays first so their document listeners and
+       internal open state are cleaned up before any fallback DOM removal. */
+    if (typeof JD.closeAreaSheet === "function") JD.closeAreaSheet();
+    if (JD.quickView && typeof JD.quickView.close === "function") JD.quickView.close(true);
     const transient = ".jd-panel, #jd-area-sheet, #jd-area-scrim, .sx-backdrop, .ex-scrim, .qv-scrim, .qv, .pd-lb, #pd-report-dlg";
     document.querySelectorAll(transient).forEach(node => node.remove());
     document.querySelectorAll("dialog[open]").forEach(dialog => {
