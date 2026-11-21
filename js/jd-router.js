@@ -25,8 +25,10 @@
   "use strict";
   const JD = (window.JD = window.JD || {});
   const rawAdd = EventTarget.prototype.addEventListener;
-  /* Used by shared helpers that must stay global (e.g. product card actions). */
+  const rawRemove = EventTarget.prototype.removeEventListener;
+  /* Shared shell helpers can bypass pane scoping when a listener is genuinely global. */
   JD.rawAddEventListener = rawAdd;
+  JD.rawRemoveEventListener = rawRemove;
 
   /* route -> which floating-nav tab is active while it is shown */
   const ROUTES = {
@@ -52,6 +54,14 @@
   let navToken = 0;
   let barTimer = 0;
   const htmlCache = new Map();
+
+  /* First-time pane scripts are serialized. Without this, two fast navigations
+     can replace each other's temporary event scope while one page script is
+     still loading. */
+  let scriptScopeTail = Promise.resolve();
+  let scriptScopePending = 0;
+  let executingPane = null;
+  const scopedListenerRegistry = new WeakMap();
 
   // A persistent page router must not leave a previously visited page's CSS
   // active. Otherwise each navigation changes stylesheet cascade order and
@@ -117,6 +127,46 @@
   const sameRouteFamily = (a, b) => isSupplierRoute(a) === isSupplierRoute(b);
 
   /* ---------- listener scoping ---------- */
+  const captureOf = options => typeof options === "boolean" ? options : !!(options && options.capture);
+  function listenerRoutes(target, type, fn, capture, create) {
+    let events = scopedListenerRegistry.get(target);
+    if (!events && create) { events = new Map(); scopedListenerRegistry.set(target, events); }
+    if (!events) return null;
+    const key = String(type) + "|" + (capture ? "1" : "0");
+    let callbacks = events.get(key);
+    if (!callbacks && create) { callbacks = new WeakMap(); events.set(key, callbacks); }
+    if (!callbacks) return null;
+    let routes = callbacks.get(fn);
+    if (!routes && create) { routes = new Map(); callbacks.set(fn, routes); }
+    return routes || null;
+  }
+  function patchRemoveEventListener(target) {
+    target.removeEventListener = function (type, fn, options) {
+      if (typeof fn !== "function") return rawRemove.call(target, type, fn, options);
+      const routes = listenerRoutes(target, type, fn, captureOf(options), false);
+      if (!routes || !routes.size) return rawRemove.call(target, type, fn, options);
+      const preferred = executingPane || current;
+      const selected = preferred && routes.has(preferred.route)
+        ? [[preferred.route, routes.get(preferred.route)]]
+        : Array.from(routes.entries());
+      selected.forEach(([route, wrapped]) => {
+        rawRemove.call(target, type, wrapped, options);
+        routes.delete(route);
+      });
+      return undefined;
+    };
+  }
+  /* Keep removeEventListener patched after script evaluation: page code often
+     removes a document/window handler later, long after beginScope has ended. */
+  patchRemoveEventListener(document);
+  patchRemoveEventListener(window);
+
+  function invokeScoped(pane, fn, context, event) {
+    const previous = executingPane;
+    executingPane = pane;
+    try { return fn.call(context, event); }
+    finally { executingPane = previous; }
+  }
   function scopeListener(pane, type, fn) {
     if (typeof fn !== "function") return fn;
     if (POINTER.has(type)) {
@@ -124,22 +174,47 @@
         if (pane.el.hidden) return;
         const t = e && e.target;
         if (t && t.nodeType === 1 && !pane.el.contains(t)) return;
-        return fn.call(this, e);
+        return invokeScoped(pane, fn, this, e);
       };
     }
     if (WHEN_ACTIVE.has(type)) {
-      return function (e) { if (pane.el.hidden) return; return fn.call(this, e); };
+      return function (e) {
+        if (pane.el.hidden) return;
+        return invokeScoped(pane, fn, this, e);
+      };
     }
     return fn;
   }
   /* While a pane's own scripts run, document/window listeners they add are scoped. */
   function beginScope(pane) {
     const patch = target => {
-      target.addEventListener = function (type, fn, opts) { return rawAdd.call(target, type, scopeListener(pane, type, fn), opts); };
+      target.addEventListener = function (type, fn, opts) {
+        const wrapped = scopeListener(pane, type, fn);
+        if (typeof fn === "function" && wrapped !== fn) {
+          const routes = listenerRoutes(target, type, fn, captureOf(opts), true);
+          routes.set(pane.route, wrapped);
+        }
+        return rawAdd.call(target, type, wrapped, opts);
+      };
     };
     patch(document);
     patch(window);
     return () => { delete document.addEventListener; delete window.addEventListener; };
+  }
+
+  async function acquireScriptScope() {
+    const previous = scriptScopeTail;
+    let release;
+    scriptScopeTail = new Promise(resolve => { release = resolve; });
+    scriptScopePending += 1;
+    await previous;
+    let released = false;
+    return () => {
+      if (released) return;
+      released = true;
+      scriptScopePending = Math.max(0, scriptScopePending - 1);
+      release();
+    };
   }
 
   /* ---------- progress bar ---------- */
@@ -430,7 +505,6 @@
     const pane = { route, el: wrapper, main, flags: new Set(flags), strippedIds: null, scrollY: 0, title: document.title, desc: "", scriptKeys: new Set() };
     pane.flags.forEach(c => MANAGED.add(c));
     wrapper.hidden = false;
-    panes.set(route, pane);
     return pane;
   }
 
@@ -469,46 +543,59 @@
       const { footer, nav } = shellNodes();
       (footer || nav || document.body.lastElementChild).before(wrapper);
     }
-    if (token !== navToken) { panes.delete(route); wrapper.remove(); return null; }
+    if (token !== navToken) { wrapper.remove(); return null; }
 
-    /* The destination URL and active pane are established before page code runs. */
-    if (push) pushUrl(url);
-    activate(pane, url, { first: true });
-
-    const have = loadedScripts();
-    const end = beginScope(pane);
-    try {
-      for (const original of Array.from(doc.querySelectorAll("script"))) {
-        if (original.hasAttribute("src")) {
-          const src = new URL(original.getAttribute("src"), url.href).href;
-          const path = new URL(src).pathname;
-          const paneModule = isSupplierRoute(route) && /\/js\/(?:seller(?:-[a-z-]+)?|supplier-website|business-roles|business-analytics|product-attributes)\.js$/i.test(path);
-          if (paneModule) {
-            if (!pane.scriptKeys.has(src)) {
-              const cacheKey = src + (src.includes("?") ? "&" : "?") + "jd-pane=" + encodeURIComponent(route);
-              await loadScript(cacheKey);
-              pane.scriptKeys.add(src);
-            }
-          } else if (!have.has(src)) {
-            await loadScript(src);
-            have.add(src);
-          }
-          if (token !== navToken) return null;
-          continue;
-        }
-        const type = (original.getAttribute("type") || "").trim().toLowerCase();
-        if (!type || type === "text/javascript" || type === "application/javascript") {
-          runInlineScript(original.textContent, type);
-        }
-      }
-      /* Some legacy page initializers wait for DOMContentLoaded even though this
-         document is already live. Re-fire it with listener scoping so only this
-         visible pane receives those one-time initializers. */
-      document.dispatchEvent(new Event("DOMContentLoaded", { bubbles: true }));
-    } finally {
-      end();
+    /* Do not let two dynamically loaded pages patch document/window listeners
+       at the same time. The active pane remains stable until this page's setup
+       and its synthetic DOMContentLoaded pass have completed. */
+    const releaseScriptScope = await acquireScriptScope();
+    if (token !== navToken) {
+      wrapper.remove();
+      releaseScriptScope();
+      return null;
     }
-    return pane;
+
+    panes.set(route, pane);
+    try {
+      /* The destination URL and active pane are established before page code runs. */
+      if (push) pushUrl(url);
+      activate(pane, url, { first: true });
+
+      const have = loadedScripts();
+      const end = beginScope(pane);
+      try {
+        for (const original of Array.from(doc.querySelectorAll("script"))) {
+          if (original.hasAttribute("src")) {
+            const src = new URL(original.getAttribute("src"), url.href).href;
+            const path = new URL(src).pathname;
+            const paneModule = isSupplierRoute(route) && /\/js\/(?:seller(?:-[a-z-]+)?|supplier-website|business-roles|business-analytics|product-attributes)\.js$/i.test(path);
+            if (paneModule) {
+              if (!pane.scriptKeys.has(src)) {
+                const cacheKey = src + (src.includes("?") ? "&" : "?") + "jd-pane=" + encodeURIComponent(route);
+                await loadScript(cacheKey);
+                pane.scriptKeys.add(src);
+              }
+            } else if (!have.has(src)) {
+              await loadScript(src);
+              have.add(src);
+            }
+            continue;
+          }
+          const type = (original.getAttribute("type") || "").trim().toLowerCase();
+          if (!type || type === "text/javascript" || type === "application/javascript") {
+            runInlineScript(original.textContent, type);
+          }
+        }
+        /* Other navigations wait for this scope to finish, so only this visible
+           pane receives the one-time initializer pass. */
+        document.dispatchEvent(new Event("DOMContentLoaded", { bubbles: true }));
+      } finally {
+        end();
+      }
+      return pane;
+    } finally {
+      releaseScriptScope();
+    }
   }
 
   async function navigate(target, opts) {
@@ -518,6 +605,13 @@
     const route = routeOf(url);
     if (!ready || !route || (current && !sameRouteFamily(current.route, route))) { location.href = url.href; return false; }
     const token = ++navToken;
+    /* A page's first-time scripts own the temporary event scope until their
+       initialization pass finishes. Queue user navigation behind that pass. */
+    while (scriptScopePending > 0) {
+      const pending = scriptScopeTail;
+      await pending;
+      if (token !== navToken) return true;
+    }
     const existing = panes.get(route);
     if (existing) {
       bar(false);
@@ -533,13 +627,15 @@
     bar(true);
     try {
       const pane = await createPane(route, url, token, o.push !== false);
-      bar(false);
+      if (token === navToken) bar(false);
       if (!pane && token === navToken) location.href = url.href;
       return true;
     } catch (e) {
       console.warn("[JulaDirect] app navigation fell back to a page load:", e && e.message);
-      bar(false);
-      if (token === navToken) location.href = url.href;
+      if (token === navToken) {
+        bar(false);
+        location.href = url.href;
+      }
       return false;
     }
   }
@@ -574,6 +670,7 @@
     navigate(url.href);
   }
   function onPop() {
+    if (scriptScopePending > 0) { navigate(location.href, { push: false }); return; }
     const route = routeOf(location.href);
     if (!route || (current && !sameRouteFamily(current.route, route))) { location.reload(); return; }
     const pane = panes.get(route);
@@ -610,6 +707,7 @@
     if (isSupplierRoute(route) && !flags.includes("seller-page")) flags.push("seller-page");
     const dm = document.querySelector('meta[name="description"]');
     const pane = makePane(route, wrapper, main, flags);
+    panes.set(route, pane);
     const initialStyles = [];
     document.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
       registerRouteStyle(link, route, link.href);
