@@ -270,7 +270,11 @@
     window.addEventListener("popstate", () => { const next = readState(); if (toQuery(next) === toQuery(state)) return; state = next; fillForm(); load(); });
     window.addEventListener("jd:pane:hide", e => { if (e.detail.route === "explore" && $("ex-filters").classList.contains("is-open")) closeSheet(); });
     window.addEventListener("jd:pane:show", e => {
-      if (e.detail.route !== "explore" || e.detail.first) return;
+      if (!e.detail || e.detail.route !== "explore") return;
+      /* Same-pane query changes do not emit pane:hide, so close the old sheet
+         here before applying a newly requested #filters state. */
+      if ($("ex-filters").classList.contains("is-open")) closeSheet();
+      if (e.detail.first) return;
       loadRecent();
       if (location.hash === "#filters" && mobile.matches) { openSheet($("ex-filters-open")); history.replaceState(history.state, "", location.pathname + location.search); }
     });
