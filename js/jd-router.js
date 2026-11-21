@@ -328,9 +328,16 @@
   }
 
   function closeShellOverlays() {
-    let any = false;
-    document.querySelectorAll(".jd-panel, #jd-area-sheet, #jd-area-scrim").forEach(n => { n.remove(); any = true; });
-    if (any) document.body.style.overflow = "";
+    /* Anything placed above the active pane must be closed before the next pane
+       becomes interactive. Page modules get jd:pane:hide first; this is the
+       defensive cleanup for a missed close handler or a same-pane URL change. */
+    const transient = ".jd-panel, #jd-area-sheet, #jd-area-scrim, .sx-backdrop, .ex-scrim, .qv-scrim, .qv, .pd-lb, #pd-report-dlg";
+    document.querySelectorAll(transient).forEach(node => node.remove());
+    document.querySelectorAll("dialog[open]").forEach(dialog => {
+      try { dialog.close(); } catch (e) { dialog.removeAttribute("open"); }
+    });
+    document.body.style.overflow = "";
+    document.documentElement.classList.remove("qv-lock");
   }
 
   function syncShell(route, url) {
