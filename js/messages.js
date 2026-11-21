@@ -1,6 +1,6 @@
 (() => {
     "use strict";
-    const state = { user: null, conversations: [], active: null, messages: [], channel: null, search: "" };
+    const state = { user: null, conversations: [], active: null, messages: [], channel: null, search: "", subscriptionToken: 0, openToken: 0 };
     const $ = id => document.getElementById(id);
     const qs = key => new URLSearchParams(location.search).get(key);
     const escapeHTML = value => String(value ?? "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[char]));
@@ -42,17 +42,20 @@
     }
 
     async function openConversation(id) {
-        cleanupChannel();
+        const request = ++state.openToken;
+        await cleanupChannel();
         try {
             const result = await window.GamBasketAuth.getConversation(id);
+            if (request !== state.openToken) return;
             state.active = result.conversation || result;
             state.messages = result.messages || [];
             renderActive();
             await window.GamBasketAuth.markConversationRead(id);
+            if (request !== state.openToken) return;
             const listed = state.conversations.find(item => item.id === id); if (listed) listed.unread_count = 0;
             renderConversations();
             $("messagesShell").classList.add("chat-open"); $("chatEmpty").hidden = true; $("chatActive").hidden = false; $("mobileChatBackBtn").hidden = false;
-            subscribe(id); scrollBottom();
+            await subscribe(id); scrollBottom();
         } catch (error) { console.error("[JulaDirect Open Conversation]", error); showToast("Couldn't open conversation", "Please try again."); }
     }
 
@@ -94,8 +97,46 @@
     }
 
     async function reloadMessages() { const result = await window.GamBasketAuth.getConversationMessages(state.active.id); state.messages = result.messages || []; renderMessages(); }
-    function subscribe(id) { state.channel = window.GamBasketAuth.subscribeToConversation?.(id, async message => { if (String(message.sender_id) === String(state.user.id)) return; state.messages.push(message); renderMessages(); await window.GamBasketAuth.markConversationRead(id); scrollBottom(); }, () => $("realtimeError").classList.add("show")); $("realtimeError").classList.remove("show"); }
-    function cleanupChannel() { if (state.channel?.unsubscribe) state.channel.unsubscribe(); state.channel = null; }
+    async function removeConversationChannel(channel) {
+        if (!channel) return;
+        const client = window.GamBasketAuth.getClient?.();
+        try {
+            if (client?.removeChannel) await client.removeChannel(channel);
+            else if (channel.unsubscribe) await channel.unsubscribe();
+        } catch (error) { console.warn("[JulaDirect Realtime Cleanup]", error); }
+    }
+
+    async function subscribe(id) {
+        const request = ++state.subscriptionToken;
+        const previous = state.channel;
+        state.channel = null;
+        await removeConversationChannel(previous);
+        if (request !== state.subscriptionToken || String(state.active?.id) !== String(id)) return;
+
+        const channel = window.GamBasketAuth.subscribeToConversation?.(id, async message => {
+            if (request !== state.subscriptionToken || String(state.active?.id) !== String(id) || String(message.sender_id) === String(state.user.id)) return;
+            state.messages.push(message);
+            renderMessages();
+            await window.GamBasketAuth.markConversationRead(id);
+            scrollBottom();
+        }, () => {
+            if (request === state.subscriptionToken) $("realtimeError").classList.add("show");
+        });
+
+        if (request !== state.subscriptionToken) {
+            await removeConversationChannel(channel);
+            return;
+        }
+        state.channel = channel || null;
+        $("realtimeError").classList.remove("show");
+    }
+
+    async function cleanupChannel() {
+        state.subscriptionToken++;
+        const channel = state.channel;
+        state.channel = null;
+        await removeConversationChannel(channel);
+    }
     function scrollBottom() { requestAnimationFrame(() => { const area = $("messagesArea"); if (area) area.scrollTop = area.scrollHeight; }); }
     function formatDate(value) { const date = new Date(value); const today = new Date(); if (date.toDateString() === today.toDateString()) return "Today"; today.setDate(today.getDate() - 1); if (date.toDateString() === today.toDateString()) return "Yesterday"; return date.toLocaleDateString("en-GM", { day: "numeric", month: "short", year: "numeric" }); }
     function showToast(title, message) { window.GamBasketNotifications?.add({ type: "message", title, message, showToast: true }); }
@@ -106,10 +147,18 @@
         $("messageComposer")?.addEventListener("submit", event => { event.preventDefault(); sendMessage(); });
         $("messageInput")?.addEventListener("input", event => { event.target.style.height = "auto"; event.target.style.height = `${Math.min(event.target.scrollHeight, 120)}px`; });
         $("messageInput")?.addEventListener("keydown", event => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); sendMessage(); } });
-        ["mobileChatBack", "mobileChatBackBtn"].forEach(id => $(id)?.addEventListener("click", () => { cleanupChannel(); $("messagesShell").classList.remove("chat-open"); $("chatEmpty").hidden = false; $("chatActive").hidden = true; $("mobileChatBackBtn").hidden = true; history.replaceState({}, "", "messages.html"); }));
+        ["mobileChatBack", "mobileChatBackBtn"].forEach(id => $(id)?.addEventListener("click", async () => { state.openToken++; await cleanupChannel(); $("messagesShell").classList.remove("chat-open"); $("chatEmpty").hidden = false; $("chatActive").hidden = true; $("mobileChatBackBtn").hidden = true; history.replaceState({}, "", "messages.html"); }));
         $("reconnectBtn")?.addEventListener("click", () => state.active && subscribe(state.active.id));
         document.querySelectorAll(".nav-item").forEach(item => item.addEventListener("click", () => { const page = item.dataset.page; if (page) location.href = `${page}.html`; }));
     }
-    window.addEventListener("beforeunload", cleanupChannel);
+    window.addEventListener("beforeunload", () => { cleanupChannel(); });
+    window.addEventListener("jd:pane:hide", event => {
+        if (event.detail?.route !== "messages") return;
+        state.openToken++;
+        cleanupChannel();
+    });
+    window.addEventListener("jd:pane:show", event => {
+        if (event.detail?.route === "messages" && state.active) subscribe(state.active.id);
+    });
     init();
 })();
