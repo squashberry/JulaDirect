@@ -92,6 +92,16 @@
 
   /* The cart icon to fly to: the visible one nearest the button. */
   function pickTarget(x, y) {
+    /* On phones the floating nav owns the cart button. It stays hidden while the cart is empty,
+       so reveal it first: the first item then flies to it instead of the off-screen header icon. */
+    var nav = document.getElementById("jd-fnav"), fab = nav && nav.querySelector(".jd-fnav__fab");
+    if (fab && !fab.hasAttribute("aria-current") && getComputedStyle(nav).display !== "none") {
+      if (!nav.classList.contains("has-items")) {
+        nav.classList.add("has-items"); nav.classList.remove("is-release"); void nav.offsetWidth; nav.classList.add("is-release");
+        setTimeout(function () { nav.classList.remove("is-release"); }, 800);
+      }
+      return fab;
+    }
     var all = [].slice.call(document.querySelectorAll("a[href]")).filter(function (a) {
       if (!visible(a)) return false;
       try {
