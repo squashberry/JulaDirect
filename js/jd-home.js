@@ -4,7 +4,11 @@
 (function () {
   "use strict";
   const JD = window.JD;
-  const $ = id => document.getElementById(id);
+  const root = document.querySelector('.jd-pane[data-route="index"]') || document;
+  const elements = new Map();
+  root.querySelectorAll("[id]").forEach(el => elements.set(el.id, el));
+  // Keep page-owned references even when the router strips IDs from hidden panes.
+  const $ = id => elements.get(id) || root.querySelector('[id="' + id + '"]');
   const NF = n => Number(n).toLocaleString("en-GB");
   const href = p => "product.html?id=" + encodeURIComponent(p.id);
   const img = p => JD.safeUrl(p.main_image) || JD.placeholder;
@@ -25,7 +29,7 @@
     vis.insertAdjacentHTML("afterbegin", parts.join(""));
   }
   async function loadHeroArt() {
-    const fan = document.querySelector('[data-vis="fan"]'), mos = document.querySelector('[data-vis="mosaic"]'), stk = document.querySelector('[data-vis="stack"]');
+    const fan = root.querySelector('[data-vis="fan"]'), mos = root.querySelector('[data-vis="mosaic"]'), stk = root.querySelector('[data-vis="stack"]');
     try {
       const rows = await JD.swr("home:deck", newest, r => { paintVis(fan, r, 3); paintVis(mos, r.slice(3).concat(r), 4); });
       paintVis(fan, rows, 3); paintVis(mos, rows.slice(3).concat(rows), 4);
@@ -284,7 +288,7 @@
       pill.innerHTML = '<span>Previewing <strong>' + JD.esc(b.name) + '</strong> (' + (b.is_active ? "live" : "not live") + ')</span><a href="admin/banners.html">Back to banners</a>';
       document.body.appendChild(pill);
     }
-    const stat = document.getElementById("jd-to-stat");
+    const stat = $("jd-to-stat");
     if (stat) countUp(stat, b.stat_value);
     parallax(sec);
   }
