@@ -12,7 +12,21 @@
   let current = null;
   let spy = null;
   let lb = null;
+  let closeLightboxActive = null;
+  let loadToken = 0;
   document.body.classList.add("jd-pdp-page");
+
+  function setMobileBar(enabled) {
+    if (JD.paneClass) JD.paneClass("product", "has-mobilebar", !!enabled);
+    else document.body.classList.toggle("has-mobilebar", !!enabled);
+  }
+
+  function closeReportDialog() {
+    const dialog = document.getElementById("pd-report-dlg");
+    if (!dialog) return;
+    try { if (dialog.open) dialog.close(); } catch (e) { /* already closing */ }
+    dialog.remove();
+  }
   if (JD.paneClass) JD.paneClass("product", "jd-pdp-page", true);
 
   const humanize = k => { const t = String(k).replace(/[_-]+/g, " ").trim(); return t.charAt(0).toUpperCase() + t.slice(1); };
@@ -34,10 +48,12 @@
   const topbar = t => '<div class="pd-bar"><button type="button" class="pd-bar__btn" id="jd-back" aria-label="Go back"><span style="display:inline-flex;transform:scaleX(-1)">' + JD.icon("arrowRight", 22) + "</span></button><strong>" + JD.esc(t || "Product details") + '</strong><span class="pd-bar__r"><button type="button" class="pd-bar__btn" id="jd-share" aria-label="Share this product">' + JD.icon("arrowUpRight", 22) + '</button><a class="pd-bar__btn" href="cart.html" aria-label="Open cart">' + JD.icon("cart", 22) + '<em class="jd-badge-count" data-cart-count hidden>0</em></a></span></div>';
 
   function notFound(title, text) {
+    setMobileBar(false);
     document.title = "Product not found — JulaDirect";
     root.innerHTML = topbar() + '<div class="pd-state">' + JD.empty({ icon: "search", title: title, text: text, actions: '<a class="jd-btn jd-btn--primary" href="explore.html">Browse the marketplace</a><a class="jd-btn jd-btn--secondary" href="index.html">Go home</a>' }) + "</div>";
   }
   function failed(msg) {
+    setMobileBar(false);
     root.innerHTML = topbar() + '<div class="pd-state">' + JD.empty({ icon: "bag", title: "We could not load this product", text: msg || "Please check your connection and try again.", actions: '<button type="button" class="jd-btn jd-btn--secondary" id="jd-retry">Try again</button>' }) + "</div>";
   }
 
@@ -141,7 +157,7 @@
 
       '<div class="pd-buybar" role="region" aria-label="Purchase"><div class="pd-buybar__price"><small>Price</small><strong>' + JD.esc(JD.money(p.price, p.currency)) + '</strong></div><button type="button" class="jd-btn jd-btn--secondary" data-pdp-add' + (stock <= 0 ? " disabled" : "") + ' aria-label="Add to cart">' + JD.icon("cart", 20) + '</button><button type="button" class="jd-btn jd-btn--primary" data-pdp-buy' + (stock <= 0 ? " disabled" : "") + ">" + (stock <= 0 ? "Out of stock" : "Buy now") + "</button></div>";
 
-    if (JD.paneClass) JD.paneClass("product", "has-mobilebar", true); else document.body.classList.add("has-mobilebar");
+    setMobileBar(true);
     JD.syncWishlist(root); JD.syncCompare(); if (JD.refreshCartCount) JD.refreshCartCount();
     bindGallery(imgs.length); bindSpy(); hideOwnMessage(p); loadRecent(p.id);
   }
@@ -190,7 +206,14 @@
         '<div class="pd-lb__stage"><img src="' + JD.esc(imgs[i]) + '" alt="' + JD.esc(current.product.title) + " — photo " + (i + 1) + " of " + imgs.length + '"></div>' +
         (imgs.length > 1 ? '<button type="button" class="pd-lb__nav pd-lb__nav--prev" data-lb="-1" aria-label="Previous photo">' + JD.icon("chevronRight", 26) + '</button><button type="button" class="pd-lb__nav pd-lb__nav--next" data-lb="1" aria-label="Next photo">' + JD.icon("chevronRight", 26) + '</button><div class="pd-lb__count">' + (i + 1) + " / " + imgs.length + "</div>" : "");
     };
-    const close = () => { if (!lb) return; document.removeEventListener("keydown", key, true); lb.remove(); lb = null; document.documentElement.classList.remove("qv-lock"); if (opener && opener.focus) opener.focus({ preventScroll: true }); };
+    const close = () => {
+      if (!lb) return;
+      document.removeEventListener("keydown", key, true);
+      lb.remove(); lb = null; closeLightboxActive = null;
+      document.documentElement.classList.remove("qv-lock");
+      if (opener && opener.focus && opener.isConnected) opener.focus({ preventScroll: true });
+    };
+    closeLightboxActive = close;
     const step = d => { i = (i + d + imgs.length) % imgs.length; paint(); };
     const key = e => { if (e.key === "Escape") { e.stopPropagation(); close(); } else if (e.key === "ArrowRight" && imgs.length > 1) step(1); else if (e.key === "ArrowLeft" && imgs.length > 1) step(-1); else if (e.key === "Tab") { e.preventDefault(); const f = lb.querySelectorAll("button"); if (f.length) { const idx = Array.prototype.indexOf.call(f, document.activeElement); f[(idx + (e.shiftKey ? -1 : 1) + f.length) % f.length].focus(); } } };
     lb.addEventListener("click", e => {
@@ -236,6 +259,7 @@
     try {
       const A = JD.auth(); await A.ready();
       const user = await A.getUser();
+      if (!current || current.product.id !== p.id) return;
       if (user && user.id === p.seller_id) {
         const own = '<a class="jd-btn jd-btn--soft jd-btn--sm" href="supplier/products.html">Manage</a>';
         const a = document.getElementById("jd-msg"); if (a) a.outerHTML = own;
@@ -253,21 +277,33 @@
   }
 
   async function load() {
-    if (!JD.isUuid(id)) { notFound("This product link is not valid", "Check the link or browse the marketplace to find what you need."); return; }
+    const requestedId = id;
+    const token = ++loadToken;
+    if (!JD.isUuid(requestedId)) { notFound("This product link is not valid", "Check the link or browse the marketplace to find what you need."); return; }
     const paint = d => {
+      /* A slow response for the previous URL must never overwrite the product
+         currently selected in this persistent pane. */
+      if (token !== loadToken || requestedId !== id) return;
       if (!d.product) { current = null; notFound("This product is no longer available", "It may have been sold, removed or is awaiting review."); return; }
       current = d; render(d);
     };
-    try { await JD.swr("product:" + id, () => JD.data.product(id), paint); }
-    catch (e) { console.warn("[JulaDirect] product", e && e.message); failed(e && e.message); }
+    try { await JD.swr("product:" + requestedId, () => JD.data.product(requestedId), paint); }
+    catch (e) {
+      if (token !== loadToken || requestedId !== id) return;
+      console.warn("[JulaDirect] product", e && e.message); failed(e && e.message);
+    }
   }
 
   function syncProductRoute(rawUrl) {
     let nextId = null;
     try { nextId = new URL(rawUrl || location.href, location.href).searchParams.get("id"); } catch (e) { nextId = null; }
     if (nextId === id) return;
+    if (closeLightboxActive) closeLightboxActive();
+    closeReportDialog();
+    setMobileBar(false);
     id = nextId; current = null; qty = 1;
-    if (spy) spy.disconnect();
+    loadToken++;
+    if (spy) { spy.disconnect(); spy = null; }
     document.title = "Product — JulaDirect";
     const meta = document.querySelector('meta[name="description"]');
     if (meta) meta.setAttribute("content", "View product details, seller information and reviews on JulaDirect.");
@@ -275,6 +311,12 @@
     window.scrollTo({ top: 0 });
     load();
   }
+  window.addEventListener("jd:pane:hide", event => {
+    if (!event.detail || event.detail.route !== "product") return;
+    if (closeLightboxActive) closeLightboxActive();
+    closeReportDialog();
+    document.documentElement.classList.remove("qv-lock");
+  });
   window.addEventListener("jd:pane:show", event => { if (event.detail && event.detail.route === "product") syncProductRoute(event.detail.url); });
 
   async function share() {
