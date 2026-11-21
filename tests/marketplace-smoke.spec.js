@@ -298,6 +298,61 @@ test("Fixed mobile purchase bars stay viewport-anchored during persistent route 
   expect(revisitedBottom).toBeGreaterThan(744);
 });
 
+test("Product overlays and scroll locks are cleared when leaving the product pane", async ({ page }) => {
+  await mockBackend(page, { products: [iphone] });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/product.html?id=" + IPHONE_ID);
+  await expect(page.locator("#jd-pdp")).toContainText("iPhone 13 128GB");
+
+  await page.locator(".pd-fab--zoom").click();
+  await expect(page.locator(".pd-lb")).toBeVisible();
+  expect(await page.locator("html").evaluate(el => el.classList.contains("qv-lock"))).toBe(true);
+
+  await page.evaluate(() => window.JD.router.navigate("/cart.html"));
+  await expect(page.locator(".pd-lb")).toHaveCount(0);
+  expect(await page.locator("html").evaluate(el => el.classList.contains("qv-lock"))).toBe(false);
+});
+
+test("Changing the product URL clears the old mobile purchase-bar state", async ({ page }) => {
+  await mockBackend(page, { products: [iphone] });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/product.html?id=" + IPHONE_ID);
+  await expect(page.locator(".pd-buybar")).toBeVisible();
+  await expect(page.locator("body")).toHaveClass(/has-mobilebar/);
+
+  await page.evaluate(() => window.JD.router.navigate("/product.html?id=not-a-valid-id"));
+  await expect(page.locator("#jd-pdp")).toContainText("This product link is not valid");
+  await expect(page.locator(".pd-buybar")).toHaveCount(0);
+  await expect(page.locator("body")).not.toHaveClass(/has-mobilebar/);
+});
+
+test("Back and forward navigation restore each route's CSS and body state", async ({ page }) => {
+  await mockBackend(page, { products: [iphone] });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript(() => localStorage.setItem("gambasket_cart", JSON.stringify([{
+    id: "66666666-6666-4666-8666-666666666666", name: "Cart test item", price: 14500,
+    quantity: 1, image: "https://images.example.test/cart-item.jpg", stock: 3, seller: "Test Seller"
+  }])));
+  await page.goto("/explore.html");
+  await page.evaluate(() => window.JD.router.navigate("/cart.html"));
+  await expect(page.locator("#jd-cart .jd-mobilebar")).toBeVisible();
+  await page.goBack();
+  await expect(page).toHaveURL(/\/explore\.html$/);
+  await expect(page.locator("body")).not.toHaveClass(/has-cartbar/);
+  await expect.poll(() => page.locator('link[rel="stylesheet"][href*="jd-explore2.css"]').getAttribute("media")).toBe("all");
+  await page.goForward();
+  await expect(page).toHaveURL(/\/cart\.html$/);
+  await expect(page.locator("#jd-cart .jd-mobilebar")).toBeVisible();
+  await expect(page.locator("body")).toHaveClass(/has-cartbar/);
+  const bar = await page.locator("#jd-cart .jd-mobilebar").evaluate(el => ({
+    position: getComputedStyle(el).position,
+    bottom: el.getBoundingClientRect().bottom,
+    height: innerHeight
+  }));
+  expect(bar.position).toBe("fixed");
+  expect(bar.bottom).toBeLessThanOrEqual(bar.height);
+});
+
 test("Explore shows only live approved database listings, not fabricated demo inventory", async ({ page }) => {
   await mockBackend(page, { products: [] });
   await page.goto("/explore.html");
