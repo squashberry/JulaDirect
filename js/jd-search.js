@@ -279,7 +279,7 @@
     const cam = form.querySelector(".sx-cam");
     if (cam) cam.addEventListener("click", e => { e.preventDefault(); form.dispatchEvent(new CustomEvent("jd:image-search", { bubbles: true })); });
     /* the router rewrites the box when a tab opens with ?q= */
-    window.addEventListener("jd:pane:show", () => { if (open) closeIt(false); });
+    on(window, "jd:pane:show", () => { if (open) closeIt(false); });
   }
 
   /* ---------- phone bar: stick to the top, widen, drop the filter button ---------- */
