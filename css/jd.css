@@ -794,7 +794,9 @@ body.jd a, body.jd button { -webkit-tap-highlight-color: transparent; touch-acti
 ::view-transition-old(root) { animation: .14s ease both jd-vt-out; }
 ::view-transition-new(root) { animation: .24s cubic-bezier(.2, .8, .2, 1) both jd-vt-in; }
 @keyframes jd-vt-out { to { opacity: 0; } }
-@keyframes jd-vt-in { from { opacity: 0; transform: translateY(10px); } }
+/* Opacity-only: transforms on the page root create a containing block for
+   fixed purchase bars on browsers without View Transitions support. */
+@keyframes jd-vt-in { from { opacity: 0; } }
 @supports not (view-transition-name: none) { body.jd #jd-main { animation: jd-vt-in .24s cubic-bezier(.2, .8, .2, 1) both; } }
 @media (prefers-reduced-motion: reduce) { @view-transition { navigation: none; } body.jd #jd-main { animation: none; } }
 
