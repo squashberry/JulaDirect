@@ -99,13 +99,30 @@
     place();
     show("pick", true);
     root.classList.add("is-in");
+    var bd = el("div", "vs-backdrop"); document.body.appendChild(bd); S.bd = bd;
+    requestAnimationFrame(function () { bd.classList.add("is-on"); });
+    document.body.classList.add("vs-open");
     if (!reduce && root.animate) {
-      var card = root.querySelector(".vs__card");
+      var card = root.querySelector(".vs__card"), kids = card ? [].slice.call(card.querySelectorAll(".vs__head, .vs__view:not([hidden]) > *")) : [];
+      /* a drop of jelly leaves the camera, stretches, then the panel wobbles out of it */
+      var drip = el("i", "vs__drip"); root.appendChild(drip);
+      drip.animate([
+        { transform: "translate(-50%,-46px) scale(.5)", opacity: 0, offset: 0 },
+        { transform: "translate(-50%,-18px) scale(.9,1.5)", opacity: 1, offset: .35 },
+        { transform: "translate(-50%,10px) scale(1.5,.7)", opacity: 1, offset: .7 },
+        { transform: "translate(-50%,24px) scale(3.4,.2)", opacity: 0, offset: 1 }
+      ], { duration: 420, easing: "ease-in", fill: "forwards" }).onfinish = function () { drip.remove(); };
       root.animate([
-        { transform: "scale(.72,.05)", opacity: 0, offset: 0 }, { transform: "scale(1.035,1.07)", opacity: 1, offset: .48 },
-        { transform: "scale(.984,.975)", offset: .7 }, { transform: "scale(1.007,1.01)", offset: .86 }, { transform: "scale(1)", opacity: 1, offset: 1 }
-      ], { duration: 700, easing: "cubic-bezier(.3,.7,.3,1)" });
-      if (card) card.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 260, delay: 140, fill: "backwards" });
+        { transform: "translateY(-22px) scale(.04,.02)", opacity: 0, offset: 0 },
+        { transform: "translateY(-6px) scale(.5,.55)", opacity: 1, offset: .16 },
+        { transform: "scale(.82,1.2) skewX(-2deg)", offset: .32 },
+        { transform: "scale(1.1,.88) skewX(2deg)", offset: .5 },
+        { transform: "scale(.96,1.06) skewX(-1deg)", offset: .66 },
+        { transform: "scale(1.03,.98)", offset: .8 },
+        { transform: "scale(.992,1.006)", offset: .91 },
+        { transform: "none", opacity: 1, offset: 1 }
+      ], { duration: 980, easing: "cubic-bezier(.25,.6,.35,1)", delay: 120, fill: "backwards" });
+      kids.forEach(function (k, i) { if (k.animate) k.animate([{ opacity: 0, transform: "translateY(10px) scale(.94)" }, { opacity: 1, transform: "none" }], { duration: 420, delay: 380 + i * 55, easing: "cubic-bezier(.2,.9,.3,1.3)", fill: "backwards" }); });
     }
     bindSession();
     setTimeout(function () { var b = root.querySelector('[data-vs="camera"]'); if (b) b.focus({ preventScroll: true }); }, 380);
@@ -120,7 +137,8 @@
     var s = S; if (!s) return; S = null;
     stopStream(s);
     s.unbind && s.unbind();
-    s.form.classList.remove("vs-on");
+    s.form.classList.remove("vs-on"); document.body.classList.remove("vs-open");
+    if (s.bd) { var bdn = s.bd; bdn.classList.remove("is-on"); setTimeout(function () { bdn.remove(); }, 260); }
     var cam = s.form.querySelector(".sx-cam"); if (cam) cam.setAttribute("aria-expanded", "false");
     var done = function () { if (s.root.parentNode) s.root.parentNode.removeChild(s.root); };
     if (instant || reduce || !s.root.animate) done();
