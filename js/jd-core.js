@@ -437,6 +437,9 @@
     const el = document.getElementById("jd-area-label");
     if (el) { const a = JD.area.get(); el.textContent = a === "all" ? "All Gambia" : a; }
   }
+  let closeAreaSheetActive = null;
+  JD.closeAreaSheet = () => { if (closeAreaSheetActive) closeAreaSheetActive(); };
+
   function openAreaSheet() {
     if (document.getElementById("jd-area-sheet")) return;
     const cur = JD.area.get();
@@ -451,8 +454,14 @@
     sheet.setAttribute("aria-labelledby", "jd-area-title");
     const opt = (v, label) => '<button type="button" class="jd-radio" data-area="' + JD.esc(v) + '"><span>' + JD.esc(label) + "</span>" + (cur === v ? JD.icon("check", 18) : "") + "</button>";
     sheet.innerHTML = '<div class="jd-sheet__grab"></div><h2 id="jd-area-title">Where do you want to shop?</h2><p class="jd-muted" style="margin-bottom:6px">Show listings in your area first.</p>' + opt("all", "All Gambia") + AREAS.map(a => opt(a, a)).join("");
-    const close = () => { scrim.remove(); sheet.remove(); document.body.style.overflow = ""; document.removeEventListener("keydown", esc); const b = document.getElementById("jd-area-btn"); if (b) b.focus(); };
+    const close = () => {
+      scrim.remove(); sheet.remove(); document.body.style.overflow = "";
+      document.removeEventListener("keydown", esc);
+      if (closeAreaSheetActive === close) closeAreaSheetActive = null;
+      const b = document.getElementById("jd-area-btn"); if (b) b.focus();
+    };
     const esc = e => { if (e.key === "Escape") close(); };
+    closeAreaSheetActive = close;
     scrim.addEventListener("click", close);
     sheet.addEventListener("click", e => {
       const b = e.target.closest("[data-area]");
