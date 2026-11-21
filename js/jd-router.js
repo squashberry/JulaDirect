@@ -58,6 +58,7 @@
   // global selectors from old pages leak into the newly active page.
   const routeStyleNodes = new Set();
   const routeStylesheets = new Map();
+  const routeStylesheetOrder = new Map();
 
   function registerRouteStyle(node, route, href) {
     if (!node || !route) return;
@@ -82,6 +83,13 @@
       const routes = String(node.dataset.jdRouteStyles || "").split("|");
       const active = routes.includes(route);
       node.media = active ? (node.dataset.jdOriginalMedia || "all") : "not all";
+    });
+
+    // Preserve the exact stylesheet order declared by the destination HTML.
+    // Reused links may otherwise stay in the order of the first page visited.
+    const ordered = routeStylesheetOrder.get(route) || [];
+    ordered.forEach(node => {
+      if (node.isConnected) document.head.appendChild(node);
     });
   }
 
@@ -190,6 +198,7 @@
   }
   function loadStyles(doc, route, baseUrl) {
     const waits = [];
+    const ordered = [];
     doc.querySelectorAll('link[rel="stylesheet"]').forEach(source => {
       const href = new URL(source.getAttribute("href"), baseUrl || location.href).href;
       let node = routeStylesheets.get(href);
@@ -201,6 +210,7 @@
 
       if (node) {
         registerRouteStyle(node, route, href);
+        if (!ordered.includes(node)) ordered.push(node);
         return;
       }
 
@@ -209,6 +219,7 @@
       node.dataset.jdOriginalMedia = source.getAttribute("media") || "all";
       node.media = "not all";
       registerRouteStyle(node, route, href);
+      if (!ordered.includes(node)) ordered.push(node);
 
       waits.push(new Promise(resolve => {
         let settled = false;
@@ -224,6 +235,7 @@
         document.head.appendChild(node);
       }));
     });
+    routeStylesheetOrder.set(route, ordered);
     return Promise.all(waits);
   }
 
@@ -576,9 +588,12 @@
     if (isSupplierRoute(route) && !flags.includes("seller-page")) flags.push("seller-page");
     const dm = document.querySelector('meta[name="description"]');
     const pane = makePane(route, wrapper, main, flags);
+    const initialStyles = [];
     document.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
       registerRouteStyle(link, route, link.href);
+      if (!initialStyles.includes(link)) initialStyles.push(link);
     });
+    routeStylesheetOrder.set(route, initialStyles);
     registerInlineStyles(route, document);
     applyRouteStyles(route);
     if (isSupplierRoute(route)) {
