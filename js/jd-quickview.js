@@ -164,7 +164,7 @@
     if (instant !== true && back && back.focus && document.contains(back)) back.focus({ preventScroll: true });
   }
 
-  window.addEventListener("jd:pane:hide", () => close(true));
-  window.addEventListener("pagehide", () => close(true));
+  rawOn(window, "jd:pane:hide", () => close(true));
+  rawOn(window, "pagehide", () => close(true));
   JD.quickView = { open, close, warm };
 })();
