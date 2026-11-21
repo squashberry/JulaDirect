@@ -8,6 +8,7 @@
    The image-search button only announces itself with a `jd:image-search` event. */
 (function () {
   "use strict";
+  const SELF_SRC = (document.currentScript && document.currentScript.src) || "";
   const JD = window.JD;
   if (!JD || JD.search) return;
 
@@ -277,7 +278,19 @@
     const clear = form.querySelector(".sx-clear");
     if (clear) clear.addEventListener("click", e => { e.preventDefault(); input.value = ""; input.focus(); input.dispatchEvent(new Event("input", { bubbles: true })); });
     const cam = form.querySelector(".sx-cam");
-    if (cam) cam.addEventListener("click", e => { e.preventDefault(); form.dispatchEvent(new CustomEvent("jd:image-search", { bubbles: true })); });
+    if (cam) cam.addEventListener("click", e => {
+      e.preventDefault();
+      form.dispatchEvent(new CustomEvent("jd:image-search", { bubbles: true }));
+      if (open) closeIt(false);
+      /* the visual-search panel loads on first use */
+      if (JD.visual) { JD.visual.open(form); return; }
+      JD._vsPending = form;
+      if (!document.querySelector("script[data-jd-visual]")) {
+        const s = document.createElement("script");
+        s.src = SELF_SRC.replace(/jd-search\.js.*$/, "jd-visual.js"); s.async = true; s.setAttribute("data-jd-visual", "");
+        document.head.appendChild(s);
+      }
+    });
     /* the router rewrites the box when a tab opens with ?q= */
     on(window, "jd:pane:show", () => { if (open) closeIt(false); });
   }

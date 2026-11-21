@@ -167,3 +167,11 @@ The dark hero with the search box is replaced by a four-slide, auto-rotating cam
 - The delivery address can be remembered on the device (`jd-ck-addr`).
 - After placing an order the confirmation screen links to `orders.html?order=<uuid>&placed=1`. Orders highlights that order, shows a banner, and after ModemPay returns (`payment_return=1`) polls up to 8 times until the payment shows as paid.
 - Payment contract strings in `js/checkout.js` are covered by `tests/modempay-integration-contract.mjs`.
+
+## Visual search v1 (`js/jd-visual.js`, `css/jd-visual.css`)
+
+- The camera button in any `form[data-sx]` opens a jelly panel fixed under the bar, joined to it by a neck. It loads on first use.
+- Flow: pick (camera, upload, drop, paste) → crop (drag, corner resize, rotate, reset) → scan. Colours found in the selection become tappable chips.
+- The cropped photo is announced with `document` event `jd:visual-search` (`detail.blob`, `dataUrl`, `colors`, `hint`, `form`). Set `detail.handled = true` in a listener to take over and close the panel.
+- Until a matcher is attached, a typed word (or colour chip) runs the normal text search via `explore.html?q=`.
+- Camera stream is stopped on every view change and on close.
