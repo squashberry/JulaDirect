@@ -297,7 +297,12 @@
   function syncProductRoute(rawUrl) {
     let nextId = null;
     try { nextId = new URL(rawUrl || location.href, location.href).searchParams.get("id"); } catch (e) { nextId = null; }
-    if (nextId === id) return;
+    if (nextId === id) {
+      /* A pane:show can also represent a same-page history/hash update. */
+      if (closeLightboxActive) closeLightboxActive();
+      closeReportDialog();
+      return;
+    }
     if (closeLightboxActive) closeLightboxActive();
     closeReportDialog();
     setMobileBar(false);
