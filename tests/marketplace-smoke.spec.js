@@ -255,6 +255,49 @@ test("Persistent navigation enables only the active page styles", async ({ page 
   expect(sellerNames.individualWithLegacyBusinessName).toBe("Awa J.");
 });
 
+test("Fixed mobile purchase bars stay viewport-anchored during persistent route changes", async ({ page }) => {
+  await mockBackend(page, { products: [iphone] });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/explore.html");
+  await page.evaluate(() => localStorage.setItem("gambasket_cart", JSON.stringify([{
+    id: "66666666-6666-4666-8666-666666666666",
+    name: "Cart test item",
+    price: 14500,
+    quantity: 1,
+    image: "https://images.example.test/cart-item.jpg",
+    stock: 3,
+    seller: "Test Seller"
+  }])));
+
+  await page.evaluate(id => window.JD.router.navigate("/product.html?id=" + id), IPHONE_ID);
+  const productBar = page.locator(".pd-buybar");
+  await expect(productBar).toBeVisible();
+  const productPosition = await productBar.evaluate(el => {
+    const rect = el.getBoundingClientRect();
+    return { position: getComputedStyle(el).position, top: rect.top, bottom: rect.bottom, height: innerHeight };
+  });
+  expect(productPosition.position).toBe("fixed");
+  expect(productPosition.bottom).toBeLessThanOrEqual(productPosition.height);
+  expect(productPosition.bottom).toBeGreaterThan(productPosition.height - 100);
+
+  await page.evaluate(() => window.JD.router.navigate("/cart.html"));
+  const cartBar = page.locator("#jd-cart .jd-mobilebar");
+  await expect(cartBar).toBeVisible();
+  const cartPosition = await cartBar.evaluate(el => {
+    const rect = el.getBoundingClientRect();
+    return { position: getComputedStyle(el).position, top: rect.top, bottom: rect.bottom, height: innerHeight };
+  });
+  expect(cartPosition.position).toBe("fixed");
+  expect(cartPosition.bottom).toBeLessThanOrEqual(cartPosition.height);
+  expect(cartPosition.bottom).toBeGreaterThan(0);
+
+  await page.evaluate(id => window.JD.router.navigate("/product.html?id=" + id), IPHONE_ID);
+  await expect(productBar).toBeVisible();
+  const revisitedBottom = await productBar.evaluate(el => el.getBoundingClientRect().bottom);
+  expect(revisitedBottom).toBeLessThanOrEqual(844);
+  expect(revisitedBottom).toBeGreaterThan(744);
+});
+
 test("Explore shows only live approved database listings, not fabricated demo inventory", async ({ page }) => {
   await mockBackend(page, { products: [] });
   await page.goto("/explore.html");
