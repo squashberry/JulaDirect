@@ -381,6 +381,9 @@
     if (pane.route === "product") pane.flags.add("jd-pdp-page");
     setFlags(pane);
     applyRouteStyles(pane.route);
+    /* Flush route-scoped stylesheet and body-class changes before page scripts
+       measure or position fixed/sticky controls in the newly visible pane. */
+    if (pane.main) void pane.main.offsetHeight;
     if (pane.route === "index") {
       if (JD.takeover && JD.takeover.apply) JD.takeover.apply();
     } else {
@@ -394,6 +397,14 @@
       pane.el.classList.remove("jd-pane--in");
       void pane.el.offsetWidth;
       pane.el.classList.add("jd-pane--in");
+      /* Keep the transition transient. The pane's <main> contains fixed mobile
+         purchase bars; retaining an animated ancestor can make those bars act
+         like they are fixed to the page instead of the viewport. */
+      const animationPass = (pane.animationPass || 0) + 1;
+      pane.animationPass = animationPass;
+      window.setTimeout(() => {
+        if (pane.animationPass === animationPass) pane.el.classList.remove("jd-pane--in");
+      }, 280);
       if (pane.main) { pane.main.setAttribute("tabindex", "-1"); try { pane.main.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }
     }
     window.dispatchEvent(new CustomEvent("jd:pane:show", { detail: { route: pane.route, first: !!o.first, url: (url || location).href } }));
