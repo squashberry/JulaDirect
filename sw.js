@@ -5,7 +5,7 @@
    - Never touches cross-origin requests (Supabase, payments, image CDNs),
      non-GET requests, or anything under /api. Bump VERSION to invalidate.
    To remove it, deploy a sw.js that calls self.registration.unregister(). */
-const VERSION = "jd-v2-3";
+const VERSION = "jd-v2-4";
 const PAGES = VERSION + "-pages";
 const STATIC = VERSION + "-static";
 const OFFLINE = "/offline.html";
@@ -25,8 +25,13 @@ function withTimeout(promise, ms) {
 }
 async function networkFirst(event, cacheName, ms) {
   const cache = await caches.open(cacheName);
+  /* Only give up on the network when a cached copy exists to fall back to.
+     With nothing cached, wait for the network: failing a stylesheet or script
+     after a timeout leaves the page rendering as unstyled HTML. */
+  const hasCopy = !!(await cache.match(event.request));
   try {
-    const res = await withTimeout(fetch(event.request), ms);
+    const fetching = fetch(event.request);
+    const res = hasCopy ? await withTimeout(fetching, ms) : await fetching;
     if (res && res.ok && res.type === "basic") event.waitUntil(cache.put(event.request, res.clone()));
     return res;
   } catch (err) {
@@ -56,6 +61,6 @@ self.addEventListener("fetch", event => {
     }));
     return;
   }
-  if (/^\/(css|js)\//.test(url.pathname)) { event.respondWith(networkFirst(event, STATIC, 2500).catch(() => Response.error())); return; }
+  if (/^\/(css|js)\//.test(url.pathname)) { event.respondWith(networkFirst(event, STATIC, 3500).catch(() => Response.error())); return; }
   if (/\.(?:svg|png|jpe?g|webp|gif|ico|woff2?)$/i.test(url.pathname) || url.pathname === "/manifest.webmanifest") { event.respondWith(cacheFirst(event)); }
 });
