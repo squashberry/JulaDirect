@@ -498,6 +498,7 @@ test("Authenticated saved-search form writes only the filter criteria contract",
   await mockBackend(page, { products: [iphone, samsung], authenticated: true, writes });
   await page.goto("/explore.html?category=Phones&location=Serrekunda&min=10000");
   await page.locator("#ex-brand").fill("Apple");
+  await expect(page).toHaveURL(/brandModel=Apple/);
   await page.locator("#jd-save-search").click();
   await expect(page.locator("#jd-save-dialog")).toBeVisible();
   await page.locator("#jd-save-name").fill("Apple phones in Serrekunda");
@@ -673,6 +674,11 @@ test("Supplier dashboard navigation stays in the same document", async ({ page }
     window.__jdSupplierDocument = document;
     window.GamBasketGuard = { gatePage: async () => true, showUnauthorized: () => {} };
     window.GamBasketBusiness = { getCurrentRoles: async () => ["supplier"], getClient: () => ({}) };
+    window.GamBasketSellerWallet = { init: async () => {} };
+    window.GamBasketSellerEarnings = {
+      getFinancialSummary: async () => ({ transactions: [], grossSales: 0, marketplaceFees: 0, availableBalance: 0, pendingBalance: 0 }),
+      renderSellerEarnings: () => {}
+    };
   });
   await page.route("**/js/**", async route => {
     const path = new URL(route.request().url()).pathname;
