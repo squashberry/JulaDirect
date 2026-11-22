@@ -33,7 +33,7 @@
   /* route -> which floating-nav tab is active while it is shown */
   const ROUTES = {
     index: "home", explore: "explore", wishlist: "wishlist", cart: "cart", compare: "",
-    product: "", me: "account", orders: "account", messages: "account",
+    product: "", help: "", me: "account", orders: "account", messages: "account",
     settings: "account", security: "account", "saved-searches": "account",
     "supplier/index": "", "supplier/add-product": "", "supplier/analytics": "",
     "supplier/customers": "", "supplier/earnings": "", "supplier/edit-product": "",
