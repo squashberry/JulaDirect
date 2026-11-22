@@ -211,113 +211,6 @@
                     color: #fff;
                 }
 
-                /* Fullscreen Offline Overlay */
-                .gb-network-fullscreen {
-                    position: fixed;
-                    inset: 0;
-                    z-index: 100006;
-                    background: var(--background, #f8fafc);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    padding: 24px;
-                    font-family: system-ui, -apple-system, sans-serif;
-                    color: var(--text, #0f172a);
-                    opacity: 0;
-                    transition: opacity 0.3s ease;
-                    pointer-events: none;
-                }
-
-                .gb-network-fullscreen.show {
-                    opacity: 1;
-                    pointer-events: auto;
-                }
-
-                /* Dark mode compatibility */
-                .dark .gb-network-fullscreen {
-                    background: #0f172a;
-                    color: #f1f5f9;
-                }
-
-                .gb-network-fullscreen-card {
-                    max-width: 480px;
-                    width: 100%;
-                    text-align: center;
-                    display: flex;
-                    flex-direction: column;
-                    align-items: center;
-                }
-
-                .gb-network-fullscreen-icon {
-                    font-size: 64px;
-                    margin-bottom: 24px;
-                    animation: gb-float 3s ease-in-out infinite;
-                }
-
-                @media (prefers-reduced-motion: reduce) {
-                    .gb-network-fullscreen-icon {
-                        animation: none !important;
-                    }
-                }
-
-                .gb-network-fullscreen-title {
-                    font-size: 24px;
-                    font-weight: 800;
-                    margin: 0 0 12px 0;
-                }
-
-                .gb-network-fullscreen-desc {
-                    font-size: 15px;
-                    color: #64748b;
-                    line-height: 1.6;
-                    margin: 0 0 28px 0;
-                }
-
-                .dark .gb-network-fullscreen-desc {
-                    color: #94a3b8;
-                }
-
-                .gb-network-btn-primary {
-                    background: #2563eb;
-                    color: #fff;
-                    border: none;
-                    padding: 12px 28px;
-                    border-radius: 12px;
-                    font-weight: 700;
-                    font-size: 15px;
-                    cursor: pointer;
-                    display: inline-flex;
-                    align-items: center;
-                    gap: 8px;
-                    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
-                    transition: transform 0.2s, background 0.2s, box-shadow 0.2s;
-                }
-
-                .gb-network-btn-primary:hover {
-                    background: #1d4ed8;
-                    box-shadow: 0 6px 16px rgba(37, 99, 235, 0.3);
-                }
-
-                .gb-network-btn-primary:active {
-                    transform: scale(0.98);
-                }
-
-                .gb-network-status-bar {
-                    margin-top: 32px;
-                    font-size: 12px;
-                    color: #94a3b8;
-                    display: flex;
-                    align-items: center;
-                    gap: 6px;
-                }
-
-                .gb-network-status-bar-dot {
-                    width: 6px;
-                    height: 6px;
-                    border-radius: 50%;
-                    background: #ef4444;
-                }
-
                 @keyframes gb-spin {
                     to { transform: rotate(360deg); }
                 }
@@ -339,11 +232,8 @@
             if (typeof window.fetch !== "function") return;
 
             const nativeFetch = window.fetch.bind(window);
+            this.nativeFetch = nativeFetch;
             window.fetch = async (...args) => {
-                // Avoid intercepting the connectivity check favicon ping
-                if (args[0] && typeof args[0] === 'string' && args[0].includes("/favicon.svg?ping=")) {
-                    return nativeFetch(...args);
-                }
                 try {
                     return await nativeFetch(...args);
                 } catch (error) {
@@ -432,14 +322,15 @@
 
         async checkConnectivity() {
             if (!navigator.onLine) return false;
-            
             try {
-                const response = await window.fetch("/favicon.svg?ping=" + Date.now(), {
-                    method: "HEAD",
+                // sw.js is deliberately outside the service worker's cache strategies.
+                const fetcher = this.nativeFetch || window.fetch.bind(window);
+                const response = await fetcher("/sw.js?ping=" + Date.now(), {
+                    method: "GET",
                     cache: "no-store",
-                    mode: "no-cors"
+                    credentials: "same-origin"
                 });
-                return true;
+                return response.ok;
             } catch {
                 return false;
             }
@@ -523,39 +414,11 @@
         }
 
         showOfflineScreen() {
-            if (this.fullScreenEl) return;
-            if (document.getElementById("gb-network-fullscreen")) return;
-
+            if (this.offlinePageRedirecting || window.location.pathname === "/offline.html") return;
+            this.offlinePageRedirecting = true;
             this.hideSoftOfflineNotice();
-
-            const overlay = document.createElement("div");
-            overlay.id = "gb-network-fullscreen";
-            overlay.className = "gb-network-fullscreen";
-            overlay.innerHTML = `
-                <div class="gb-network-fullscreen-card">
-                    <div class="gb-network-fullscreen-icon" style="animation: gb-float 3s ease-in-out infinite;">🔌</div>
-                    <h1 class="gb-network-fullscreen-title">You're offline</h1>
-                    <p class="gb-network-fullscreen-desc">
-                        JulaDirect couldn't connect to the internet. Check your connection and try again.
-                    </p>
-                    <button type="button" class="gb-network-btn-primary" id="gb-fullscreen-retry">
-                        Try Again
-                    </button>
-                    <div class="gb-network-status-bar">
-                        <span class="gb-network-status-bar-dot"></span>
-                        No internet connection detected
-                    </div>
-                </div>
-            `;
-
-            document.body.appendChild(overlay);
-            this.fullScreenEl = overlay;
-
-            requestAnimationFrame(() => {
-                overlay.classList.add("show");
-            });
-
-            document.getElementById("gb-fullscreen-retry")?.addEventListener("click", () => this.retry());
+            this.hideOfflineScreen(); // Clean up a leftover overlay from an older cached script.
+            window.location.replace("/offline.html");
         }
 
         hideOfflineScreen() {
