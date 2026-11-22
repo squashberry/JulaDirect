@@ -80,6 +80,12 @@ async function mockBackend(page, options = {}) {
     }, { key: SESSION_KEY, session: fakeSession() });
   }
 
+  await page.route("https://images.example.test/**", route => route.fulfill({
+    status: 200,
+    contentType: "image/svg+xml",
+    body: '<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80"><rect width="80" height="80" fill="#eef4ff"/></svg>'
+  }));
+
   await page.route("https://iwxcepbwmnnkxocskopx.supabase.co/**", async route => {
     const request = route.request();
     const url = new URL(request.url());
@@ -131,8 +137,43 @@ async function mockBackend(page, options = {}) {
       let matching = [...products];
       const idParam = url.searchParams.get("id") || "";
       if (idParam.startsWith("eq.")) matching = matching.filter(item => item.id === idParam.slice(3));
+      if (idParam.startsWith("in.(")) {
+        const ids = idParam.slice(4, -1).split(",");
+        matching = matching.filter(item => ids.includes(item.id));
+      }
       const statusParam = url.searchParams.get("status") || "";
       if (statusParam.startsWith("eq.")) matching = matching.filter(item => item.status === statusParam.slice(3));
+      const category = url.searchParams.get("category_id") || "";
+      if (category.startsWith("eq.")) matching = matching.filter(item => item.category_id === category.slice(3));
+      const location = url.searchParams.get("location") || "";
+      if (location.startsWith("ilike.")) {
+        const term = location.slice(6).replace(/^%|%$/g, "").toLowerCase();
+        matching = matching.filter(item => String(item.location || "").toLowerCase().includes(term));
+      }
+      if (url.searchParams.get("delivery_available") === "eq.true") {
+        matching = matching.filter(item => item.delivery_available === true);
+      }
+      const stock = url.searchParams.get("stock") || "";
+      if (stock.startsWith("gt.")) matching = matching.filter(item => Number(item.stock || 0) > Number(stock.slice(3)));
+      const price = url.searchParams.get("price") || "";
+      if (price.startsWith("gte.")) matching = matching.filter(item => Number(item.price || 0) >= Number(price.slice(4)));
+      if (price.startsWith("lte.")) matching = matching.filter(item => Number(item.price || 0) <= Number(price.slice(4)));
+      const condition = url.searchParams.get("condition") || "";
+      if (condition.startsWith("eq.")) matching = matching.filter(item => item.condition === condition.slice(3));
+      const orFilter = url.searchParams.get("or") || "";
+      if (orFilter) {
+        const terms = [...orFilter.matchAll(/ilike\.%([^%]+)%/gi)].map(match => match[1].toLowerCase());
+        const searchesAttributes = /attributes->>/.test(orFilter);
+        if (terms.length) {
+          matching = matching.filter(item => {
+            const values = [
+              item.title, item.description,
+              ...(searchesAttributes ? Object.values(item.attributes || {}) : [])
+            ].map(value => String(value || "").toLowerCase());
+            return terms.some(term => values.some(value => value.includes(term)));
+          });
+        }
+      }
       const accept = request.headers()["accept"] || "";
       if (accept.includes("vnd.pgrst.object+json")) {
         if (matching.length === 1) { await json(matching[0]); return; }
@@ -144,7 +185,12 @@ async function mockBackend(page, options = {}) {
         }, 406);
         return;
       }
-      await json(matching);
+      const range = request.headers()["range"] || "";
+      const match = range.match(/(\d+)-(\d+)/);
+      const total = matching.length;
+      if (match) matching = matching.slice(Number(match[1]), Number(match[2]) + 1);
+      const last = matching.length ? Number((match && match[1]) || 0) + matching.length - 1 : 0;
+      await json(matching, 200, { "content-range": "0-" + last + "/" + total });
       return;
     }
     if (path === "/rest/v1/product_images") { await json(gallery); return; }
