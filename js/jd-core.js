@@ -507,7 +507,7 @@
     if (roles.includes("seller") || isAdmin) work += link("supplier/index.html", "store", "Seller Centre");
     if (roles.includes("delivery_worker") || isAdmin) work += link("delivery/index.html", "truck", "Courier workspace");
     if (roles.includes("marketplace_worker") || isAdmin) work += link("worker/index.html", "shield", "Operations centre");
-    if (isAdmin) work += link("admin/index.html", "settings", "Administration") + link("admin/banners.html", "tag", "Homepage banners");
+    if (isAdmin) work += link("admin/index.html", "settings", "Administration") + link("admin/banners.html", "tag", "Homepage banners") + link("admin/popups.html", "tag", "Popups & promos");
     box.innerHTML = '<button class="jd-act" type="button" id="jd-account-btn" aria-haspopup="true" aria-expanded="false" aria-controls="jd-menu"><span class="jd-avatar" aria-hidden="true">' + JD.esc(name.charAt(0).toUpperCase()) + "</span><span>" + JD.esc(name) + "</span></button>" +
       '<div class="jd-menu" id="jd-menu" hidden><div class="jd-menu__label">My JulaDirect</div>' +
       link("me.html", "user", "My account") + link("orders.html", "package", "Orders &amp; tracking") + link("wishlist.html", "heart", "Wishlist") +
@@ -788,4 +788,16 @@
   } catch (e) {
     console.warn("[JulaDirect] add-to-cart animation loader:", e && e.message);
   }
+})();
+
+/* Storefront popups & promos (js/jd-popups.js): optional, loaded after the shell, never on admin pages. */
+(function () {
+  try {
+    if (/\/admin\//.test(location.pathname) || document.querySelector("script[data-jd-popups]")) return;
+    var current = document.currentScript;
+    var src = current && current.src ? new URL("jd-popups.js", current.src).href : "js/jd-popups.js";
+    var s = document.createElement("script");
+    s.src = src; s.async = true; s.setAttribute("data-jd-popups", "");
+    document.head.appendChild(s);
+  } catch (e) { /* popups are optional */ }
 })();

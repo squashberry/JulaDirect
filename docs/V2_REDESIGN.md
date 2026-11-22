@@ -176,3 +176,11 @@ The dark hero with the search box is replaced by a four-slide, auto-rotating cam
 - Until a matcher is attached, a typed word (or colour chip) runs the normal text search via `explore.html?q=`.
 - Camera stream is stopped on every view change and on close.
 - After an image search the bar shows a 30px preview in the camera slot (URL `?vs=1` + `sessionStorage["jd-visual-last"]`: thumbnail, 1280px source, crop, word). Tapping it reopens the panel on the crop view to recrop, rotate, retake or "Clear image search".
+
+## Popups & promos (`js/jd-popups.js`, `css/jd-popups.css`, `admin/popups.html`, `js/jd-admin-popups.js`)
+
+- Ten templates: spotlight, split, full photo, coupon, flash sale (countdown), bottom sheet, corner nudge, top ribbon, story, burst. One renderer (`JD.popups.render`) serves the storefront and the admin preview.
+- Admin: list with live miniatures, on/off switch, edit dialog with design picker, words, picture upload (bucket `site-banners`, folder `popups/`), accent and card colours, trigger (right away, delay, scroll depth, exit intent), frequency, audience, pages, priority and schedule. The preview updates as you type, in desktop or phone size, with Replay and Full screen. "Save & preview on site" opens `index.html?preview_popup=<id>`.
+- Storefront: `jd-core.js` loads `jd-popups.js` (not on admin pages). It shows the highest-priority eligible live popup per page and remembers dismissals in sessionStorage/localStorage (`jd-popup:<id>`).
+- Database: `supabase/migrations/20261121200000_site_popups.sql` (table, RLS, `admin_save_site_popup`, `admin_set_site_popup_active`, `admin_delete_site_popup`). Apply it before using the admin page.
+- All text is inserted escaped; links must be relative or https; images must be http(s).
