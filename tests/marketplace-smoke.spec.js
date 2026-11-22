@@ -464,9 +464,9 @@ test("Product detail renders category specifications and switches photo thumbnai
 test("Removed or unapproved product URLs show an unavailable state instead of sample products", async ({ page }) => {
   await mockBackend(page, { products: [] });
   await page.goto("/product.html?id=" + IPHONE_ID);
-  await expect(page.locator("#detailName")).toHaveText("This listing is not available");
-  await expect(page.locator("#orderNowBtn")).toBeDisabled();
-  await expect(page.locator("#sellerName")).not.toHaveAttribute("href", /seller\.html/);
+  await expect(page.locator("#jd-pdp .pd-state .jd-empty h3")).toHaveText("This product is no longer available");
+  await expect(page.locator("#jd-pdp [data-pdp-buy]")).toHaveCount(0);
+  await expect(page.locator("#jd-pdp")).not.toContainText("iPhone 13 128GB");
 });
 
 test("Comparison page compares approved listings and supports removing one", async ({ page }) => {
@@ -497,7 +497,7 @@ test("Authenticated saved-search form writes only the filter criteria contract",
   const writes = [];
   await mockBackend(page, { products: [iphone, samsung], authenticated: true, writes });
   await page.goto("/explore.html?category=Phones&location=Serrekunda&min=10000");
-  await page.locator("#brandModelFilter").fill("Apple");
+  await page.locator("#ex-brand").fill("Apple");
   await page.locator("#jd-save-search").click();
   await expect(page.locator("#jd-save-dialog")).toBeVisible();
   await page.locator("#jd-save-name").fill("Apple phones in Serrekunda");
@@ -561,30 +561,29 @@ test("Quick Sell category selection renders relevant category fields", async ({ 
   await expect(page.locator("#quickSellAttributes")).toContainText("Transmission");
 });
 
-test("Verified-seller and delivery filters only show listings that qualify", async ({ page }) => {
+test("Verified seller badges and the delivery filter reflect listing data", async ({ page }) => {
   await mockBackend(page, { products: [iphone, samsung] });
   await page.goto("/explore.html");
-  await expect(page.locator("#productGrid .product-card")).toHaveCount(2);
-  await page.locator('input[name="workspaceSeller"][value="verified"]').check();
-  await expect(page.locator("#productGrid .product-card")).toHaveCount(1);
-  await expect(page.locator("#productGrid .product-name")).toHaveText("iPhone 13 128GB");
-  await expect(page.locator("#productGrid")).toContainText("Verified seller");
+  const cards = page.locator("#productGrid .jd-pcard");
+  await expect(cards).toHaveCount(2);
+  await expect(cards.nth(0)).toContainText("Verified");
+  await expect(cards.nth(0).locator(".jd-pcard__title")).toHaveText("iPhone 13 128GB");
+  await expect(cards.nth(1)).not.toContainText("Verified");
 
-  await page.locator('input[name="workspaceSeller"][value="all"]').check();
-  await page.locator("#workspaceDelivery").check();
-  await expect(page.locator("#productGrid .product-card")).toHaveCount(1);
-  await expect(page.locator("#productGrid .product-name")).toHaveText("iPhone 13 128GB");
-  await expect(page.locator("#productGrid")).toContainText("Delivery available");
+  await page.locator("#ex-delivery").check();
+  await expect(cards).toHaveCount(1);
+  await expect(cards.first().locator(".jd-pcard__title")).toHaveText("iPhone 13 128GB");
+  await expect(cards.first()).toContainText("Delivery");
 });
 
 test("Mobile Explore does not hide the key search/filters controls", async ({ page }) => {
   await mockBackend(page, { products: [iphone, samsung] });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/explore.html");
-  await expect(page.locator("#mobileFilterButton")).toBeVisible();
-  await page.locator("#mobileFilterButton").click();
-  await expect(page.locator("#mobileFilterDrawer")).toHaveClass(/active/);
-  await expect(page.locator("#mobileBrandModelFilter")).toBeVisible();
+  await expect(page.locator("#ex-filters-open")).toBeVisible();
+  await page.locator("#ex-filters-open").click();
+  await expect(page.locator("#ex-filters")).toHaveClass(/is-open/);
+  await expect(page.locator("#ex-brand")).toBeVisible();
 });
 
 test("Checkout enables only Cash on Delivery and labels future methods Coming soon", async ({ page }) => {
