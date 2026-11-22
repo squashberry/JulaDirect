@@ -793,6 +793,9 @@
 /* Storefront popups & promos (js/jd-popups.js): optional, loaded after the shell, never on admin pages. */
 (function () {
   try {
+    // Do not request public.site_popups until its production migration is live.
+    // The admin editor still loads jd-popups.js directly for template previews.
+    if (window.GAMBASKET_CONFIG?.SITE_POPUPS_ENABLED !== true) return;
     if (/\/admin\//.test(location.pathname) || /[?&]embed=1\b/.test(location.search) || document.querySelector("script[data-jd-popups]")) return;
     var current = document.currentScript;
     var src = current && current.src ? new URL("jd-popups.js", current.src).href : "js/jd-popups.js";
