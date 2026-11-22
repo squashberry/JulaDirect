@@ -1408,17 +1408,15 @@
             const config = window.GAMBASKET_CONFIG || {};
             const imageFolder = String(folder || "product-images").trim().toLowerCase();
             const isProductImage = imageFolder === "products" || imageFolder === "product-images";
-            if (isProductImage) {
-                if (!config.isCloudinaryConfigured?.()) {
-                    throw new Error("Cloudinary product image hosting is not configured.");
-                }
+            if (isProductImage && config.isCloudinaryConfigured?.()) {
                 if (isRemoteUrl && remoteUrl.startsWith("http://")) {
                     throw new Error("Only HTTPS image URLs can be imported.");
                 }
 
-                // The server validates the signed-in seller and signs a fixed,
-                // short-lived Cloudinary upload payload. The API secret never
-                // reaches this browser or the public repository.
+                // When Cloudinary is configured, the server validates the
+                // signed-in seller and signs a fixed, short-lived upload.
+                // If it is not configured, product photos safely fall through
+                // to the authenticated Supabase Storage bucket below.
                 const signatureResponse = await fetch(
                     `${config.SUPABASE_URL}/functions/v1/juladirect-cloudinary-signature`,
                     {
