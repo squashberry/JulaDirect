@@ -128,7 +128,7 @@ body.ms-page #jd-footer { display: none; }
 .ms-sq svg { width: 24px; height: 24px; }
 .ms-field { position: relative; flex: 1; min-width: 0; display: flex; align-items: center; background: #f6f8fd; border: 1px solid var(--ms-line); border-radius: 26px; padding: 0 8px 0 18px; min-height: 52px; transition: box-shadow .2s, border-color .2s; }
 .ms-field:focus-within { border-color: #9dbdff; box-shadow: 0 0 0 4px rgba(10, 92, 255, .12); background: #fff; }
-.ms-field textarea { flex: 1; min-width: 0; resize: none; border: 0; outline: 0; background: transparent; font: inherit; font-size: 17px; line-height: 1.35; padding: 14px 0; max-height: 120px; color: var(--ms-ink); }
+.ms-field textarea { flex: 1; min-width: 0; resize: none; border: 0; outline: 0; background: transparent; font: inherit; font-size: 17px; line-height: 24px; padding: 14px 0; height: 52px; max-height: 100px; overflow-y: auto; color: var(--ms-ink); box-shadow: none; border-radius: 0; }
 .ms-field textarea::placeholder { color: #8b96b0; }
 .ms-emoji { width: 40px; height: 40px; flex: none; border: 0; background: transparent; color: #2a3558; border-radius: 50%; display: grid; place-items: center; cursor: pointer; }
 .ms-emoji svg { width: 28px; height: 28px; }
@@ -172,3 +172,7 @@ body.ms-page #jd-footer { display: none; }
 @media (prefers-reduced-motion: reduce) { .ms-empty__logo, .ms-typing i, .ms-skel { animation: none; } }
 
 body.ms-open #jd-fnav, body.ms-open .jd-fnav { display: none !important; }
+
+.ms .ms-field textarea, .ms .ms-field textarea:focus, .ms .ms-field textarea:focus-visible { outline: 0 !important; box-shadow: none !important; border: 0 !important; background: transparent !important; }
+.ms-field { align-items: flex-end; }
+.ms-field .ms-emoji { margin-bottom: 6px; }
