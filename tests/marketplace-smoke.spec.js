@@ -544,6 +544,10 @@ test("Image upload falls back to Supabase Storage when Cloudinary is unset", asy
   await mockBackend(page, { authenticated: true });
   await page.goto("/explore.html");
   const result = await page.evaluate(async () => {
+    // This test covers the Storage fallback specifically; the shipped public
+    // config includes Cloudinary credentials, so disable only its feature flag
+    // in this isolated browser context.
+    window.GAMBASKET_CONFIG.isCloudinaryConfigured = () => false;
     const file = new File([new Uint8Array([1,2,3])], "test-photo.jpg", { type: "image/jpeg" });
     return await window.GamBasketAuth.uploadImage(file, "products");
   });
