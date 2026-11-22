@@ -59,5 +59,4 @@
   });
 
   JD.mountShell({ active: "" });
-  if (JD.router?.init) JD.router.init();
 })();
