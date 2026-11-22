@@ -661,12 +661,9 @@
             </p>
 
 
-            <div class="offline-status">
-
+            <div class="offline-status" aria-live="polite">
                 <span class="offline-status-dot"></span>
-
-                No internet connection detected
-
+                <span id="offlineStatusText">No internet connection detected</span>
             </div>
 
         </section>
@@ -675,57 +672,46 @@
 
 
     <script>
-        const retryButton =
-            document.getElementById("retryConnection");
+        (() => {
+            const retryButton = document.getElementById("retryConnection");
+            const statusText = document.getElementById("offlineStatusText");
+            if (!retryButton) return;
+            const originalButton = retryButton.innerHTML;
+            let checking = false;
 
-        retryButton?.addEventListener(
-            "click",
-            () => {
+            async function hasConnection() {
+                if (!navigator.onLine) return false;
+                try {
+                    const response = await fetch("/sw.js?ping=" + Date.now(), {
+                        method: "GET",
+                        cache: "no-store",
+                        credentials: "same-origin"
+                    });
+                    return response.ok;
+                } catch {
+                    return false;
+                }
+            }
 
+            async function retryConnection() {
+                if (checking) return;
+                checking = true;
                 retryButton.disabled = true;
                 retryButton.textContent = "Checking...";
-
-                setTimeout(() => {
-
-                    if (navigator.onLine) {
-                        window.location.href = "index.html";
-                    } else {
-                        retryButton.disabled = false;
-
-                        retryButton.innerHTML = `
-                            <svg
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                stroke-width="1.8">
-
-                                <path
-                                    d="M20 11a8 8 0 1 0 1 4"
-                                    stroke-linecap="round"
-                                />
-
-                                <path
-                                    d="M20 5v6h-6"
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                />
-                            </svg>
-
-                            Try Again
-                        `;
-                    }
-
-                }, 700);
-
+                if (statusText) statusText.textContent = "Checking your connection...";
+                if (await hasConnection()) {
+                    window.location.replace("/index.html");
+                    return;
+                }
+                retryButton.disabled = false;
+                retryButton.innerHTML = originalButton;
+                if (statusText) statusText.textContent = "Still offline — check your connection and try again.";
+                checking = false;
             }
-        );
 
-        window.addEventListener(
-            "online",
-            () => {
-                window.location.href = "index.html";
-            }
-        );
+            retryButton.addEventListener("click", retryConnection);
+            window.addEventListener("online", retryConnection);
+        })();
     </script>
 
 </body>
