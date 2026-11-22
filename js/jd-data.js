@@ -188,7 +188,19 @@
       if (f.delivery) q = q.eq("delivery_available", true);
       if (f.seller && JD.isUuid(f.seller)) q = q.eq("seller_id", f.seller);
       const brand = clean(f.brandModel);
-      if (brand) q = q.ilike("title", "%" + brand + "%");
+      if (brand) {
+        // A brand/model filter must search structured attributes as well as
+        // the title, otherwise listings labelled "Apple" or "Galaxy" only in
+        // their verified category specifications disappear from results.
+        const term = "%" + brand + "%";
+        q = q.or([
+          "title.ilike." + term,
+          "description.ilike." + term,
+          "attributes->>brand.ilike." + term,
+          "attributes->>model.ilike." + term,
+          "attributes->>storage.ilike." + term
+        ].join(","));
+      }
       q = applySort(q, f.sort);
       const page = Math.max(1, parseInt(f.page, 10) || 1);
       const from = (page - 1) * PAGE_SIZE;
