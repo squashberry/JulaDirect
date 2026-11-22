@@ -487,8 +487,17 @@
     if (JD.refreshShell) JD.refreshShell();
   }
 
+  /* Jelly direction: moving to a tab on the right arrives from the right, to the left from the left,
+     and anything that is not a bottom-nav tab always arrives from the right. */
+  const TAB_ORDER = ["home", "explore", "wishlist", "cart", "account"];
+  function jellyDir(from, to) {
+    const a = TAB_ORDER.indexOf(ROUTES[from && from.route]), b = TAB_ORDER.indexOf(ROUTES[to.route]);
+    if (b < 0 || a < 0 || a === b) return "right";
+    return b < a ? "left" : "right";
+  }
   function activate(pane, url, opts) {
     const o = opts || {};
+    const hadPane = !!current, jdir = current ? jellyDir(current, pane) : "right";
     if (current && current !== pane) {
       window.dispatchEvent(new CustomEvent("jd:pane:hide", { detail: { route: current.route } }));
       current.scrollY = window.scrollY;
@@ -521,7 +530,8 @@
       window.scrollTo({ top: pane.scrollY || 0, left: 0, behavior: "instant" });
       pane.el.classList.remove("jd-pane--in");
       void pane.el.offsetWidth;
-      pane.el.classList.add("jd-pane--in");
+      if (window.Jelly && hadPane) window.Jelly.slide(pane.el, jdir, { mode: "offset" });
+      else pane.el.classList.add("jd-pane--in");
       /* Keep the transition transient. The pane's <main> contains fixed mobile
          purchase bars; retaining an animated ancestor can make those bars act
          like they are fixed to the page instead of the viewport. */

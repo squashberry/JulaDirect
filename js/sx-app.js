@@ -68,7 +68,7 @@
         dlg.remove();
         resolve(ok ? (o.fields && o.fields.length ? vals : true) : null);
       });
-      dlg.showModal();
+      dlg.showModal(); if (window.Jelly) window.Jelly.pop(dlg);
       const first = $("[name]", dlg); if (first) first.focus();
     });
   }
@@ -83,6 +83,7 @@
     $("#sxDrawerFoot").style.display = footHtml ? "" : "none";
     $("#sxDrawer").classList.add("is-on"); $("#sxScrim").classList.add("is-on");
     $("#sxDrawer").setAttribute("aria-hidden", "false");
+    if (window.Jelly) window.Jelly.sheet($("#sxDrawer"), { base: "translateX(-50%)" });
     document.body.style.overflow = "hidden";
     hydrate($("#sxDrawer"));
     $("#sxDrawerClose").focus();
@@ -389,8 +390,14 @@
   /* Extra views (js/sx-manage.js) register here so they live inside the studio. */
   SX.register = (name, title, fn) => { ROUTES[name] = title; VIEWS[name] = fn; };
   SX.reload = () => route(true);
-  SX.ui = { state, D, esc, num, money, ago, dayTime, label, safeUrl, thumb, hydrate, skel, empty, ask, toast, errMsg, $, $$ };
+  SX.ui = { openDrawer, closeDrawer, state, D, esc, num, money, ago, dayTime, label, safeUrl, thumb, hydrate, skel, empty, ask, toast, errMsg, $, $$ };
   const MORE_ROUTES = ["messages", "store", "website", "delivery", "settings", "add", "payouts", "help"];
+  /* Jelly direction follows the rail order; anything that is not a rail tab arrives from the right. */
+  const TAB_ORDER = ["overview", "orders", "products", "customers", "reviews", "earnings", "messages", "store", "website", "payouts", "delivery", "settings"];
+  function jellyDir(from, to) {
+    const a = TAB_ORDER.indexOf(from), b = TAB_ORDER.indexOf(to);
+    return a < 0 || b < 0 || a === b ? "right" : b < a ? "left" : "right";
+  }
   let token = 0;
   async function route(force) {
     const name = (location.hash.replace(/^#\/?/, "").split("?")[0] || "overview");
@@ -399,8 +406,10 @@
       if (!confirm("You have unsaved product changes. Leave without saving?")) { location.hash = "#/products"; return; }
       state.edits.clear();
     }
+    const prevRoute = state.route;
     state.route = r;
     $$(".sx-view").forEach(v => { v.hidden = v.id !== "v-" + r; });
+    if (!force && prevRoute && prevRoute !== r && window.Jelly) window.Jelly.slide($("#v-" + r), jellyDir(prevRoute, r));
     $$("[data-route]").forEach(a => { if (a.getAttribute("data-route") === r || (r === "customers" || r === "earnings" || MORE_ROUTES.includes(r)) && a.getAttribute("data-route") === "more" && a.closest("#sxTabbar")) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
     $("#sxTitle").textContent = ROUTES[r];
     $("#sxPeriod").style.display = r === "overview" || r === "earnings" ? "" : "none";

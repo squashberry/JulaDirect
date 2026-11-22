@@ -279,6 +279,7 @@
   /* =====================================================
      PAYOUTS (wallet, payout methods, withdrawals)
      ===================================================== */
+  document.addEventListener("click", ev => { if (window.__poOpen) window.__poOpen(ev); });
   const NETS = { wave: "Wave", afrimoney: "Afrimoney" };
   SX.register("payouts", "Payouts", async function (el) {
     el.innerHTML = skel(3);
@@ -289,33 +290,47 @@
     const active = methods.filter(x => x.verification_status === "active");
     const mask = n => "••••" + String(n).slice(-3);
     const tone = { active: "good", pending_verification: "warn", rejected: "bad", disabled: "bad" };
-    el.innerHTML = '<div class="sx-grid sx-grid--kpi">' + [["Available", sum.available_balance, "Ready to withdraw"], ["Pending", sum.pending_balance, "Released after delivery"], ["In transit", sum.payout_in_transit, "Being paid out"], ["Withdrawn", sum.withdrawn_total, "All time"]].map(k => '<div class="sx-kpi"><div class="sx-kpi__label">' + k[0] + '</div><div class="sx-kpi__value">' + U.money(k[1]) + '</div><div class="sx-kpi__meta">' + k[2] + "</div></div>").join("") + "</div>" +
-      '<div class="sx-grid sx-grid--split" style="margin-top:16px"><div class="sm-stack" style="max-width:none">' +
-      '<section class="sx-card"><div class="sx-card__head"><h2>Withdraw</h2></div><div class="sx-card__body">' + (active.length ? '<form class="sm-form" id="poReq">' + field("Amount (GMD)", input("poAmt", "", { type: "number", ph: "0" })) + field("Send to", '<select class="sx-select" id="poMethod">' + active.map(x => '<option value="' + esc(x.id) + '">' + esc(NETS[x.network] || x.network) + " " + esc(mask(x.account_number)) + " · " + esc(x.beneficiary_name) + "</option>").join("") + "</select>") + '<div class="sm-actions"><button class="sx-btn sx-btn--primary" id="poGo" type="submit">Request payout</button><button class="sx-btn" type="button" id="poAll">Withdraw everything</button></div></form>' : '<p class="sx-hint" style="margin:0">Add a payout method and wait for approval before you can withdraw.</p>') + "</div></section>" +
-      '<section class="sx-card"><div class="sx-card__head"><h2>Recent payouts</h2></div><div class="sx-card__body">' + (reqs.length ? '<div class="sx-rows">' + reqs.map(x => '<div class="sx-row" style="grid-template-columns:1fr auto"><div><div class="sx-row__t">' + U.money(x.amount) + '</div><div class="sx-row__s">' + esc(U.dayTime(x.requested_at)) + '</div></div><span class="sx-pill sx-pill--' + ({ paid: "good", completed: "good", failed: "bad", rejected: "bad" }[x.status] || "info") + '">' + esc(U.label(x.status)) + "</span></div>").join("") + "</div>" : empty("No payouts yet", "Withdrawals you request will be listed here.")) + "</div></section></div>" +
-      '<div class="sm-stack" style="max-width:none"><section class="sx-card"><div class="sx-card__head"><h2>Payout methods</h2></div><div class="sx-card__body">' + (methods.length ? '<div class="sx-rows">' + methods.map(x => '<div class="sx-row" style="grid-template-columns:1fr auto"><div><div class="sx-row__t">' + esc(NETS[x.network] || x.network) + " " + esc(mask(x.account_number)) + '</div><div class="sx-row__s">' + esc(x.beneficiary_name) + '</div></div><span class="sx-pill sx-pill--' + (tone[x.verification_status] || "") + '">' + esc(U.label(x.verification_status)) + "</span></div>").join("") + "</div>" : "") +
-      '<form class="sm-form" id="poAdd" style="margin-top:12px"><div class="sm-two">' + field("Network", '<select class="sx-select" id="poNet"><option value="wave">Wave</option><option value="afrimoney">Afrimoney</option></select>') + field("Mobile number", input("poNum", "", { type: "tel", max: 20, ph: "+2207000000" })) + "</div>" + field("Account holder name", input("poName", "", { max: 120 })) + '<div class="sm-actions"><button class="sx-btn" type="submit" id="poAddGo">Add payout method</button></div><p class="sx-hint">New methods are reviewed by JulaDirect before you can withdraw to them.</p></form></div></section>' +
-      '<section class="sx-card"><div class="sx-card__head"><h2>Automatic payouts</h2></div><div class="sx-card__body sm-form"><label class="sm-switch"><input type="checkbox" id="poAuto"' + (pref.auto_payout_enabled ? " checked" : "") + "><span>Pay out automatically</span></label>" + field("When available balance reaches (GMD)", input("poThr", pref.auto_payout_threshold || "", { type: "number" })) + '<div class="sm-actions"><button class="sx-btn" id="poPref" type="button">Save</button></div></div></section></div></div>';
+    const canPay = active.length > 0;
+    el.innerHTML = '<div class="sx-toolbar"><div><b style="font-size:15px">Your wallet</b></div><span class="sx-toolbar__space"></span><button class="sx-btn" type="button" data-po="method">Payout methods</button><button class="sx-btn" type="button" data-po="auto">Automatic payouts</button><button class="sx-btn sx-btn--primary" type="button" data-po="withdraw">Withdraw</button></div>' +
+      '<div class="sx-grid sx-grid--kpi">' + [["Available", sum.available_balance, "Ready to withdraw"], ["Pending", sum.pending_balance, "Released after delivery"], ["In transit", sum.payout_in_transit, "Being paid out"], ["Withdrawn", sum.withdrawn_total, "All time"]].map(k => '<div class="sx-kpi"><div class="sx-kpi__label">' + k[0] + '</div><div class="sx-kpi__value">' + U.money(k[1]) + '</div><div class="sx-kpi__meta">' + k[2] + "</div></div>").join("") + "</div>" +
+      '<section class="sx-card" style="margin-top:16px"><div class="sx-card__head"><h2>Recent payouts</h2></div><div class="sx-card__body">' + (reqs.length ? '<div class="sx-rows">' + reqs.map(x => '<div class="sx-row" style="grid-template-columns:1fr auto"><div><div class="sx-row__t">' + U.money(x.amount) + '</div><div class="sx-row__s">' + esc(U.dayTime(x.requested_at)) + '</div></div><span class="sx-pill sx-pill--' + ({ paid: "good", completed: "good", failed: "bad", rejected: "bad" }[x.status] || "info") + '">' + esc(U.label(x.status)) + "</span></div>").join("") + "</div>" : empty("No payouts yet", "Tap Withdraw to move your available balance to Wave or Afrimoney.")) + "</div></section>";
+
     const fail = e => toast(/INSUFFICIENT/.test(e.message || "") ? "That is more than your available balance." : errMsg(e), "bad");
-    $("#poAll") && ($("#poAll").onclick = () => { $("#poAmt").value = U.num(sum.available_balance) || ""; });
-    $("#poReq") && $("#poReq").addEventListener("submit", async ev => {
-      ev.preventDefault(); const amt = U.num(val("poAmt")); if (!(amt > 0)) return void toast("Enter an amount.", "bad");
-      if (!(await ask({ title: "Request payout of " + U.money(amt) + "?", body: "The amount is reserved from your available balance now.", confirm: "Request payout" }))) return;
-      const btn = $("#poGo"); btn.disabled = true;
-      const { error } = await c.rpc("seller_request_payout", { p_amount: amt, p_payout_method_id: val("poMethod"), p_idempotency_key: "web-" + (crypto.randomUUID ? crypto.randomUUID() : Date.now() + "-" + Math.random().toString(36).slice(2)) });
-      if (error) { btn.disabled = false; return void fail(error); }
-      toast("Payout requested", "good"); SX.reload ? SX.reload() : location.reload();
-    });
-    $("#poAdd").addEventListener("submit", async ev => {
-      ev.preventDefault(); const btn = $("#poAddGo"); btn.disabled = true;
-      const { error } = await c.rpc("seller_add_payout_method", { p_network: val("poNet"), p_account_number: val("poNum"), p_beneficiary_name: val("poName") });
-      if (error) { btn.disabled = false; return void toast(/valid|Enter|Unsupported/.test(error.message) ? error.message : errMsg(error), "bad"); }
-      toast("Payout method added. It's awaiting approval.", "good"); SX.reload ? SX.reload() : location.reload();
-    });
-    $("#poPref").onclick = async () => {
-      const { error } = await c.rpc("seller_update_wallet_preferences", { p_auto_payout_enabled: $("#poAuto").checked, p_auto_payout_threshold: U.num(val("poThr")) || null, p_payout_method_id: (active.find(x => x.is_primary) || active[0] || {}).id || null });
-      if (error) return void fail(error); toast("Automatic payout settings saved", "good");
-    };
+    const refresh = () => (SX.reload ? SX.reload() : location.reload());
+    const methodsHtml = () => methods.length ? '<div class="sx-rows">' + methods.map(x => '<div class="sx-row" style="grid-template-columns:1fr auto"><div><div class="sx-row__t">' + esc(NETS[x.network] || x.network) + " " + esc(mask(x.account_number)) + '</div><div class="sx-row__s">' + esc(x.beneficiary_name) + '</div></div><span class="sx-pill sx-pill--' + (tone[x.verification_status] || "") + '">' + esc(U.label(x.verification_status)) + "</span></div>").join("") + "</div>" : "";
+
+    function openWithdraw() {
+      const body = canPay ? '<form class="sm-wd" id="poReq"><div class="sm-wd__bal"><span>Available to withdraw</span><b>' + U.money(sum.available_balance) + "</b></div>" + field("Amount (GMD)", input("poAmt", "", { type: "number", ph: "0" })) + '<div class="sm-quick"><button type="button" class="sx-chip" data-po-fill="all">All</button><button type="button" class="sx-chip" data-po-fill="half">Half</button></div>' + field("Send to", '<select class="sx-select" id="poMethod">' + active.map(x => '<option value="' + esc(x.id) + '">' + esc(NETS[x.network] || x.network) + " " + esc(mask(x.account_number)) + " · " + esc(x.beneficiary_name) + "</option>").join("") + "</select>") + '<button class="sx-btn sx-btn--primary" id="poGo" type="submit">Request payout</button><p class="sx-hint" style="margin:0">The amount is reserved from your balance right away. Payouts usually arrive within a day.</p></form>'
+        : '<div class="sm-wd"><p style="margin:0;color:var(--sx-ink-2)">' + (methods.length ? "Your payout method is waiting for approval. You can withdraw as soon as it is active." : "Add a Wave or Afrimoney number first, then you can withdraw.") + '</p><button class="sx-btn sx-btn--primary" type="button" data-po="method">' + (methods.length ? "View payout methods" : "Add payout method") + "</button></div>";
+      U.openDrawer("Withdraw", body, "");
+      const f = $("#poReq"); if (!f) return;
+      $$("[data-po-fill]", f).forEach(b => b.onclick = () => { const a = U.num(sum.available_balance); $("#poAmt").value = b.getAttribute("data-po-fill") === "all" ? a : Math.floor(a / 2); });
+      f.addEventListener("submit", async ev => {
+        ev.preventDefault(); const amt = U.num(val("poAmt")); if (!(amt > 0)) return void toast("Enter an amount.", "bad");
+        const btn = $("#poGo"); btn.disabled = true; btn.textContent = "Requesting…";
+        const { error } = await c.rpc("seller_request_payout", { p_amount: amt, p_payout_method_id: val("poMethod"), p_idempotency_key: "web-" + (crypto.randomUUID ? crypto.randomUUID() : Date.now() + "-" + Math.random().toString(36).slice(2)) });
+        if (error) { btn.disabled = false; btn.textContent = "Request payout"; return void fail(error); }
+        U.closeDrawer(); toast("Payout requested", "good"); refresh();
+      });
+    }
+    function openMethods() {
+      U.openDrawer("Payout methods", '<div class="sm-wd">' + methodsHtml() + '<form class="sm-form" id="poAdd"><b>Add a method</b><div class="sm-two">' + field("Network", '<select class="sx-select" id="poNet"><option value="wave">Wave</option><option value="afrimoney">Afrimoney</option></select>') + field("Mobile number", input("poNum", "", { type: "tel", max: 20, ph: "+2207000000" })) + "</div>" + field("Account holder name", input("poName", "", { max: 120 })) + '<button class="sx-btn sx-btn--primary" type="submit" id="poAddGo">Add payout method</button><p class="sx-hint" style="margin:0">New methods are reviewed by JulaDirect before you can withdraw to them.</p></form></div>', "");
+      $("#poAdd").addEventListener("submit", async ev => {
+        ev.preventDefault(); const btn = $("#poAddGo"); btn.disabled = true;
+        const { error } = await c.rpc("seller_add_payout_method", { p_network: val("poNet"), p_account_number: val("poNum"), p_beneficiary_name: val("poName") });
+        if (error) { btn.disabled = false; return void toast(/valid|Enter|Unsupported/.test(error.message) ? error.message : errMsg(error), "bad"); }
+        U.closeDrawer(); toast("Payout method added. It's awaiting approval.", "good"); refresh();
+      });
+    }
+    function openAuto() {
+      U.openDrawer("Automatic payouts", '<div class="sm-form"><label class="sm-switch"><input type="checkbox" id="poAuto"' + (pref.auto_payout_enabled ? " checked" : "") + "><span>Pay out automatically</span></label>" + field("When available balance reaches (GMD)", input("poThr", pref.auto_payout_threshold || "", { type: "number" })) + (canPay ? "" : '<p class="sx-hint" style="margin:0">You need an approved payout method first.</p>') + '<button class="sx-btn sx-btn--primary" id="poPref" type="button">Save</button></div>', "");
+      $("#poPref").onclick = async () => {
+        const { error } = await c.rpc("seller_update_wallet_preferences", { p_auto_payout_enabled: $("#poAuto").checked, p_auto_payout_threshold: U.num(val("poThr")) || null, p_payout_method_id: (active.find(x => x.is_primary) || active[0] || {}).id || null });
+        if (error) return void fail(error); U.closeDrawer(); toast("Automatic payout settings saved", "good");
+      };
+    }
+    el.onclick = ev => { const b = ev.target.closest("[data-po]"); if (b) ({ withdraw: openWithdraw, method: openMethods, auto: openAuto })[b.getAttribute("data-po")](); };
+    window.__poOpen = ev => { const b = ev.target.closest("[data-po]"); if (b && b.closest("#sxDrawer")) ({ method: openMethods })[b.getAttribute("data-po")](); };
   });
 
   /* =====================================================
