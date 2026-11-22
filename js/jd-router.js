@@ -68,7 +68,6 @@
   // global selectors from old pages leak into the newly active page.
   const routeStyleNodes = new Set();
   const routeStylesheets = new Map();
-  const routeStylesheetOrder = new Map();
   // Concurrent navigations can encounter the same stylesheet while it is
   // still loading. Keep one readiness promise per URL so every destination
   // waits for the actual CSS load instead of revealing an unstyled pane.
@@ -99,12 +98,9 @@
       node.media = active ? (node.dataset.jdOriginalMedia || "all") : "not all";
     });
 
-    // Preserve the exact stylesheet order declared by the destination HTML.
-    // Reused links may otherwise stay in the order of the first page visited.
-    const ordered = routeStylesheetOrder.get(route) || [];
-    ordered.forEach(node => {
-      if (node.isConnected) document.head.appendChild(node);
-    });
+    // Keep stylesheet link nodes in place. Moving an existing <link> within
+    // <head> on every route change can make browsers reprocess/reload CSS and
+    // is a source of flashes where the new pane briefly appears unstyled.
   }
 
   function registerInlineStyles(route, root) {
@@ -319,7 +315,6 @@
 
   function loadStyles(doc, route, baseUrl) {
     const waits = [];
-    const ordered = [];
     doc.querySelectorAll('link[rel="stylesheet"]').forEach(source => {
       const href = new URL(source.getAttribute("href"), baseUrl || location.href).href;
       let node = routeStylesheets.get(href);
@@ -336,8 +331,6 @@
         node.dataset.jdLoadState = "loading";
         node.media = "not all";
         registerRouteStyle(node, route, href);
-        if (!ordered.includes(node)) ordered.push(node);
-
         // Install load/error listeners before insertion. Another fast
         // navigation to the same URL will share this exact promise.
         const ready = waitForStylesheet(node, href);
@@ -347,15 +340,12 @@
       }
 
       registerRouteStyle(node, route, href);
-      if (!ordered.includes(node)) ordered.push(node);
-
       // A previously inserted link may still be fetching because another
       // navigation was superseded. Never treat "already in the DOM" as ready.
       if (node.dataset.jdLoadState !== "loaded") {
         waits.push(waitForStylesheet(node, href));
       }
     });
-    routeStylesheetOrder.set(route, ordered);
     return Promise.all(waits);
   }
 
