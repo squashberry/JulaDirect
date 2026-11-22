@@ -434,6 +434,10 @@
         if (state.active && !state.channel) { document.body.classList.toggle("ms-open", !$("chatActive").hidden); subscribe(state.active.id); }
     });
 
-    if (JD && JD.mountShell) JD.mountShell({ active: "account" });
+    const embedded = /[?&]embed=1\b/.test(location.search);
+    if (embedded) {
+        document.body.classList.add("ms-embed");
+        const base = document.createElement("base"); base.target = "_top"; document.head.appendChild(base);
+    } else if (JD && JD.mountShell) JD.mountShell({ active: "account" });
     init();
 })();

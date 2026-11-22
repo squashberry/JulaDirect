@@ -195,3 +195,5 @@ The dark hero with the search box is replaced by a four-slide, auto-rotating cam
 
 ## Seller Studio: Manage pages
 The sidebar links under MANAGE no longer leave the studio. `js/sx-manage.js` registers five views through `SX.register`: Messages (inbox + live thread), Store profile (`save_my_store`, logo/banner upload), Business website (`business_websites` CRUD), Pickup & delivery (per-listing `delivery_available` and pickup `location`) and Settings (notification prefs stored on the device, dark mode, sign out). Boot now waits for DOMContentLoaded so these views exist before the first route.
+
+Update: Messages now embeds the customer chat itself (`messages.html?embed=1`, same list, product card, quick replies; the router, shell and popups are skipped in embed mode). Added in-studio **Add/Edit product** (`#/add`, `#/add?id=`), **Payouts** (`#/payouts`: wallet, payout methods, withdrawals, auto-payout) and **Seller guide** (`#/help`). No seller-studio link points at the old supplier pages any more.

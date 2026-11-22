@@ -27,85 +27,14 @@
   const val = id => ($("#" + id) || {}).value || "";
 
   /* =====================================================
-     MESSAGES
+     MESSAGES: the exact customer chat (messages.html), embedded, so a seller sees the
+     same conversations, product cards and quick replies a buyer does.
      ===================================================== */
-  const M = { list: [], active: null, sub: null, msgs: [], poll: null };
-
-  function stopMessages() { if (M.sub && M.sub.unsubscribe) { try { M.sub.unsubscribe(); } catch (e) { /* closed */ } } M.sub = null; clearInterval(M.poll); M.poll = null; }
-
-  function convRow(c) {
-    const name = c.other_user_name || "Customer";
-    return '<button type="button" class="smg-row' + (M.active === c.id ? " is-on" : "") + '" data-conv="' + esc(c.id) + '">' +
-      thumb(c.other_user_avatar, name) +
-      '<span class="smg-row__b"><span class="smg-row__t"><b>' + esc(name) + "</b><i>" + esc(ago(c.last_message_at)) + '</i></span><span class="smg-row__s">' +
-      (c.product ? "<em>" + esc(c.product.title) + "</em> · " : "") + esc(c.last_message) + "</span></span>" +
-      (c.unread_count ? '<span class="sx-badge">' + esc(c.unread_count) + "</span>" : "") + "</button>";
-  }
-  function bubble(m) {
-    const mine = m.sender_id === uid();
-    return '<div class="smg-b ' + (mine ? "smg-b--me" : "smg-b--them") + '" data-mid="' + esc(m.id) + '"><p>' + esc(m.content || m.message_text) + "</p><time>" + esc(new Date(m.created_at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })) + "</time></div>";
-  }
-  function paintThread() {
-    const flow = $("#smgFlow"); if (!flow) return;
-    const near = flow.scrollHeight - flow.scrollTop - flow.clientHeight < 140;
-    flow.innerHTML = M.msgs.length ? M.msgs.map(bubble).join("") : '<p class="smg-none">No messages yet. Say hello.</p>';
-    if (near || !flow._init) { flow.scrollTop = flow.scrollHeight; flow._init = true; }
-  }
-  async function openConv(id) {
-    M.active = id; stopMessages();
-    const c = M.list.find(x => x.id === id) || {};
-    const root = $("#v-messages .smg"); if (!root) return;
-    root.classList.add("is-open");
-    $$(".smg-row").forEach(r => r.classList.toggle("is-on", r.getAttribute("data-conv") === id));
-    const pane = $("#smgThread");
-    pane.innerHTML = '<header class="smg-head"><button class="sx-icon-btn smg-back" type="button" data-smg="back" aria-label="Back to conversations"><svg><use href="#i-close"/></svg></button>' + thumb(c.other_user_avatar, c.other_user_name) +
-      "<div><b>" + esc(c.other_user_name || "Customer") + "</b>" + (c.product ? "<small>About " + esc(c.product.title) + "</small>" : "") + "</div></header>" +
-      '<div class="smg-flow" id="smgFlow" aria-live="polite">' + '<div class="sx-skel" style="height:60px"></div>' + '</div>' +
-      '<form class="smg-compose" id="smgForm"><textarea class="sx-textarea" id="smgText" rows="1" maxlength="4000" placeholder="Write a reply…" aria-label="Message"></textarea><button class="sx-btn sx-btn--primary" type="submit">Send</button></form>';
-    hydrate(pane);
-    try {
-      const r = await auth().getConversationMessages(id);
-      if (M.active !== id) return;
-      M.msgs = r.messages || []; paintThread();
-      auth().markConversationRead(id).catch(() => {});
-      const row = M.list.find(x => x.id === id); if (row) { row.unread_count = 0; refreshBadge(); const el = $('.smg-row[data-conv="' + id + '"] .sx-badge'); if (el) el.remove(); }
-    } catch (e) { $("#smgFlow").innerHTML = empty("Couldn't load this chat", errMsg(e)); return; }
-    const add = m => { if (M.active !== id || M.msgs.some(x => x.id === m.id)) return; M.msgs.push(m); paintThread(); if (m.sender_id !== uid()) auth().markConversationRead(id).catch(() => {}); };
-    try { M.sub = auth().subscribeToConversation(id, add, () => {}); } catch (e) { /* polling covers it */ }
-    M.poll = setInterval(async () => { try { const r = await auth().getConversationMessages(id); if (M.active === id && (r.messages || []).length !== M.msgs.length) { M.msgs = r.messages; paintThread(); } } catch (e) { /* retry next tick */ } }, 7000);
-  }
-  function refreshBadge() { const n = M.list.reduce((a, c) => a + (c.unread_count || 0), 0); const b = $("#sxBadgeMessages"); if (b) { b.hidden = !n; b.textContent = n; } }
-
   SX.register("messages", "Messages", async function (el) {
-    stopMessages(); M.active = null;
-    el.innerHTML = skel(3);
-    const r = await auth().getConversations();
-    M.list = r.items || []; refreshBadge();
-    el.innerHTML = '<div class="smg"><aside class="smg-list" aria-label="Conversations">' +
-      (M.list.length ? M.list.map(convRow).join("") : empty("No conversations yet", "When a buyer messages you about a product, it appears here.")) +
-      '</aside><section class="smg-thread" id="smgThread"><div class="smg-pick">Select a conversation to read and reply.</div></section></div>';
-    hydrate(el);
-    const want = new URLSearchParams((location.hash.split("?")[1] || "")).get("c");
-    if (want && M.list.some(c => c.id === want)) openConv(want);
+    const q = new URLSearchParams(location.hash.split("?")[1] || "");
+    const extra = ["conversation", "product"].filter(k => q.get(k)).map(k => "&" + k + "=" + encodeURIComponent(q.get(k))).join("");
+    el.innerHTML = '<div class="sm-chat"><iframe title="Messages" src="../messages.html?embed=1' + extra + '" loading="eager"></iframe></div>';
   });
-  window.addEventListener("hashchange", () => { if (!/^#\/messages/.test(location.hash)) stopMessages(); });
-
-  document.addEventListener("click", e => {
-    const row = e.target.closest("[data-conv]"); if (row) return void openConv(row.getAttribute("data-conv"));
-    if (e.target.closest('[data-smg="back"]')) { const root = $("#v-messages .smg"); if (root) root.classList.remove("is-open"); M.active = null; stopMessages(); $$(".smg-row").forEach(r => r.classList.remove("is-on")); }
-  });
-  document.addEventListener("submit", async e => {
-    if (e.target.id !== "smgForm") return;
-    e.preventDefault();
-    const ta = $("#smgText"), text = ta.value.trim(), id = M.active; if (!text || !id) return;
-    const btn = e.target.querySelector("button"); btn.disabled = true;
-    try {
-      const r = await auth().sendMessage(id, text);
-      ta.value = ""; if (!M.msgs.some(x => x.id === r.message.id)) M.msgs.push(r.message); paintThread();
-      const c = M.list.find(x => x.id === id); if (c) { c.last_message = text; c.last_message_at = r.message.created_at; }
-    } catch (err) { toast(errMsg(err), "bad"); } finally { btn.disabled = false; ta.focus(); }
-  });
-  document.addEventListener("keydown", e => { if (e.target.id === "smgText" && e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("#smgForm").requestSubmit(); } });
 
   /* =====================================================
      STORE PROFILE
@@ -222,7 +151,7 @@
       const on = products.filter(p => p.delivery_available).length;
       el.innerHTML = '<div class="sx-note sx-note--info">Buyers can always collect from your pickup location. Switch <b>delivery</b> on for listings a courier can bring to the buyer. Pickup location defaults to your store address' + (store && store.location ? " (" + esc(store.location) + ")" : "") + ".</div>" +
         '<div class="sx-toolbar" style="margin-top:14px"><b>' + on + " of " + products.length + ' listings offer delivery</b><span class="sx-toolbar__space"></span><button class="sx-btn sx-btn--sm" data-dl="all" type="button">Enable for all</button><button class="sx-btn sx-btn--sm" data-dl="none" type="button">Disable for all</button></div>' +
-        (products.length ? '<section class="sx-card"><div class="sx-card__body"><div class="sx-rows">' + products.map(p => '<div class="sx-row sm-dl"><div class="sm-dl__p">' + thumb(p.main_image, p.title) + '<div><div class="sx-row__t">' + esc(p.title) + '</div><div class="sx-row__s">' + esc(U.label(p.status)) + '</div></div></div><label class="sx-field sm-dl__loc">Pickup location<input class="sx-input" data-dl-loc="' + esc(p.id) + '" value="' + esc(p.location || "") + '" maxlength="120" placeholder="' + esc((store && store.location) || "Where buyers collect") + '"></label><label class="sm-switch"><input type="checkbox" data-dl-on="' + esc(p.id) + '"' + (p.delivery_available ? " checked" : "") + '><span>Delivery</span></label></div>').join("") + "</div></div></section>" : empty("No listings yet", "Add a product, then choose how buyers receive it.", '<p><a class="sx-btn sx-btn--primary" href="add-product.html">Add a product</a></p>'));
+        (products.length ? '<section class="sx-card"><div class="sx-card__body"><div class="sx-rows">' + products.map(p => '<div class="sx-row sm-dl"><div class="sm-dl__p">' + thumb(p.main_image, p.title) + '<div><div class="sx-row__t">' + esc(p.title) + '</div><div class="sx-row__s">' + esc(U.label(p.status)) + '</div></div></div><label class="sx-field sm-dl__loc">Pickup location<input class="sx-input" data-dl-loc="' + esc(p.id) + '" value="' + esc(p.location || "") + '" maxlength="120" placeholder="' + esc((store && store.location) || "Where buyers collect") + '"></label><label class="sm-switch"><input type="checkbox" data-dl-on="' + esc(p.id) + '"' + (p.delivery_available ? " checked" : "") + '><span>Delivery</span></label></div>').join("") + "</div></div></section>" : empty("No listings yet", "Add a product, then choose how buyers receive it.", '<p><a class="sx-btn sx-btn--primary" href="#/add">Add a product</a></p>'));
       hydrate(el);
     };
     paint();
@@ -259,7 +188,7 @@
     el.innerHTML = '<div class="sm-stack">' +
       '<section class="sx-card"><div class="sx-card__head"><h2>Notifications</h2></div><div class="sx-card__body"><div class="sm-checks">' + NOTIFS.map(x => '<label class="sm-switch"><input type="checkbox" data-pref="' + x[0] + '"' + (n[x[0]] === false ? "" : " checked") + "><span>" + esc(x[1]) + "</span></label>").join("") + '</div><p class="sx-hint">These preferences are saved on this device.</p></div></section>' +
       '<section class="sx-card"><div class="sx-card__head"><h2>Appearance</h2></div><div class="sx-card__body"><label class="sm-switch"><input type="checkbox" id="stDark"' + (dark ? " checked" : "") + "><span>Dark mode</span></label></div></section>" +
-      '<section class="sx-card"><div class="sx-card__head"><h2>Account</h2></div><div class="sx-card__body"><dl class="sx-kv" style="grid-template-columns:auto 1fr"><dt>Signed in as</dt><dd>' + esc(user.email || "—") + '</dd></dl><div class="sm-actions"><a class="sx-btn" href="../me.html">Manage my account</a><a class="sx-btn" href="../help.html">Help &amp; seller guide</a><button class="sx-btn sx-btn--danger" id="stOut" type="button">Sign out</button></div></div></section></div>';
+      '<section class="sx-card"><div class="sx-card__head"><h2>Account</h2></div><div class="sx-card__body"><dl class="sx-kv" style="grid-template-columns:auto 1fr"><dt>Signed in as</dt><dd>' + esc(user.email || "—") + '</dd></dl><div class="sm-actions"><a class="sx-btn" href="#/help">Seller guide</a><button class="sx-btn sx-btn--danger" id="stOut" type="button">Sign out</button></div></div></section></div>';
     el.onchange = ev => {
       const t = ev.target;
       if (t.hasAttribute("data-pref")) { const p = readPrefs(); p.notifications = Object.assign({}, p.notifications, { [t.getAttribute("data-pref")]: t.checked }); try { localStorage.setItem(PREF_KEY, JSON.stringify(p)); toast("Saved", "good"); } catch (e) { toast("Couldn't save on this device", "bad"); } }
@@ -268,6 +197,135 @@
     $("#stOut").onclick = async () => { try { await auth().signOut(); } catch (e) { /* redirect anyway */ } location.href = "../login.html"; };
   });
 
-  /* unread badge on the rail, once boot is done */
-  (async function () { try { await new Promise(r => { const t = setInterval(() => { if (D.ready) { clearInterval(t); r(); } }, 200); }); const r = await auth().getConversations(); M.list = r.items || []; const n = M.list.reduce((a, c) => a + (c.unread_count || 0), 0); const a = $('#sxNav a[data-route="messages"]'); if (a && n) { a.insertAdjacentHTML("beforeend", '<span class="sx-badge" id="sxBadgeMessages">' + n + "</span>"); } } catch (e) { /* badge is optional */ } })();
+  /* =====================================================
+     ADD / EDIT PRODUCT
+     ===================================================== */
+  const CATS = [["Phones", "Phones & tablets"], ["Electronics", "Electronics & computers"], ["Fashion", "Fashion & clothing"], ["Home", "Home & kitchen"], ["Beauty", "Beauty & personal care"], ["Food", "Food & groceries"], ["Solar", "Solar & energy"], ["Auto", "Vehicles & auto parts"], ["Hardware", "Hardware & tools"], ["Baby", "Baby & kids"], ["Sports", "Sports & fitness"]];
+  const CONDS = [["New", "New"], ["Like New", "Like new"], ["Refurbished", "Refurbished"], ["Used - Good", "Used — good"], ["Used - Fair", "Used — fair"]];
+  const opts = (list, cur) => list.map(o => '<option value="' + esc(o[0]) + '"' + (o[0] === cur ? " selected" : "") + ">" + esc(o[1]) + "</option>").join("");
+  const FEE = 5;
+
+  SX.register("add", "Add product", async function (el) {
+    const id = new URLSearchParams(location.hash.split("?")[1] || "").get("id");
+    let p = null;
+    if (id) { const { data, error } = await client().from("products").select("*").eq("id", id).eq("seller_id", uid()).maybeSingle(); if (error) throw error; p = data; if (!p) return void (el.innerHTML = empty("Product not found", "It may have been removed.", '<p><a class="sx-btn" href="#/products">Back to products</a></p>')); }
+    p = p || {};
+    let photos = [];   /* {url, file?} ; first is the main photo */
+    if (p.id) {
+      const { data: extra } = await client().from("product_images").select("image_url,sort_order").eq("product_id", p.id).order("sort_order");
+      photos = [p.main_image, ...(extra || []).map(x => x.image_url)].filter(Boolean).filter((u, i, a) => a.indexOf(u) === i).map(url => ({ url }));
+    }
+    const attrBox = document.createElement("div");
+    el.innerHTML = '<form class="sx-grid sx-grid--split" id="apForm" novalidate><div class="sm-stack" style="max-width:none">' +
+      '<section class="sx-card"><div class="sx-card__head"><h2>' + (p.id ? "Edit product" : "Add a product") + '</h2>' + (p.id ? '<span class="sx-pill">' + esc(U.label(p.status)) + "</span>" : "") + '</div><div class="sx-card__body sm-form">' +
+      field("Product name", input("apTitle", p.title, { req: 1, max: 100, ph: "e.g. iPhone 13, 128GB, blue" })) +
+      '<div class="sm-two">' + field("Category", '<select class="sx-select" id="apCat">' + opts(CATS, p.attributes && p._cat || p.category_id || "Phones") + "</select>") + field("Condition", '<select class="sx-select" id="apCond">' + opts(CONDS, p.condition || "Used - Good") + "</select>") + "</div>" +
+      '<div class="sm-two">' + field("Price (GMD)", input("apPrice", p.price, { type: "number", ph: "0" })) + field("Stock", input("apStock", p.stock == null ? 1 : p.stock, { type: "number", ph: "1" })) + "</div>" +
+      field("Description", '<textarea class="sx-textarea" id="apDesc" rows="5" maxlength="2000" placeholder="Condition, what is included, anything a buyer should know">' + esc(p.description || "") + "</textarea>") +
+      field("Pickup location", input("apLoc", p.location || (U.state.store && U.state.store.location), { max: 120, ph: "e.g. Serrekunda" })) +
+      '<label class="sm-switch"><input type="checkbox" id="apDel"' + (p.delivery_available ? " checked" : "") + "><span>Offer delivery for this product</span></label></div></section>" +
+      '<section class="sx-card"><div class="sx-card__body" id="apAttrs"></div></section></div>' +
+      '<aside class="sm-stack" style="max-width:none"><section class="sx-card"><div class="sx-card__head"><h2>Photos</h2><span class="sx-hint" style="margin:0">Up to 8 · first is the cover</span></div><div class="sx-card__body"><div class="sm-photos" id="apPhotos"></div><input type="file" id="apFile" accept="image/jpeg,image/png,image/webp,image/gif" multiple class="sx-sr"></div></section>' +
+      '<section class="sx-card"><div class="sx-card__body"><dl class="sx-kv" style="grid-template-columns:1fr auto"><dt>Price</dt><dd id="apPv">—</dd><dt>Est. fee (' + FEE + '%)</dt><dd id="apFee">—</dd><dt>You receive</dt><dd id="apNet"><b>—</b></dd></dl><p class="sx-hint">Estimate only. New listings and price changes are reviewed before buyers see them.</p>' +
+      '<div class="sm-actions"><button class="sx-btn sx-btn--primary" type="submit" id="apSave">' + (p.id ? "Save changes" : "Submit for review") + '</button><a class="sx-btn" href="#/products">Cancel</a></div></div></section></aside></form>';
+    const paintPhotos = () => {
+      $("#apPhotos").innerHTML = photos.map((x, i) => '<figure class="sm-ph' + (i === 0 ? " is-main" : "") + '"><span style="background-image:url(&quot;' + esc(x.url) + '&quot;)"></span>' + (i ? '<button type="button" data-ph="main" data-i="' + i + '" title="Make cover">★</button>' : '<em>Cover</em>') + '<button type="button" data-ph="del" data-i="' + i + '" aria-label="Remove photo">×</button></figure>').join("") +
+        (photos.length < 8 ? '<label class="sm-ph sm-ph--add" for="apFile"><span>+</span>Add photo</label>' : "");
+    };
+    paintPhotos();
+    $("#apPhotos").onclick = ev => { const b = ev.target.closest("[data-ph]"); if (!b) return; const i = +b.getAttribute("data-i"); if (b.getAttribute("data-ph") === "del") photos.splice(i, 1); else photos.unshift(photos.splice(i, 1)[0]); paintPhotos(); };
+    $("#apFile").onchange = ev => {
+      for (const f of Array.from(ev.target.files)) {
+        if (photos.length >= 8) break;
+        if (!/^image\/(jpeg|png|webp|gif)$/.test(f.type) || f.size > 5 * 1024 * 1024) { toast("Use JPG, PNG, WEBP or GIF under 5MB.", "bad"); continue; }
+        photos.push({ url: URL.createObjectURL(f), file: f });
+      }
+      ev.target.value = ""; paintPhotos();
+    };
+    const attrs = window.GamBasketProductAttributes;
+    const paintAttrs = () => { const box = $("#apAttrs"); if (attrs && attrs.render) attrs.render(box, val("apCat"), p.attributes || {}); else box.innerHTML = '<p class="sx-hint">No extra details for this category.</p>'; };
+    paintAttrs();
+    $("#apCat").addEventListener("change", () => { p.attributes = {}; paintAttrs(); });
+    const calc = () => { const v = U.num(val("apPrice")); $("#apPv").textContent = v ? U.money(v) : "—"; $("#apFee").textContent = v ? U.money(v * FEE / 100) : "—"; $("#apNet").innerHTML = "<b>" + (v ? U.money(v - v * FEE / 100) : "—") + "</b>"; };
+    $("#apPrice").addEventListener("input", calc); calc();
+
+    $("#apForm").addEventListener("submit", async ev => {
+      ev.preventDefault();
+      const title = val("apTitle").trim(), price = U.num(val("apPrice")), stock = Math.max(0, Math.floor(U.num(val("apStock")))), desc = val("apDesc").trim(), loc = val("apLoc").trim();
+      if (!title) { $("#apTitle").focus(); return void toast("Give your product a name.", "bad"); }
+      if (!(price > 0)) { $("#apPrice").focus(); return void toast("Enter a price above zero.", "bad"); }
+      if (!desc) { $("#apDesc").focus(); return void toast("Add a short description.", "bad"); }
+      if (!photos.length) return void toast("Add at least one photo.", "bad");
+      if (!loc) { $("#apLoc").focus(); return void toast("Add a pickup location.", "bad"); }
+      const btn = $("#apSave"), label = btn.textContent; btn.disabled = true; btn.textContent = "Saving…";
+      try {
+        const urls = [];
+        for (const x of photos) urls.push(x.file ? await auth().uploadImage(x.file, "products") : x.url);
+        const attributes = attrs && attrs.read ? attrs.read($("#apAttrs")) : (p.attributes || {});
+        const row = { title, price, currency: "GMD", category_id: val("apCat"), attributes, description: desc, condition: val("apCond"), stock, location: loc, delivery_available: $("#apDel").checked, main_image: urls[0] };
+        let pid = p.id;
+        if (pid) { const { error } = await client().from("products").update(row).eq("id", pid).eq("seller_id", uid()); if (error) throw error; await client().from("product_images").delete().eq("product_id", pid); }
+        else { const { data, error } = await client().from("products").insert({ ...row, status: "pending_review", seller_id: uid() }).select("id").single(); if (error) throw error; pid = data.id; }
+        if (urls.length > 1) { const { error } = await client().from("product_images").insert(urls.slice(1).map((image_url, i) => ({ product_id: pid, image_url, sort_order: i + 1 }))); if (error) throw new Error("Saved, but the extra photos could not be attached: " + error.message); }
+        D.invalidate(); toast(p.id ? "Product updated" : "Submitted for review. It goes live once approved.", "good");
+        location.hash = "#/products";
+      } catch (err) {
+        const m = errMsg(err); toast(/seller or supplier|row-level security/i.test(m) ? "Your account isn't enabled to sell yet. Complete seller verification first." : m, "bad");
+        btn.disabled = false; btn.textContent = label;
+      }
+    });
+  });
+
+  /* =====================================================
+     PAYOUTS (wallet, payout methods, withdrawals)
+     ===================================================== */
+  const NETS = { wave: "Wave", afrimoney: "Afrimoney" };
+  SX.register("payouts", "Payouts", async function (el) {
+    el.innerHTML = skel(3);
+    const c = client();
+    const [w, m, r, pf] = await Promise.all([c.rpc("seller_get_wallet_summary"), c.from("seller_payout_methods").select("id,network,account_number,beneficiary_name,verification_status,is_primary,created_at").order("created_at", { ascending: false }), c.from("seller_payout_requests").select("id,amount,status,requested_at").order("requested_at", { ascending: false }).limit(20), c.from("seller_wallet_preferences").select("auto_payout_enabled,auto_payout_threshold,payout_method_id").maybeSingle()]);
+    for (const x of [w, m, r, pf]) if (x.error) throw new Error(/function|does not exist|schema cache/i.test(x.error.message || "") ? "Payouts need the wallet database update to be applied." : x.error.message);
+    const sum = (Array.isArray(w.data) ? w.data[0] : w.data) || {}, methods = m.data || [], reqs = r.data || [], pref = pf.data || {};
+    const active = methods.filter(x => x.verification_status === "active");
+    const mask = n => "••••" + String(n).slice(-3);
+    const tone = { active: "good", pending_verification: "warn", rejected: "bad", disabled: "bad" };
+    el.innerHTML = '<div class="sx-grid sx-grid--kpi">' + [["Available", sum.available_balance, "Ready to withdraw"], ["Pending", sum.pending_balance, "Released after delivery"], ["In transit", sum.payout_in_transit, "Being paid out"], ["Withdrawn", sum.withdrawn_total, "All time"]].map(k => '<div class="sx-kpi"><div class="sx-kpi__label">' + k[0] + '</div><div class="sx-kpi__value">' + U.money(k[1]) + '</div><div class="sx-kpi__meta">' + k[2] + "</div></div>").join("") + "</div>" +
+      '<div class="sx-grid sx-grid--split" style="margin-top:16px"><div class="sm-stack" style="max-width:none">' +
+      '<section class="sx-card"><div class="sx-card__head"><h2>Withdraw</h2></div><div class="sx-card__body">' + (active.length ? '<form class="sm-form" id="poReq">' + field("Amount (GMD)", input("poAmt", "", { type: "number", ph: "0" })) + field("Send to", '<select class="sx-select" id="poMethod">' + active.map(x => '<option value="' + esc(x.id) + '">' + esc(NETS[x.network] || x.network) + " " + esc(mask(x.account_number)) + " · " + esc(x.beneficiary_name) + "</option>").join("") + "</select>") + '<div class="sm-actions"><button class="sx-btn sx-btn--primary" id="poGo" type="submit">Request payout</button><button class="sx-btn" type="button" id="poAll">Withdraw everything</button></div></form>' : '<p class="sx-hint" style="margin:0">Add a payout method and wait for approval before you can withdraw.</p>') + "</div></section>" +
+      '<section class="sx-card"><div class="sx-card__head"><h2>Recent payouts</h2></div><div class="sx-card__body">' + (reqs.length ? '<div class="sx-rows">' + reqs.map(x => '<div class="sx-row" style="grid-template-columns:1fr auto"><div><div class="sx-row__t">' + U.money(x.amount) + '</div><div class="sx-row__s">' + esc(U.dayTime(x.requested_at)) + '</div></div><span class="sx-pill sx-pill--' + ({ paid: "good", completed: "good", failed: "bad", rejected: "bad" }[x.status] || "info") + '">' + esc(U.label(x.status)) + "</span></div>").join("") + "</div>" : empty("No payouts yet", "Withdrawals you request will be listed here.")) + "</div></section></div>" +
+      '<div class="sm-stack" style="max-width:none"><section class="sx-card"><div class="sx-card__head"><h2>Payout methods</h2></div><div class="sx-card__body">' + (methods.length ? '<div class="sx-rows">' + methods.map(x => '<div class="sx-row" style="grid-template-columns:1fr auto"><div><div class="sx-row__t">' + esc(NETS[x.network] || x.network) + " " + esc(mask(x.account_number)) + '</div><div class="sx-row__s">' + esc(x.beneficiary_name) + '</div></div><span class="sx-pill sx-pill--' + (tone[x.verification_status] || "") + '">' + esc(U.label(x.verification_status)) + "</span></div>").join("") + "</div>" : "") +
+      '<form class="sm-form" id="poAdd" style="margin-top:12px"><div class="sm-two">' + field("Network", '<select class="sx-select" id="poNet"><option value="wave">Wave</option><option value="afrimoney">Afrimoney</option></select>') + field("Mobile number", input("poNum", "", { type: "tel", max: 20, ph: "+2207000000" })) + "</div>" + field("Account holder name", input("poName", "", { max: 120 })) + '<div class="sm-actions"><button class="sx-btn" type="submit" id="poAddGo">Add payout method</button></div><p class="sx-hint">New methods are reviewed by JulaDirect before you can withdraw to them.</p></form></div></section>' +
+      '<section class="sx-card"><div class="sx-card__head"><h2>Automatic payouts</h2></div><div class="sx-card__body sm-form"><label class="sm-switch"><input type="checkbox" id="poAuto"' + (pref.auto_payout_enabled ? " checked" : "") + "><span>Pay out automatically</span></label>" + field("When available balance reaches (GMD)", input("poThr", pref.auto_payout_threshold || "", { type: "number" })) + '<div class="sm-actions"><button class="sx-btn" id="poPref" type="button">Save</button></div></div></section></div></div>';
+    const fail = e => toast(/INSUFFICIENT/.test(e.message || "") ? "That is more than your available balance." : errMsg(e), "bad");
+    $("#poAll") && ($("#poAll").onclick = () => { $("#poAmt").value = U.num(sum.available_balance) || ""; });
+    $("#poReq") && $("#poReq").addEventListener("submit", async ev => {
+      ev.preventDefault(); const amt = U.num(val("poAmt")); if (!(amt > 0)) return void toast("Enter an amount.", "bad");
+      if (!(await ask({ title: "Request payout of " + U.money(amt) + "?", body: "The amount is reserved from your available balance now.", confirm: "Request payout" }))) return;
+      const btn = $("#poGo"); btn.disabled = true;
+      const { error } = await c.rpc("seller_request_payout", { p_amount: amt, p_payout_method_id: val("poMethod"), p_idempotency_key: "web-" + (crypto.randomUUID ? crypto.randomUUID() : Date.now() + "-" + Math.random().toString(36).slice(2)) });
+      if (error) { btn.disabled = false; return void fail(error); }
+      toast("Payout requested", "good"); SX.reload ? SX.reload() : location.reload();
+    });
+    $("#poAdd").addEventListener("submit", async ev => {
+      ev.preventDefault(); const btn = $("#poAddGo"); btn.disabled = true;
+      const { error } = await c.rpc("seller_add_payout_method", { p_network: val("poNet"), p_account_number: val("poNum"), p_beneficiary_name: val("poName") });
+      if (error) { btn.disabled = false; return void toast(/valid|Enter|Unsupported/.test(error.message) ? error.message : errMsg(error), "bad"); }
+      toast("Payout method added. It's awaiting approval.", "good"); SX.reload ? SX.reload() : location.reload();
+    });
+    $("#poPref").onclick = async () => {
+      const { error } = await c.rpc("seller_update_wallet_preferences", { p_auto_payout_enabled: $("#poAuto").checked, p_auto_payout_threshold: U.num(val("poThr")) || null, p_payout_method_id: (active.find(x => x.is_primary) || active[0] || {}).id || null });
+      if (error) return void fail(error); toast("Automatic payout settings saved", "good");
+    };
+  });
+
+  /* =====================================================
+     HELP
+     ===================================================== */
+  const GUIDE = [["Get your first order", ["Add a product with clear photos, a fair price and an honest condition.", "Listings are reviewed before buyers see them, usually quickly.", "Keep stock accurate so buyers never order what you don't have."]], ["Handle an order", ["Confirm new orders promptly from Orders.", "Mark them ready for pickup or delivery as they progress.", "Delivery orders are collected by a courier with a code the buyer shows."]], ["Get paid", ["Earnings are held until the order is delivered, then become available.", "Add a Wave or Afrimoney payout method under Payouts and wait for approval.", "Request a payout whenever you like, or turn on automatic payouts."]], ["Win trust", ["Reply to messages quickly: buyers see the product you're discussing.", "Answer reviews politely from the Reviews page.", "Complete seller verification to earn the verified badge."]]];
+  SX.register("help", "Seller guide", async function (el) {
+    el.innerHTML = '<div class="sm-stack">' + GUIDE.map(g => '<section class="sx-card"><div class="sx-card__head"><h2>' + esc(g[0]) + '</h2></div><div class="sx-card__body"><ul class="sm-list">' + g[1].map(t => "<li>" + esc(t) + "</li>").join("") + "</ul></div></section>").join("") + '<p class="sx-hint">Need a hand? Message JulaDirect support from your account and we will help.</p></div>';
+  });
+
+  /* unread badge on the rail */
+  (async function () { try { const t0 = Date.now(); while (!(D.user && D.user()) && Date.now() - t0 < 15000) await new Promise(r => setTimeout(r, 300)); const r = await auth().getConversations(); const n = (r.items || []).reduce((a, c) => a + (c.unread_count || 0), 0); const a = $('#sxNav a[data-route="messages"]'); if (a && n) a.insertAdjacentHTML("beforeend", '<span class="sx-badge">' + n + "</span>"); } catch (e) { /* badge is optional */ } })();
 })();

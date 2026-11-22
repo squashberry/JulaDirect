@@ -23,6 +23,8 @@
    ========================================================= */
 (function () {
   "use strict";
+  /* Embedded inside the seller studio (messages.html?embed=1): no shell, no panes. */
+  if (/[?&]embed=1\b/.test(location.search)) return;
   const JD = (window.JD = window.JD || {});
   const rawAdd = EventTarget.prototype.addEventListener;
   const rawRemove = EventTarget.prototype.removeEventListener;

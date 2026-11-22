@@ -56,12 +56,13 @@
       <a href="#/messages" data-route="messages"><svg><use href="#i-chat"/></svg>Messages</a>
       <a href="#/store" data-route="store"><svg><use href="#i-bag"/></svg>Store profile</a>
       <a href="#/website" data-route="website"><svg><use href="#i-globe"/></svg>Business website</a>
+      <a href="#/payouts" data-route="payouts"><svg><use href="#i-wallet"/></svg>Payouts</a>
       <a href="#/delivery" data-route="delivery"><svg><use href="#i-truck"/></svg>Pickup &amp; delivery</a>
       <a href="#/settings" data-route="settings"><svg><use href="#i-gear"/></svg>Settings</a>
     </nav>
     <div class="sx-rail__foot">
       <a href="../index.html">← Back to marketplace</a>
-      <a href="../help.html">Help &amp; seller guide</a>
+      <a href="#/help" data-route="help">Seller guide</a>
     </div>
   </aside>
 
@@ -75,7 +76,7 @@
         <button type="button" data-days="90" aria-pressed="false">90d</button>
       </div>
       <button class="sx-icon-btn" id="sxTheme" type="button" aria-label="Toggle dark mode"><svg><use href="#i-moon"/></svg></button>
-      <a class="sx-btn sx-btn--primary" href="add-product.html"><svg><use href="#i-plus"/></svg><span class="sx-hide-sm">Add product</span></a>
+      <a class="sx-btn sx-btn--primary" href="#/add"><svg><use href="#i-plus"/></svg><span class="sx-hide-sm">Add product</span></a>
     </header>
 
     <main class="sx-content" id="sxContent">
@@ -91,6 +92,9 @@
       <section class="sx-view" id="v-website" hidden></section>
       <section class="sx-view" id="v-delivery" hidden></section>
       <section class="sx-view" id="v-settings" hidden></section>
+      <section class="sx-view" id="v-add" hidden></section>
+      <section class="sx-view" id="v-payouts" hidden></section>
+      <section class="sx-view" id="v-help" hidden></section>
     </main>
   </div>
 </div>
@@ -116,7 +120,8 @@
 <script src="../js/auth-errors.js"></script>
 <script src="../js/auth-guard.js"></script>
 <script src="../js/sx-data.js"></script>
+<script src="../js/product-attributes.js"></script>
 <script src="../js/sx-app.js"></script>
-<script src="../js/sx-manage.js?v=2"></script>
+<script src="../js/sx-manage.js?v=3"></script>
 </body>
 </html>

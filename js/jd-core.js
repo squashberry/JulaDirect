@@ -793,7 +793,7 @@
 /* Storefront popups & promos (js/jd-popups.js): optional, loaded after the shell, never on admin pages. */
 (function () {
   try {
-    if (/\/admin\//.test(location.pathname) || document.querySelector("script[data-jd-popups]")) return;
+    if (/\/admin\//.test(location.pathname) || /[?&]embed=1\b/.test(location.search) || document.querySelector("script[data-jd-popups]")) return;
     var current = document.currentScript;
     var src = current && current.src ? new URL("jd-popups.js", current.src).href : "js/jd-popups.js";
     var s = document.createElement("script");
