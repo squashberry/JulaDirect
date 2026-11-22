@@ -804,3 +804,16 @@
     document.head.appendChild(s);
   } catch (e) { /* popups are optional */ }
 })();
+
+/* Right-click menus: product actions and the 3D navigation ring (js/jd-context.js).
+   Loaded from the shared shell so every storefront and account page gets it. */
+(function () {
+  "use strict";
+  if (window.__jdCtx || document.querySelector("script[data-jd-ctx]")) return;
+  var root = "../".repeat(Math.max(0, location.pathname.split("/").filter(Boolean).length - 1));
+  var s = document.createElement("script");
+  s.src = root + "js/jd-context.js";
+  s.defer = true;
+  s.setAttribute("data-jd-ctx", "1");
+  (document.head || document.documentElement).appendChild(s);
+})();
