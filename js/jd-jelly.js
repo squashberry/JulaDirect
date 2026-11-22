@@ -214,7 +214,7 @@
 
   /* Content bounces up the first time it scrolls into view: headings, pills, cards, steps. */
   const REVEAL = [".hm-head", ".hm-pills > *", ".hm-rail > *", ".hm-trust > *", ".hm-steps > *", ".hm-faq__list > *", ".hm-cta__main", ".hm-cta__side", ".hm-slide__h", ".hm-slide__copy", ".hm-slide__btns", ".hm-eyebrow",
-    ".jd-grid > *", ".jd-recent > *", ".ex-grid > *", "[class*=product-card]", "[class*=pcard]", ".wl-grid > *", "main .card", ".sx-card", ".sx-kpi", ".od-card", ".ck-card"].join(",");
+    ".jd-grid > *", ".jd-recent > *", ".ex-grid > *", "[class*=product-card]", "[class*=pcard]", ".wl-grid > *", "main .card", ".pd-buy", ".pd-sec", ".pd-card", ".sx-card", ".sx-kpi", ".od-card", ".ck-card"].join(",");
   const seen = new WeakSet(), shown = new Set();
   /* Content that is re-rendered (a grid refreshed after a tab switch) must not bounce again,
      so what has been revealed is remembered by identity, not by DOM node. */

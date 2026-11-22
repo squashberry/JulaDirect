@@ -157,9 +157,18 @@
 
       '<div class="pd-buybar" role="region" aria-label="Purchase"><div class="pd-buybar__price"><small>Price</small><strong>' + JD.esc(JD.money(p.price, p.currency)) + '</strong></div><button type="button" class="jd-btn jd-btn--secondary" data-pdp-add' + (stock <= 0 ? " disabled" : "") + ' aria-label="Add to cart">' + JD.icon("cart", 20) + '</button><button type="button" class="jd-btn jd-btn--primary" data-pdp-buy' + (stock <= 0 ? " disabled" : "") + ">" + (stock <= 0 ? "Out of stock" : "Buy now") + "</button></div>";
 
-    setMobileBar(true);
+    setMobileBar(true); bindBarSolid();
     JD.syncWishlist(root); JD.syncCompare(); if (JD.refreshCartCount) JD.refreshCartCount();
     bindGallery(imgs.length); bindSpy(); hideOwnMessage(p); loadRecent(p.id);
+  }
+
+  /* Mobile: the top bar floats transparent over the photo, then turns solid once you scroll past it. */
+  let barHandler = null;
+  function bindBarSolid() {
+    if (barHandler) window.removeEventListener("scroll", barHandler);
+    const bar = root.querySelector(".pd-bar"); if (!bar) return;
+    barHandler = () => { if (!bar.isConnected) return; bar.classList.toggle("is-solid", window.scrollY > Math.min(window.innerWidth, 420) - 90); };
+    window.addEventListener("scroll", barHandler, { passive: true }); barHandler();
   }
 
   /* ----- gallery ----- */
@@ -261,9 +270,9 @@
       const user = await A.getUser();
       if (!current || current.product.id !== p.id) return;
       if (user && user.id === p.seller_id) {
-        const own = '<a class="jd-btn jd-btn--soft jd-btn--sm" href="supplier/products.html">Manage</a>';
+        const own = '<a class="jd-btn jd-btn--soft jd-btn--sm" href="supplier/index.html#/add?id=' + encodeURIComponent(p.id) + '">Manage</a>';
         const a = document.getElementById("jd-msg"); if (a) a.outerHTML = own;
-        const b = document.getElementById("jd-msg-2"); if (b) b.outerHTML = '<a class="jd-btn jd-btn--primary" href="supplier/products.html">Manage this listing</a>';
+        const b = document.getElementById("jd-msg-2"); if (b) b.outerHTML = '<a class="jd-btn jd-btn--primary" href="supplier/index.html#/add?id=' + encodeURIComponent(p.id) + '">Manage this listing</a>';
       }
     } catch (e) { /* guests keep the default button */ }
   }
