@@ -69,6 +69,10 @@
   const routeStyleNodes = new Set();
   const routeStylesheets = new Map();
   const routeStylesheetOrder = new Map();
+  // Concurrent navigations can encounter the same stylesheet while it is
+  // still loading. Keep one readiness promise per URL so every destination
+  // waits for the actual CSS load instead of revealing an unstyled pane.
+  const routeStylesheetLoads = new Map();
 
   function registerRouteStyle(node, route, href) {
     if (!node || !route) return;
@@ -271,6 +275,48 @@
       document.body.appendChild(s);
     });
   }
+  function waitForStylesheet(node, href) {
+    const existing = routeStylesheetLoads.get(href);
+    if (existing) return existing;
+    if (node.dataset.jdLoadState === "loaded") return Promise.resolve();
+    if (node.dataset.jdLoadState === "error") {
+      return Promise.reject(new Error("stylesheet failed: " + href));
+    }
+
+    node.dataset.jdLoadState = "loading";
+    let promise;
+    promise = new Promise((resolve, reject) => {
+      let settled = false;
+      const finish = error => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        node.removeEventListener("load", onLoad);
+        node.removeEventListener("error", onError);
+        if (error) {
+          node.dataset.jdLoadState = "error";
+          reject(error);
+        } else {
+          node.dataset.jdLoadState = "loaded";
+          resolve();
+        }
+      };
+      const onLoad = () => finish();
+      const onError = () => finish(new Error("stylesheet failed: " + href));
+      const timer = setTimeout(
+        () => finish(new Error("stylesheet timed out: " + href)),
+        15000
+      );
+      node.addEventListener("load", onLoad);
+      node.addEventListener("error", onError);
+    });
+    routeStylesheetLoads.set(href, promise);
+    promise.catch(() => {
+      if (routeStylesheetLoads.get(href) === promise) routeStylesheetLoads.delete(href);
+    });
+    return promise;
+  }
+
   function loadStyles(doc, route, baseUrl) {
     const waits = [];
     const ordered = [];
@@ -283,32 +329,31 @@
           .find(link => link.href === href) || null;
       }
 
-      if (node) {
+      if (!node) {
+        node = document.importNode(source, true);
+        node.href = href;
+        node.dataset.jdOriginalMedia = source.getAttribute("media") || "all";
+        node.dataset.jdLoadState = "loading";
+        node.media = "not all";
         registerRouteStyle(node, route, href);
         if (!ordered.includes(node)) ordered.push(node);
+
+        // Install load/error listeners before insertion. Another fast
+        // navigation to the same URL will share this exact promise.
+        const ready = waitForStylesheet(node, href);
+        waits.push(ready);
+        document.head.appendChild(node);
         return;
       }
 
-      node = document.importNode(source, true);
-      node.href = href;
-      node.dataset.jdOriginalMedia = source.getAttribute("media") || "all";
-      node.media = "not all";
       registerRouteStyle(node, route, href);
       if (!ordered.includes(node)) ordered.push(node);
 
-      waits.push(new Promise(resolve => {
-        let settled = false;
-        const finish = () => {
-          if (settled) return;
-          settled = true;
-          clearTimeout(timer);
-          resolve();
-        };
-        const timer = setTimeout(finish, 5000);
-        node.addEventListener("load", finish, { once: true });
-        node.addEventListener("error", finish, { once: true });
-        document.head.appendChild(node);
-      }));
+      // A previously inserted link may still be fetching because another
+      // navigation was superseded. Never treat "already in the DOM" as ready.
+      if (node.dataset.jdLoadState !== "loaded") {
+        waits.push(waitForStylesheet(node, href));
+      }
     });
     routeStylesheetOrder.set(route, ordered);
     return Promise.all(waits);
@@ -462,11 +507,13 @@
     closeShellOverlays();
     const changed = current !== pane;
     current = pane;
-    pane.el.hidden = false;
     setPaneIds(pane);
     if (pane.route === "product") pane.flags.add("jd-pdp-page");
     setFlags(pane);
     applyRouteStyles(pane.route);
+    // Make the destination visible only after its route styles and body flags
+    // are active. This prevents a one-frame flash of raw HTML during a switch.
+    pane.el.hidden = false;
     /* Flush route-scoped stylesheet and body-class changes before page scripts
        measure or position fixed/sticky controls in the newly visible pane. */
     if (pane.main) void pane.main.offsetHeight;
@@ -710,6 +757,10 @@
     panes.set(route, pane);
     const initialStyles = [];
     document.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
+      // The router runs from a parser-blocking script at the end of the body,
+      // so the document's original head stylesheets have finished loading.
+      link.dataset.jdLoadState = "loaded";
+      routeStylesheetLoads.set(link.href, Promise.resolve());
       registerRouteStyle(link, route, link.href);
       if (!initialStyles.includes(link)) initialStyles.push(link);
     });
