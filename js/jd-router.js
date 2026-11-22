@@ -745,16 +745,13 @@
     const dm = document.querySelector('meta[name="description"]');
     const pane = makePane(route, wrapper, main, flags);
     panes.set(route, pane);
-    const initialStyles = [];
     document.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
       // The router runs from a parser-blocking script at the end of the body,
       // so the document's original head stylesheets have finished loading.
       link.dataset.jdLoadState = "loaded";
       routeStylesheetLoads.set(link.href, Promise.resolve());
       registerRouteStyle(link, route, link.href);
-      if (!initialStyles.includes(link)) initialStyles.push(link);
     });
-    routeStylesheetOrder.set(route, initialStyles);
     registerInlineStyles(route, document);
     applyRouteStyles(route);
     if (isSupplierRoute(route)) {
