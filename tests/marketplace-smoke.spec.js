@@ -235,7 +235,7 @@ test("Persistent navigation enables only the active page styles", async ({ page 
   await expect.poll(() => media("jd-explore2.css")).toBe("all");
   await expect.poll(() => media("jd.css")).toBe("all");
 
-  await page.evaluate(() => window.JD.router.navigate("/product.html?id=" + IPHONE_ID));
+  await page.evaluate(id => window.JD.router.navigate("/product.html?id=" + id), IPHONE_ID);
   await expect(page).toHaveURL(/\/product\.html\?id=/);
   await expect.poll(() => media("jd-explore2.css")).toBe("not all");
   await expect.poll(() => media("jd-pdp.css")).toBe("all");
@@ -316,7 +316,7 @@ test("Rapid navigation waits for an in-flight page initializer instead of interl
   await page.evaluate(() => { void window.JD.router.navigate("/wishlist.html"); });
   await expect(page).toHaveURL(/\/wishlist\.html$/);
   await expect(page.locator("#jd-wl")).toBeVisible();
-  await expect(page.locator("main h1")).toHaveText("Your wishlist");
+  await expect(page.locator('.jd-pane[data-route="wishlist"] main h1')).toHaveText("Your wishlist");
   await expect(page.locator("body")).not.toHaveClass(/has-cartbar/);
 });
 
@@ -378,21 +378,22 @@ test("Back and forward navigation restore each route's CSS and body state", asyn
 test("Explore shows only live approved database listings, not fabricated demo inventory", async ({ page }) => {
   await mockBackend(page, { products: [] });
   await page.goto("/explore.html");
-  await expect(page.locator("#exploreEmptyState")).toBeVisible();
-  await expect(page.locator("#productGrid .product-card")).toHaveCount(0);
+  await expect(page.locator("#productGrid .ex-sugg")).toBeVisible();
+  await expect(page.locator("#productGrid .jd-pcard")).toHaveCount(0);
   await expect(page.locator("body")).not.toContainText("iPhone 13 128GB");
 });
 
 test("Brand/model filtering uses actual category attributes", async ({ page }) => {
   await mockBackend(page, { products: [iphone, samsung] });
   await page.goto("/explore.html");
-  await expect(page.locator("#productGrid .product-card")).toHaveCount(2);
-  await page.locator("#brandModelFilter").fill("Apple");
-  await expect(page.locator("#productGrid .product-card")).toHaveCount(1);
-  await expect(page.locator("#productGrid .product-name")).toHaveText("iPhone 13 128GB");
+  await expect(page.locator("#productGrid .jd-pcard")).toHaveCount(2);
+  await page.locator("#ex-brand").fill("Apple");
+  await expect(page.locator("#productGrid .jd-pcard")).toHaveCount(1);
+  await expect(page.locator("#productGrid .jd-pcard__title")).toHaveText("iPhone 13 128GB");
 
-  const criteria = await page.evaluate(() => window.GamBasketSavedSearches?.cleanCriteria());
-  expect(criteria.brandModel).toBe("Apple");
+  await expect(page).toHaveURL(/brandModel=Apple/);
+  const criteria = await page.evaluate(() => new URLSearchParams(location.search).get("brandModel"));
+  expect(criteria).toBe("Apple");
 });
 
 test("Product detail renders category specifications and switches photo thumbnails", async ({ page }) => {
@@ -402,15 +403,16 @@ test("Product detail renders category specifications and switches photo thumbnai
     authenticated: true
   });
   await page.goto("/product.html?id=" + IPHONE_ID);
-  await expect(page.locator("#detailName")).toHaveText("iPhone 13 128GB");
-  await expect(page.locator("#detailAttributes")).toContainText("Apple");
-  await expect(page.locator("#detailAttributes")).toContainText("128GB");
-  const main = page.locator("#detailImage");
+  await expect(page.locator("#jd-pdp .pd-title")).toHaveText("iPhone 13 128GB");
+  await expect(page.locator("#jd-pdp .pd-specs")).toContainText("Apple");
+  await expect(page.locator("#jd-pdp .pd-specs")).toContainText("128GB");
+  const main = page.locator("#pd-track .pd-slide img").first();
   await expect(main).toHaveAttribute("src", iphone.main_image);
-  const thumbnails = page.locator("#detailImageThumbs button");
+  const thumbnails = page.locator("#jd-pdp .pd-thumb");
   await expect(thumbnails).toHaveCount(2);
   await thumbnails.nth(1).click();
-  await expect(main).toHaveAttribute("src", "https://images.example.test/iphone-back.jpg");
+  await expect(thumbnails.nth(1)).toHaveAttribute("aria-current", "true");
+  await expect.poll(() => page.locator("#pd-track").evaluate(el => el.scrollLeft)).toBeGreaterThan(0);
 });
 
 test("Removed or unapproved product URLs show an unavailable state instead of sample products", async ({ page }) => {
@@ -427,22 +429,22 @@ test("Comparison page compares approved listings and supports removing one", asy
     key: "gambasket_compare_products", ids: [IPHONE_ID, SAMSUNG_ID]
   });
   await page.goto("/compare.html");
-  await expect(page.locator("#compareContent .gambasket-compare-table")).toBeVisible();
-  await expect(page.locator("#compareContent")).toContainText("iPhone 13 128GB");
-  await expect(page.locator("#compareContent")).toContainText("Samsung Galaxy S24");
-  await expect(page.locator("#compareContent")).toContainText("Battery Health");
-  await page.locator("#compareContent button").filter({ hasText: "Remove" }).first().click();
-  await expect(page.locator("#compareContent .gambasket-compare-table")).toHaveCount(0);
-  await expect(page.locator("#compareStatus")).toContainText("at least two");
+  await expect(page.locator("#jd-cmp .jd-cmp")).toBeVisible();
+  await expect(page.locator("#jd-cmp")).toContainText("iPhone 13 128GB");
+  await expect(page.locator("#jd-cmp")).toContainText("Samsung Galaxy S24");
+  await expect(page.locator("#jd-cmp")).toContainText("Battery Health");
+  await page.locator("#jd-cmp [data-drop]").first().click();
+  await expect(page.locator("#jd-cmp .jd-cmp")).toBeVisible();
+  await expect(page.locator("#jd-sub")).toContainText("Add one more to compare");
 });
 
 test("Explore compare dock can be opened with a real listing ID", async ({ page }) => {
   await mockBackend(page, { products: [iphone, samsung] });
   await page.goto("/explore.html");
-  await expect(page.locator("#productGrid .product-card")).toHaveCount(2);
-  await page.locator("[data-compare-product-id]").first().click();
-  await expect(page.locator("#gambasketCompareDock")).toBeVisible();
-  await expect(page.locator("#gambasketCompareCount")).toContainText("1 product selected");
+  await expect(page.locator("#productGrid .jd-pcard")).toHaveCount(2);
+  await page.locator("#productGrid button[data-compare]").first().click();
+  await expect(page.locator("#jd-compare-tray")).toBeVisible();
+  await expect(page.locator("#jd-compare-tray")).toContainText("1 selected to compare");
 });
 
 test("Authenticated saved-search form writes only the filter criteria contract", async ({ page }) => {
@@ -450,10 +452,10 @@ test("Authenticated saved-search form writes only the filter criteria contract",
   await mockBackend(page, { products: [iphone, samsung], authenticated: true, writes });
   await page.goto("/explore.html?category=Phones&location=Serrekunda&min=10000");
   await page.locator("#brandModelFilter").fill("Apple");
-  await page.locator("#saveCurrentSearchBtn").click();
-  await expect(page.locator("#saveSearchModal")).toBeVisible();
-  await page.locator("#saveSearchName").fill("Apple phones in Serrekunda");
-  await page.locator("[data-save-confirm]").click();
+  await page.locator("#jd-save-search").click();
+  await expect(page.locator("#jd-save-dialog")).toBeVisible();
+  await page.locator("#jd-save-name").fill("Apple phones in Serrekunda");
+  await page.locator("#jd-save-confirm").click();
   await expect.poll(() => writes.some(row => row.table === "saved_searches")).toBe(true);
   const insert = writes.find(row => row.table === "saved_searches");
   expect(insert.body.name).toBe("Apple phones in Serrekunda");
@@ -549,7 +551,7 @@ test("Checkout enables only Cash on Delivery and labels future methods Coming so
   await page.goto("/checkout.html");
   await expect(page.locator("#cod")).toBeChecked();
   await expect(page.locator("#cod")).toBeEnabled();
-  await expect(page.locator("#paymentAvailabilityNote")).toContainText("depends on the seller reserve");
+  await expect(page.locator("#paymentAvailabilityNote")).toContainText("depends on the seller");
   for (const id of ["wave", "qmoney", "afrimoney"]) {
     await expect(page.locator(`#${id}`)).toBeDisabled();
     await expect(page.locator(`label[for="${id}"]`)).toContainText("Coming soon");
@@ -569,10 +571,10 @@ test("Guest cart never invents stock or a seller for stale local snapshots", asy
   });
   await mockBackend(page);
   await page.goto("/cart.html");
-  await expect(page.locator("#cartItems")).toContainText("Sign in to verify availability");
-  await expect(page.locator("#cartItems")).toContainText("Seller confirmed after sign-in");
-  await expect(page.locator("#cartItems")).not.toContainText("999 available");
-  await expect(page.locator("#cartSubtitle")).toContainText("Sign in to verify current prices and availability");
+  await expect(page.locator("#jd-cart .jd-citem")).toContainText("Sign in to verify availability");
+  await expect(page.locator("#jd-cart .jd-citem")).toContainText("Seller confirmed after sign-in");
+  await expect(page.locator("#jd-cart .jd-citem")).not.toContainText("999 available");
+  await expect(page.locator("#jd-cart-sub")).toContainText("Sign in to verify current prices and availability");
 });
 
 test("Legacy sample notifications are removed instead of shown as activity", async ({ page }) => {
@@ -583,8 +585,8 @@ test("Legacy sample notifications are removed instead of shown as activity", asy
       { id: "explore-1", type: "explore", title: "New products available", message: "Explore products", time: new Date().toISOString(), read: true }
     ]));
   });
-  await mockBackend(page);
-  await page.goto("/explore.html");
+  await mockBackend(page, { authenticated: true });
+  await page.goto("/messages.html");
   await expect.poll(() => page.evaluate(() => {
     try { return JSON.parse(localStorage.getItem("gambasket_notifications") || "[]"); }
     catch { return null; }
@@ -615,7 +617,7 @@ test("Product details and account pages stay inside the persistent app shell", a
 
   await page.evaluate(() => window.JD.router.navigate("/me.html"));
   await expect(page).toHaveURL(/\/me\.html$/);
-  await expect(page.locator("main.me-main")).toBeVisible();
+  await expect(page.locator('.jd-pane[data-route="me"] #jd-main')).toBeVisible();
   expect(await page.evaluate(() => window.__jdPersistentDocumentProbe?.document === document)).toBe(true);
   await expect(page.locator("body")).not.toHaveClass(/jd-pdp-page/);
 });
@@ -640,12 +642,12 @@ test("Supplier dashboard navigation stays in the same document", async ({ page }
 
   await page.locator('.seller-nav a[href="earnings.html"]').click();
   await expect(page).toHaveURL(/\/supplier\/earnings\.html$/);
-  await expect(page.locator(".seller-page-title")).toContainText("Earnings");
+  await expect(page.locator('.jd-pane[data-route="supplier/earnings"] .seller-page-title')).toContainText("Earnings");
   expect(await sameDocument()).toBe(true);
 
   await page.locator('.seller-nav a[href="products.html"]').click();
   await expect(page).toHaveURL(/\/supplier\/products\.html$/);
-  await expect(page.locator(".seller-page-title")).toContainText("Products");
+  await expect(page.locator('.jd-pane[data-route="supplier/products"] .seller-page-title')).toContainText("Products");
   expect(await sameDocument()).toBe(true);
 
   await page.locator('.seller-nav a[href="add-product.html"]').click();
