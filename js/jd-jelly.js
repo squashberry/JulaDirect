@@ -52,7 +52,7 @@
   function slide(el, dir, o) {
     if (!el) return;
     o = o || {};
-    const sign = dir === "left" ? -1 : 1, dist = (o.distance || Math.min(window.innerWidth * 0.34, 170)) * sign;
+    const sign = dir === "left" ? -1 : 1, dist = (o.distance || Math.min(window.innerWidth * 0.5, 240)) * sign;
     const S = SPRING;
     if (o.mode === "offset") {
       const prev = el.style.position;
@@ -212,7 +212,39 @@
     slide(main, "right", { mode: "offset" });
   }
 
-  const boot = () => { startObserver(); startPress(); pageEnter(); };
+  /* Content bounces up the first time it scrolls into view: headings, pills, cards, steps. */
+  const REVEAL = [".hm-head", ".hm-pills > *", ".hm-rail > *", ".hm-trust > *", ".hm-steps > *", ".hm-faq__list > *", ".hm-cta__main", ".hm-cta__side", ".hm-slide__h", ".hm-slide__copy", ".hm-slide__btns", ".hm-eyebrow",
+    ".jd-grid > *", ".jd-recent > *", ".ex-grid > *", "[class*=product-card]", "[class*=pcard]", ".wl-grid > *", "main .card", ".sx-card", ".sx-kpi", ".od-card", ".ck-card"].join(",");
+  const seen = new WeakSet();
+  let io = null, batch = [], batchTimer = 0;
+  function flush() {
+    batchTimer = 0;
+    const list = batch.splice(0).filter(el => el.isConnected).sort((a, b) => { const x = a.getBoundingClientRect(), y = b.getBoundingClientRect(); return x.top - y.top || x.left - y.left; });
+    list.forEach((el, i) => {
+      const S = SOFT;
+      el.style.transformOrigin = "50% 80%";
+      try {
+        const a = el.animate(S.pts.map((p, k) => ({ transform: "translate3d(0," + (54 * (1 - p.v)).toFixed(2) + "px,0) scale(" + (0.9 + 0.1 * p.v).toFixed(4) + ")", opacity: Math.min(1, p.v * 2), offset: k / (S.pts.length - 1) })), { duration: S.ms, delay: Math.min(i, 9) * 60, easing: "linear", fill: "backwards" });
+        a.onfinish = a.oncancel = () => { el.style.transformOrigin = ""; };
+      } catch (e) { /* decorative */ }
+    });
+  }
+  function watch(el) {
+    if (!io || seen.has(el) || el.closest("[data-jelly=off], .jp, .ms-shell, dialog")) return;
+    seen.add(el); io.observe(el);
+  }
+  function startReveal() {
+    if (reduced() || !window.IntersectionObserver) return;
+    io = new IntersectionObserver(entries => {
+      entries.forEach(e => { if (e.isIntersecting) { io.unobserve(e.target); batch.push(e.target); } });
+      if (batch.length && !batchTimer) batchTimer = setTimeout(flush, 30);
+    }, { threshold: 0.12 });
+    const scan = root => { if (root.matches && root.matches(REVEAL)) watch(root); if (root.querySelectorAll) root.querySelectorAll(REVEAL).forEach(watch); };
+    scan(document);
+    new MutationObserver(list => list.forEach(m => m.addedNodes.forEach(n => { if (n.nodeType === 1) scan(n); }))).observe(document.documentElement, { childList: true, subtree: true });
+  }
+
+  const boot = () => { startObserver(); startPress(); pageEnter(); startReveal(); };
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot); else boot();
 
   window.Jelly = { slide, sheet, pop, edge };
