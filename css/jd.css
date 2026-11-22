@@ -786,12 +786,13 @@ body[data-to-theme="blue"] .jd-tbar__logo .jd-logo__word, body[data-to-theme="bl
    ===================================================================== */
 html { background: #eef1f8; }
 body.jd a, body.jd button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
-/* Opacity-only: never transform the page root, which contains fixed bars. */
-@keyframes jd-vt-in { from { opacity: 0; } }
-.jd-pane:not(.jd-pane--in) > #jd-main { animation: jd-vt-in .24s cubic-bezier(.2, .8, .2, 1) both; }
-@supports not (view-transition-name: none) { body.jd #jd-main { animation: jd-vt-in .24s cubic-bezier(.2, .8, .2, 1) both; } }
+/* Opacity-only transitions are applied exclusively while the router's
+   temporary .jd-pane--in class is present. Do not animate the inverse state:
+   removing that class after the transition would start a second fade and make
+   each destination page visibly blink. Never transform the page root because
+   it contains fixed purchase bars. */
 @media (prefers-reduced-motion: reduce) {
-  .jd-pane:not(.jd-pane--in) > #jd-main, .jd-pane--in > #jd-main, body.jd #jd-main { animation: none; }
+  .jd-pane--in > #jd-main { animation: none; }
 }
 
 /* ---------- persistent tabs (js/jd-router.js) ---------- */
