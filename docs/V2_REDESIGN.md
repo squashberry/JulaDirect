@@ -200,3 +200,5 @@ Update: Messages now embeds the customer chat itself (`messages.html?embed=1`, s
 
 ## Jelly motion (`js/jd-jelly.js`)
 A damped spring sampled into WAAPI keyframes. `Jelly.slide(el, dir)` is used for storefront route changes (`jd-router.js`) and seller-studio views: moving to a tab on the right arrives from the right, to the left from the left, and any non-tab page always arrives from the right. Storefront panes move with `left` (not a transform) so fixed buy bars are not dragged along. `Jelly.sheet` raises the studio's bottom sheets (all studio drawers, e.g. Withdraw) and `Jelly.pop` handles dialogs. Respects `prefers-reduced-motion`.
+
+Update: `js/jd-jelly.js` is now on every page. A MutationObserver gives every sheet, drawer, modal, dialog, menu, popover and toast the matching jelly when it opens (bottom-anchored rises, side panels slide from their edge, others pop), buttons squish on press and spring back (individual `scale` property), and full page loads from inside the site arrive from the right. Opt out with `data-jelly="off"`; elements that already have a CSS `animation` are left alone.
