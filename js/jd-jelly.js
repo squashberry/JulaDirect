@@ -215,11 +215,18 @@
   /* Content bounces up the first time it scrolls into view: headings, pills, cards, steps. */
   const REVEAL = [".hm-head", ".hm-pills > *", ".hm-rail > *", ".hm-trust > *", ".hm-steps > *", ".hm-faq__list > *", ".hm-cta__main", ".hm-cta__side", ".hm-slide__h", ".hm-slide__copy", ".hm-slide__btns", ".hm-eyebrow",
     ".jd-grid > *", ".jd-recent > *", ".ex-grid > *", "[class*=product-card]", "[class*=pcard]", ".wl-grid > *", "main .card", ".sx-card", ".sx-kpi", ".od-card", ".ck-card"].join(",");
-  const seen = new WeakSet();
+  const seen = new WeakSet(), shown = new Set();
+  /* Content that is re-rendered (a grid refreshed after a tab switch) must not bounce again,
+     so what has been revealed is remembered by identity, not by DOM node. */
+  const sigOf = el => {
+    const a = el.matches("a[href]") ? el : el.querySelector("a[href]");
+    const id = el.getAttribute("data-id") || el.getAttribute("data-product-id") || (a && a.getAttribute("href")) || (el.textContent || "").replace(/\s+/g, " ").trim().slice(0, 80);
+    return (el.className || el.tagName) + "|" + id;
+  };
   let io = null, batch = [], batchTimer = 0;
   function flush() {
     batchTimer = 0;
-    const list = batch.splice(0).filter(el => el.isConnected).sort((a, b) => { const x = a.getBoundingClientRect(), y = b.getBoundingClientRect(); return x.top - y.top || x.left - y.left; });
+    const list = batch.splice(0).filter(el => { if (!el.isConnected) return false; const k = sigOf(el); if (shown.has(k)) return false; shown.add(k); return true; }).sort((a, b) => { const x = a.getBoundingClientRect(), y = b.getBoundingClientRect(); return x.top - y.top || x.left - y.left; });
     list.forEach((el, i) => {
       const S = SOFT;
       el.style.transformOrigin = "50% 80%";

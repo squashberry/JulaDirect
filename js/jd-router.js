@@ -530,7 +530,7 @@
       window.scrollTo({ top: pane.scrollY || 0, left: 0, behavior: "instant" });
       pane.el.classList.remove("jd-pane--in");
       void pane.el.offsetWidth;
-      if (window.Jelly && hadPane) window.Jelly.slide(pane.el, jdir, { mode: "offset" });
+      if (window.Jelly && hadPane) window.Jelly.slide(pane.main || pane.el.querySelector("main") || pane.el, jdir, { mode: "offset" });
       else pane.el.classList.add("jd-pane--in");
       /* Keep the transition transient. The pane's <main> contains fixed mobile
          purchase bars; retaining an animated ancestor can make those bars act
