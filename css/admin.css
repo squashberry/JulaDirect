@@ -76,7 +76,7 @@
 .admin-loader-kicker {
     margin-top:20px;
     color:#2f6bff;
-    font-size:8px;
+    font-size:12px;
     font-weight:900;
     letter-spacing:.2em;
 }
@@ -122,7 +122,7 @@
     gap:7px;
     margin-top:12px;
     color:rgba(255,255,255,.27);
-    font-size:8px;
+    font-size:12px;
 }
 
 .admin-loader-status i {
@@ -221,7 +221,7 @@
 
 .admin-brand span {
     color:rgba(255,255,255,.32);
-    font-size:7px;
+    font-size:11px;
     font-weight:900;
     letter-spacing:.16em;
 }
@@ -269,13 +269,13 @@
 }
 
 .admin-current-user-copy strong {
-    font-size:10px;
+    font-size:14px;
 }
 
 .admin-current-user-copy span {
     margin-top:3px;
     color:rgba(255,255,255,.34);
-    font-size:7px;
+    font-size:11px;
 }
 
 .admin-online-dot {
@@ -297,7 +297,7 @@
 .admin-nav-label {
     padding:11px 11px 7px;
     color:rgba(255,255,255,.2);
-    font-size:7px;
+    font-size:11px;
     font-weight:900;
     letter-spacing:.16em;
 }
@@ -313,7 +313,7 @@
     border-radius:10px;
     background:transparent;
     color:rgba(255,255,255,.47);
-    font:700 9px/1 inherit;
+    font:700 13px/1 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
     text-align:left;
     cursor:pointer;
     transition:
@@ -367,7 +367,7 @@
     background:rgba(255,255,255,.06);
     color:rgba(255,255,255,.4);
     font-style:normal;
-    font-size:6px;
+    font-size:10px;
     text-align:center;
 }
 
@@ -387,7 +387,7 @@
     border-radius:10px;
     background:transparent;
     color:rgba(255,255,255,.42);
-    font:700 8px/1 inherit;
+    font:700 12px/1 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
     text-decoration:none;
     text-align:left;
     cursor:pointer;
@@ -447,7 +447,7 @@
     align-items:center;
     gap:8px;
     color:var(--text-secondary);
-    font-size:9px;
+    font-size:13px;
 }
 
 .admin-breadcrumb b {
@@ -475,7 +475,7 @@
     border-radius:10px;
     background:var(--surface);
     color:var(--text-secondary);
-    font:500 8px/1 inherit;
+    font:500 12px/1 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
     cursor:pointer;
 }
 
@@ -494,7 +494,7 @@
     border:1px solid var(--border);
     border-radius:5px;
     background:var(--surface-secondary,#f4f7fd);
-    font-size:6px;
+    font-size:10px;
 }
 
 .admin-top-action {
@@ -542,12 +542,12 @@
 }
 
 .admin-top-user strong {
-    font-size:8px;
+    font-size:12px;
 }
 
 .admin-top-user span {
     color:var(--text-secondary);
-    font-size:7px;
+    font-size:11px;
 }
 
 
@@ -591,7 +591,7 @@
 
 .admin-heading-label {
     color:#1451e6;
-    font-size:7px;
+    font-size:11px;
     font-weight:900;
     letter-spacing:.17em;
 }
@@ -608,7 +608,7 @@
 .admin-page-heading p {
     margin:9px 0 0;
     color:var(--text-secondary);
-    font-size:10px;
+    font-size:14px;
 }
 
 
@@ -619,7 +619,7 @@
 .admin-primary-button,
 .admin-small-button {
     border-radius:9px;
-    font:800 8px/1 inherit;
+    font:800 12px/1 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
     cursor:pointer;
 }
 
@@ -657,7 +657,7 @@
     border:0;
     background:transparent;
     color:#1451e6;
-    font:800 8px/1 inherit;
+    font:800 12px/1 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
     cursor:pointer;
 }
 
@@ -684,7 +684,7 @@
 .admin-kpi span {
     display:block;
     color:var(--text-secondary);
-    font-size:7px;
+    font-size:11px;
     font-weight:850;
     text-transform:uppercase;
 }
@@ -702,7 +702,7 @@
     display:block;
     margin-top:8px;
     color:var(--text-secondary);
-    font-size:7px;
+    font-size:11px;
 }
 
 .admin-kpi.warning strong {
@@ -744,7 +744,7 @@
 
 .admin-card-header span {
     color:#1451e6;
-    font-size:7px;
+    font-size:11px;
     font-weight:900;
     letter-spacing:.14em;
 }
@@ -763,7 +763,7 @@
     border-radius:8px;
     background:var(--surface);
     color:var(--text);
-    font:600 8px/1 inherit;
+    font:600 12px/1 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
 }
 
 
@@ -830,7 +830,7 @@
     border-radius:12px;
     background:var(--surface);
     color:var(--text);
-    font:800 8px/1.35 inherit;
+    font:800 12px/1.35 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
     text-align:left;
     cursor:pointer;
     transition:.18s ease;
@@ -869,7 +869,7 @@
     border-radius:9px;
     background:#eef4ff;
     color:#1451e6;
-    font-size:8px;
+    font-size:12px;
     font-weight:900;
 }
 
@@ -881,14 +881,14 @@
 .admin-activity-copy strong {
     display:block;
     color:var(--text);
-    font-size:8px;
+    font-size:12px;
 }
 
 .admin-activity-copy span {
     display:block;
     margin-top:2px;
     color:var(--text-secondary);
-    font-size:7px;
+    font-size:11px;
 }
 
 .health-pill {
@@ -896,7 +896,7 @@
     border-radius:99px;
     background:#ecfdf5;
     color:#0b7a56;
-    font-size:7px;
+    font-size:11px;
 }
 
 .admin-health-list {
@@ -917,12 +917,12 @@
 
 .admin-health-list span {
     color:var(--text-secondary);
-    font-size:8px;
+    font-size:12px;
 }
 
 .admin-health-list strong {
     color:#16a34a;
-    font-size:8px;
+    font-size:12px;
 }
 
 
@@ -961,7 +961,7 @@
     outline:0;
     background:transparent;
     color:var(--text);
-    font:500 9px/1 inherit;
+    font:500 13px/1 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
 }
 
 .admin-toolbar select {
@@ -972,7 +972,7 @@
     border-radius:10px;
     background:var(--surface);
     color:var(--text);
-    font:600 8px/1 inherit;
+    font:600 12px/1 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
 }
 
 
@@ -997,7 +997,7 @@
 .admin-mini-card span {
     display:block;
     color:var(--text-secondary);
-    font-size:7px;
+    font-size:11px;
     font-weight:800;
 }
 
@@ -1028,7 +1028,7 @@
     border-bottom:1px solid var(--border);
     background:var(--surface-secondary,#f4f7fd);
     color:var(--text-secondary);
-    font-size:6px;
+    font-size:10px;
     font-weight:900;
     text-transform:uppercase;
     text-align:left;
@@ -1038,7 +1038,7 @@
     padding:12px 14px;
     border-bottom:1px solid var(--border);
     color:var(--text);
-    font-size:8px;
+    font-size:12px;
 }
 
 .admin-table tr:hover td {
@@ -1056,7 +1056,7 @@
     height:31px;
     flex:0 0 31px;
     border-radius:10px;
-    font-size:9px;
+    font-size:13px;
 }
 
 .admin-role-pills {
@@ -1070,7 +1070,7 @@
     border-radius:99px;
     background:#eef4ff;
     color:#1451e6;
-    font-size:6px;
+    font-size:10px;
     font-weight:900;
     text-transform:uppercase;
 }
@@ -1080,7 +1080,7 @@
     border-radius:99px;
     background:#fdecec;
     color:#b42328;
-    font-size:6px;
+    font-size:10px;
     font-weight:900;
 }
 
@@ -1115,7 +1115,7 @@
     border-radius:12px;
     background:#eef4ff;
     color:#1451e6;
-    font-size:8px;
+    font-size:12px;
     font-weight:900;
 }
 
@@ -1127,14 +1127,14 @@
 .admin-list-copy strong {
     display:block;
     color:var(--text);
-    font-size:9px;
+    font-size:13px;
 }
 
 .admin-list-copy span {
     display:block;
     margin-top:3px;
     color:var(--text-secondary);
-    font-size:7px;
+    font-size:11px;
 }
 
 .admin-list-actions {
@@ -1180,14 +1180,14 @@
 .admin-product-copy strong {
     display:block;
     color:var(--text);
-    font-size:9px;
+    font-size:13px;
 }
 
 .admin-product-copy span {
     display:block;
     margin-top:4px;
     color:var(--text-secondary);
-    font-size:7px;
+    font-size:11px;
 }
 
 .admin-product-actions {
@@ -1233,7 +1233,7 @@
     flex-direction:column;
     gap:6px;
     color:var(--text);
-    font-size:8px;
+    font-size:12px;
     font-weight:850;
 }
 
@@ -1250,7 +1250,7 @@
     outline:0;
     background:var(--surface);
     color:var(--text);
-    font:500 9px/1.4 inherit;
+    font:500 13px/1.4 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
 }
 
 .admin-form-grid textarea {
@@ -1303,14 +1303,14 @@
 .admin-website-card strong {
     display:block;
     color:var(--text);
-    font-size:10px;
+    font-size:14px;
 }
 
 .admin-website-domain {
     display:block;
     margin-top:4px;
     color:#1451e6;
-    font-size:7px;
+    font-size:11px;
 }
 
 .admin-website-meta {
@@ -1325,7 +1325,7 @@
     border-radius:99px;
     background:var(--surface-secondary,#f4f7fd);
     color:var(--text-secondary);
-    font-size:6px;
+    font-size:10px;
 }
 
 
@@ -1354,7 +1354,7 @@
 
 .admin-plan-card > span {
     color:#1451e6;
-    font-size:7px;
+    font-size:11px;
     font-weight:900;
     letter-spacing:.15em;
 }
@@ -1367,7 +1367,7 @@
 
 .admin-plan-card small {
     color:var(--text-secondary);
-    font-size:7px;
+    font-size:11px;
 }
 
 .admin-plan-field {
@@ -1378,7 +1378,7 @@
     display:block;
     margin-bottom:5px;
     color:var(--text-secondary);
-    font-size:7px;
+    font-size:11px;
 }
 
 .admin-plan-field input {
@@ -1390,7 +1390,7 @@
     border-radius:8px;
     background:var(--surface);
     color:var(--text);
-    font-size:8px;
+    font-size:12px;
 }
 
 
@@ -1431,14 +1431,14 @@
 
 .admin-category-copy strong {
     display:block;
-    font-size:9px;
+    font-size:13px;
 }
 
 .admin-category-copy span {
     display:block;
     margin-top:3px;
     color:var(--text-secondary);
-    font-size:7px;
+    font-size:11px;
 }
 
 
@@ -1488,12 +1488,12 @@
 
 .admin-log-item span {
     color:var(--text-secondary);
-    font-size:7px;
+    font-size:11px;
 }
 
 .admin-log-item strong {
     color:var(--text);
-    font-size:8px;
+    font-size:12px;
 }
 
 
@@ -1525,13 +1525,13 @@
 
 .admin-settings-list strong {
     color:var(--text);
-    font-size:8px;
+    font-size:12px;
 }
 
 .admin-settings-list small {
     margin-top:4px;
     color:var(--text-secondary);
-    font-size:7px;
+    font-size:11px;
 }
 
 .admin-settings-list input {
@@ -1616,7 +1616,7 @@
 
 .admin-drawer-header > div span {
     color:#1451e6;
-    font-size:7px;
+    font-size:11px;
     font-weight:900;
     letter-spacing:.14em;
 }
@@ -1661,7 +1661,7 @@
 .admin-drawer-section h3 {
     margin:0 0 9px;
     color:var(--text);
-    font-size:10px;
+    font-size:14px;
 }
 
 .admin-drawer-grid {
@@ -1679,7 +1679,7 @@
 .admin-drawer-stat span {
     display:block;
     color:var(--text-secondary);
-    font-size:7px;
+    font-size:11px;
 }
 
 .admin-drawer-stat strong {
@@ -1707,7 +1707,7 @@
 
 .admin-role-control span {
     color:var(--text);
-    font-size:8px;
+    font-size:12px;
     font-weight:800;
 }
 
@@ -1718,7 +1718,7 @@
     border-radius:8px;
     background:var(--surface);
     color:var(--text);
-    font:800 7px/1 inherit;
+    font:800 11px/1 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
     cursor:pointer;
 }
 
@@ -1772,7 +1772,7 @@
 
 .admin-search-modal-inner strong {
     color:var(--text);
-    font-size:9px;
+    font-size:13px;
 }
 
 .admin-search-modal-inner header button {
@@ -1805,7 +1805,7 @@
     outline:0;
     background:transparent;
     color:var(--text);
-    font:500 10px/1 inherit;
+    font:500 14px/1 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
 }
 
 .admin-search-results {
@@ -1833,13 +1833,13 @@
 
 .admin-search-result strong {
     color:var(--text);
-    font-size:8px;
+    font-size:12px;
 }
 
 .admin-search-result span {
     margin-top:3px;
     color:var(--text-secondary);
-    font-size:7px;
+    font-size:11px;
 }
 
 .admin-empty {
@@ -1849,7 +1849,7 @@
     min-height:130px;
     padding:20px;
     color:var(--text-secondary);
-    font-size:9px;
+    font-size:13px;
     text-align:center;
 }
 
@@ -1919,13 +1919,13 @@
 
     .admin-mobile-brand strong {
         color:var(--text);
-        font-size:10px;
+        font-size:14px;
     }
 
     .admin-mobile-brand span {
         margin-top:2px;
         color:var(--text-secondary);
-        font-size:7px;
+        font-size:11px;
     }
 
     .admin-icon-button {
@@ -2159,3 +2159,34 @@ html { background: #eef1f8; }
 .admin-loader-orbit, .admin-loader-logo { border-color: rgba(20, 81, 230, .35); }
 .admin-page :focus-visible { outline: 3px solid #2f6bff; outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { .admin-product-card { transition: none; } }
+
+
+/* ---- Light-skin corrections: the sidebar text was authored for a dark rail ---- */
+.admin-brand strong { color:#0a1a3f; font-size:16px; letter-spacing:-.02em; }
+.admin-brand span { color:#7a88aa; font-size:10px; }
+.admin-current-user { background:#f4f7fd; border-color:#e1e8f5; }
+.admin-current-user-copy strong { color:#0a1a3f; font-size:13px; }
+.admin-current-user-copy span { color:#66759a; font-size:11px; }
+.admin-avatar { font-size:13px; }
+.admin-nav-label { color:#8a97b6; font-size:10px; padding:14px 12px 6px; }
+.admin-nav-item { color:#4a5a80; font-size:13.5px; font-weight:600; min-height:40px; gap:10px; }
+.admin-nav-item:hover { color:#0a1a3f; background:#f4f7fd; }
+.admin-nav-item.active { color:#fff; background:#1451e6; box-shadow:0 8px 20px rgba(20,81,230,.26); }
+.admin-nav-icon { background:#f0f4fc; color:#4a5a80; border-radius:9px; }
+.admin-nav-icon svg { width:16px; height:16px; }
+.admin-nav-item:hover .admin-nav-icon { background:#e4ecfb; color:#1451e6; }
+.admin-nav-item.active .admin-nav-icon { background:rgba(255,255,255,.18); color:#fff; }
+.admin-nav-item em { background:#eef2fb; color:#66759a; font-size:10px; font-weight:700; }
+.admin-nav-item.active em { background:rgba(255,255,255,.22); color:#fff; }
+.admin-sidebar-bottom { border-top-color:#e1e8f5; }
+.admin-sidebar-action { color:#4a5a80; font-size:13px; }
+.admin-sidebar-action:hover { color:#0a1a3f; background:#f4f7fd; }
+.admin-nav { scrollbar-width:thin; scrollbar-color:#cfd9ee transparent; }
+.admin-top-user { padding-right:14px; }
+.admin-top-user strong { font-size:13px; }
+.admin-top-user span { font-size:11px; }
+.admin-breadcrumb { font-size:13px; }
+.admin-user-drawer:not(.open) { box-shadow:none; visibility:hidden; }
+.admin-user-drawer { transition:transform .3s ease, box-shadow .3s ease, visibility 0s linear .3s; }
+.admin-user-drawer.open { visibility:visible; transition-delay:0s; }
+.admin-top-user { margin-right:4px; }
