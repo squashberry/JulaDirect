@@ -378,7 +378,7 @@
   }
 
   function viewMore(el) {
-    const L = [["Customers", "#/customers"], ["Earnings & payouts", "#/earnings"], ["Messages", "messages.html"], ["Add a product", "add-product.html"], ["Store profile", "store.html"], ["Business website", "website.html"], ["Pickup & delivery", "pickup-delivery.html"], ["Quotes", "quotes.html"], ["Settings", "settings.html"], ["Back to marketplace", "../index.html"]];
+    const L = [["Customers", "#/customers"], ["Earnings & payouts", "#/earnings"], ["Messages", "#/messages"], ["Add a product", "add-product.html"], ["Store profile", "#/store"], ["Business website", "#/website"], ["Pickup & delivery", "#/delivery"], ["Settings", "#/settings"], ["Back to marketplace", "../index.html"]];
     el.innerHTML = '<section class="sx-card"><div class="sx-card__body"><div class="sx-todo">' + L.map(l => '<a href="' + l[1] + '"><span>' + esc(l[0]) + "</span><b>→</b></a>").join("") + "</div></div></section>";
   }
 
@@ -386,6 +386,10 @@
      ROUTER
      ======================================================= */
   const VIEWS = { overview: viewOverview, orders: viewOrders, products: viewProducts, customers: viewCustomers, reviews: viewReviews, earnings: viewEarnings, more: viewMore };
+  /* Extra views (js/sx-manage.js) register here so they live inside the studio. */
+  SX.register = (name, title, fn) => { ROUTES[name] = title; VIEWS[name] = fn; };
+  SX.ui = { state, D, esc, num, money, ago, dayTime, label, safeUrl, thumb, hydrate, skel, empty, ask, toast, errMsg, $, $$ };
+  const MORE_ROUTES = ["messages", "store", "website", "delivery", "settings"];
   let token = 0;
   async function route(force) {
     const name = (location.hash.replace(/^#\/?/, "").split("?")[0] || "overview");
@@ -396,7 +400,7 @@
     }
     state.route = r;
     $$(".sx-view").forEach(v => { v.hidden = v.id !== "v-" + r; });
-    $$("[data-route]").forEach(a => { if (a.getAttribute("data-route") === r || (r === "customers" || r === "earnings") && a.getAttribute("data-route") === "more" && a.closest("#sxTabbar")) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
+    $$("[data-route]").forEach(a => { if (a.getAttribute("data-route") === r || (r === "customers" || r === "earnings" || MORE_ROUTES.includes(r)) && a.getAttribute("data-route") === "more" && a.closest("#sxTabbar")) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
     $("#sxTitle").textContent = ROUTES[r];
     $("#sxPeriod").style.display = r === "overview" || r === "earnings" ? "" : "none";
     document.title = ROUTES[r] + " — Seller Studio";
@@ -461,7 +465,7 @@
   /* =======================================================
      BOOT
      ======================================================= */
-  (async function boot() {
+  async function boot() {
     const gate = $("#sxGate");
     try {
       const ok = window.GamBasketGuard && window.GamBasketGuard.gatePage ? await window.GamBasketGuard.gatePage("seller") : false;
@@ -484,5 +488,7 @@
       console.error("[Seller Studio] boot failed:", e);
       gate.innerHTML = '<div style="text-align:center;max-width:380px;padding:24px"><h2 style="color:#14181f">We couldn\'t open your studio</h2><p>' + esc(errMsg(e)) + '</p><p><a href="../login.html?redirect=' + encodeURIComponent(location.pathname) + '">Sign in</a></p></div>';
     }
-  })();
+  }
+  /* wait for every script (sx-manage.js registers extra views) before the first route */
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot); else boot();
 })();

@@ -30,6 +30,10 @@
   <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.6A8.3 8.3 0 0 1 9.4 4 8.3 8.3 0 1 0 20 14.6Z"/></symbol>
   <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
   <symbol id="i-bag" viewBox="0 0 24 24"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 11.5a8.5 8.5 0 0 1-12.4 7.5L3 20.5l1.6-5A8.5 8.5 0 1 1 21 11.5z"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.8 3 2.8 15 0 18M12 3c-2.8 3-2.8 15 0 18"/></symbol>
+  <symbol id="i-truck" viewBox="0 0 24 24"><path d="M3 6h11v10H3zM14 9h4l3 3v4h-7"/><circle cx="7.5" cy="17.5" r="1.8"/><circle cx="17.5" cy="17.5" r="1.8"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M18.7 5.3l-2.1 2.1M7.4 16.6l-2.1 2.1"/></symbol>
 </defs></svg>
 
 <div id="sxGate" style="min-height:100vh;display:grid;place-items:center;font-family:system-ui,sans-serif;color:#7b8394">Loading your studio…</div>
@@ -49,11 +53,11 @@
       <a href="#/reviews" data-route="reviews"><svg><use href="#i-star"/></svg>Reviews<span class="sx-badge" id="sxBadgeReviews" hidden>0</span></a>
       <a href="#/earnings" data-route="earnings"><svg><use href="#i-wallet"/></svg>Earnings</a>
       <div class="sx-nav__label">Manage</div>
-      <a href="messages.html"><svg><use href="#i-orders"/></svg>Messages</a>
-      <a href="store.html"><svg><use href="#i-bag"/></svg>Store profile</a>
-      <a href="website.html"><svg><use href="#i-home"/></svg>Business website</a>
-      <a href="pickup-delivery.html"><svg><use href="#i-box"/></svg>Pickup &amp; delivery</a>
-      <a href="settings.html"><svg><use href="#i-more"/></svg>Settings</a>
+      <a href="#/messages" data-route="messages"><svg><use href="#i-chat"/></svg>Messages</a>
+      <a href="#/store" data-route="store"><svg><use href="#i-bag"/></svg>Store profile</a>
+      <a href="#/website" data-route="website"><svg><use href="#i-globe"/></svg>Business website</a>
+      <a href="#/delivery" data-route="delivery"><svg><use href="#i-truck"/></svg>Pickup &amp; delivery</a>
+      <a href="#/settings" data-route="settings"><svg><use href="#i-gear"/></svg>Settings</a>
     </nav>
     <div class="sx-rail__foot">
       <a href="../index.html">← Back to marketplace</a>
@@ -82,6 +86,11 @@
       <section class="sx-view" id="v-reviews" hidden></section>
       <section class="sx-view" id="v-earnings" hidden></section>
       <section class="sx-view" id="v-more" hidden></section>
+      <section class="sx-view" id="v-messages" hidden></section>
+      <section class="sx-view" id="v-store" hidden></section>
+      <section class="sx-view" id="v-website" hidden></section>
+      <section class="sx-view" id="v-delivery" hidden></section>
+      <section class="sx-view" id="v-settings" hidden></section>
     </main>
   </div>
 </div>
@@ -108,5 +117,6 @@
 <script src="../js/auth-guard.js"></script>
 <script src="../js/sx-data.js"></script>
 <script src="../js/sx-app.js"></script>
+<script src="../js/sx-manage.js?v=2"></script>
 </body>
 </html>

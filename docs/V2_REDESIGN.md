@@ -192,3 +192,6 @@ The dark hero with the search box is replaced by a four-slide, auto-rotating cam
 - Presence ("Online") and typing use a second Supabase Realtime channel, `jd-chat-<conversation id>`, and are optional: the chat works without them.
 - Sending is optimistic (clock, then tick, then blue double tick when read). Messages starting with `[img]https://...` render as photos; there is no upload yet.
 - Motion: every animation is a damped spring (`Spring` in messages.js) sampled into Web Animations keyframes: bubble entrance with squash and stretch, press squish on buttons, chat slide-in, popovers, list stagger, typing dots, plus a rubber tilt of the message flow while scrolling. `prefers-reduced-motion` turns it off.
+
+## Seller Studio: Manage pages
+The sidebar links under MANAGE no longer leave the studio. `js/sx-manage.js` registers five views through `SX.register`: Messages (inbox + live thread), Store profile (`save_my_store`, logo/banner upload), Business website (`business_websites` CRUD), Pickup & delivery (per-listing `delivery_available` and pickup `location`) and Settings (notification prefs stored on the device, dark mode, sign out). Boot now waits for DOMContentLoaded so these views exist before the first route.
