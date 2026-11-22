@@ -43,7 +43,7 @@
   };
   const WARM_ROUTES = ["index", "explore", "wishlist", "cart", "compare"];
   /* Page-specific body classes are switched with the active pane. */
-  const MANAGED = new Set(["is-homepage", "has-mobilebar", "has-cartbar", "jd-pdp-page", "jd-legacy", "me-page", "messages-page", "settings-page"]);
+  const MANAGED = new Set(["is-homepage", "has-mobilebar", "has-cartbar", "jd-pdp-page", "jd-legacy", "me-page", "messages-page", "ms-page", "settings-page"]);
   /* Events that only make sense for the pane that registered them. */
   const POINTER = new Set(["click", "auxclick", "dblclick", "pointerdown", "pointerup", "mousedown", "mouseup", "touchstart", "touchend", "input", "change", "submit", "focusin", "focusout"]);
   const WHEN_ACTIVE = new Set(["keydown", "keyup", "keypress", "popstate", "hashchange", "DOMContentLoaded", "jd:pane:show", "jd:pane:hide"]);

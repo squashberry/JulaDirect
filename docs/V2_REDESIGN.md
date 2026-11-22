@@ -184,3 +184,11 @@ The dark hero with the search box is replaced by a four-slide, auto-rotating cam
 - Storefront: `jd-core.js` loads `jd-popups.js` (not on admin pages). It shows the highest-priority eligible live popup per page and remembers dismissals in sessionStorage/localStorage (`jd-popup:<id>`).
 - Database: `supabase/migrations/20261121200000_site_popups.sql` (table, RLS, `admin_save_site_popup`, `admin_set_site_popup_active`, `admin_delete_site_popup`). Apply it before using the admin page.
 - All text is inserted escaped; links must be relative or https; images must be http(s).
+
+## Messages v2 (`messages.html`, `css/jd-messages.css`, `js/messages.js`)
+
+- Phone: a conversation list page; opening a chat takes over the screen (header with avatar, verified tick, online/typing status, Order and More buttons; product strip with View Product; grouped bubbles with avatars, time and read ticks; composer with quick questions, emoji tray and send). Desktop: two panes in one card.
+- Same data layer as before. `getConversations`/`getConversation` now also return `other_user_id`, `other_user_avatar`, `other_user_verified` (from `public_profiles.business_name, avatar_url, is_seller_verified`).
+- Presence ("Online") and typing use a second Supabase Realtime channel, `jd-chat-<conversation id>`, and are optional: the chat works without them.
+- Sending is optimistic (clock, then tick, then blue double tick when read). Messages starting with `[img]https://...` render as photos; there is no upload yet.
+- Motion: every animation is a damped spring (`Spring` in messages.js) sampled into Web Animations keyframes: bubble entrance with squash and stretch, press squish on buttons, chat slide-in, popovers, list stagger, typing dots, plus a rubber tilt of the message flow while scrolling. `prefers-reduced-motion` turns it off.

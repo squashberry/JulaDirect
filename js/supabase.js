@@ -1043,7 +1043,7 @@
                 if (other?.user_id) {
                     const { data: safeProfile, error: profileError } = await client
                         .from("public_profiles")
-                        .select("id, first_name, last_name")
+                        .select("id, first_name, last_name, business_name, avatar_url, is_seller_verified")
                         .eq("id", other.user_id)
                         .maybeSingle();
                     if (profileError) throw profileError;
@@ -1068,7 +1068,10 @@
                     id: conversation.id,
                     product_id: conversation.product_id,
                     product: conversation.product,
-                    other_user_name: `${otherProfile?.first_name || "JulaDirect"} ${otherProfile?.last_name || "Member"}`.trim(),
+                    other_user_name: otherProfile?.business_name || `${otherProfile?.first_name || "JulaDirect"} ${otherProfile?.last_name || "Member"}`.trim(),
+                    other_user_id: other?.user_id || null,
+                    other_user_avatar: otherProfile?.avatar_url || null,
+                    other_user_verified: !!otherProfile?.is_seller_verified,
                     last_message: lastMessage?.message_text || "Start the conversation",
                     last_message_at: lastMessage?.created_at || conversation.updated_at || conversation.created_at,
                     unread_count: count || 0
@@ -1105,13 +1108,13 @@
             if (other?.user_id) {
                 const { data: safeProfile, error: profileError } = await client
                     .from("public_profiles")
-                    .select("id, first_name, last_name")
+                    .select("id, first_name, last_name, business_name, avatar_url, is_seller_verified")
                     .eq("id", other.user_id)
                     .maybeSingle();
                 if (profileError) throw profileError;
                 otherProfile = safeProfile;
             }
-            return { conversation: { ...conversation, other_user_name: `${otherProfile?.first_name || "JulaDirect"} ${otherProfile?.last_name || "Member"}`.trim() }, messages, product: conversation.product };
+            return { conversation: { ...conversation, other_user_name: otherProfile?.business_name || `${otherProfile?.first_name || "JulaDirect"} ${otherProfile?.last_name || "Member"}`.trim(), other_user_id: other?.user_id || null, other_user_avatar: otherProfile?.avatar_url || null, other_user_verified: !!otherProfile?.is_seller_verified }, messages, product: conversation.product };
         },
 
         getConversationMessages: async function (conversationId) {
