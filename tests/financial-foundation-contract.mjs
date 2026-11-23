@@ -57,7 +57,7 @@ for (const method of ["wave", "qmoney", "afrimoney"]) {
   assert.match(checkoutHtml, new RegExp('id="' + method + '"'));
 }
 assert.match(checkoutHtml, /48-hour refund window/i);
-assert.match(checkoutHtml, /reviewed by JulaDirect/i);
+assert.match(checkoutHtml, /subject to JulaDirect review/i);
 
 console.log("PASS: JulaDirect financial foundation schema and security contracts.");
 console.log("PASS: 5% commission, 24-hour seller release window, 48-hour provider refund window and private OTP records.");
