@@ -203,7 +203,7 @@
                 const cust = o.delivery_name || o.customer_name || "Buyer";
                 const total = "D " + Number(o.total_amount || o.total || 0).toLocaleString();
                 const loc = isStation
-                    ? [o.pickup_station_name, o.pickup_station_city, o.pickup_station_address].filter(Boolean).join(", ")
+                    ? (o.pickup_station_address || [o.pickup_station_name, o.pickup_station_city].filter(Boolean).join(", "))
                     : (isPickup ? (o.pickup_location || "Seller pickup") : (o.delivery_area || o.delivery_region || "The Gambia"));
                 const destinationNote = isStation
                     ? '<small class="seller-destination-note">Seller brings this order here. No courier is assigned.</small>'
