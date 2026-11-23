@@ -199,13 +199,14 @@ Deno.serve(async (req: Request) => {
           currency: "GMD",
           title: "JulaDirect order " + order.order_number,
           description: "Secure payment for your JulaDirect order",
-          // Keep the selected wallet network, but deliberately omit account_number.
-          // ModemPay then creates a hosted payment intent and asks the payer to
-          // enter the number registered to that wallet on its own checkout page.
-          network: method,
+          // Hosted Payment Intents must omit both network and account_number.
+          // Sending only network is rejected; sending both performs a Direct Charge.
+          // Wallet selection and number entry happen on ModemPay's hosted page.
+          payment_methods: ["wallet"],
           metadata: {
             gambasket_payment_id: paymentId,
-            gambasket_order_id: order.id
+            gambasket_order_id: order.id,
+            requested_wallet: method
           },
           return_url: returnUrl,
           cancel_url: returnUrl,
@@ -225,6 +226,15 @@ Deno.serve(async (req: Request) => {
           provider_payload: {
             error: safeProviderMessage(providerBody?.message || providerBody?.error)
           },
+          updated_at: new Date().toISOString()
+        })
+      });
+
+      // Keep the order status aligned with this rejected payment attempt.
+      await rest("orders?id=eq." + orderId + "&buyer_id=eq." + encodeURIComponent(user.id), {
+        method: "PATCH",
+        body: JSON.stringify({
+          payment_status: "failed",
           updated_at: new Date().toISOString()
         })
       });
