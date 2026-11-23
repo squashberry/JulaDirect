@@ -36,7 +36,7 @@
                     <div class="ck-step__body">
                         <div class="ck-seg" role="radiogroup" aria-label="How do you want to get it?">
                             <div class="choice"><input type="radio" name="fulfillment" id="delivery" value="delivery" checked><label for="delivery"><span class="ck-seg__ico" data-ico="truck"></span><strong>Delivery</strong><span>To your address</span></label></div>
-                            <div class="choice"><input type="radio" name="fulfillment" id="pickup" value="pickup_station" disabled><label for="pickup"><span class="ck-seg__ico" data-ico="store"></span><strong>Pickup station <span id="pickupStationAvailability" class="payment-coming-soon-badge">Checking availability…</span></strong><span>Collect from our Banjul station</span></label></div>
+                            <div class="choice"><input type="radio" name="fulfillment" id="pickup" value="pickup_station" disabled><label for="pickup"><span class="ck-seg__ico" data-ico="store"></span><strong>Pickup station <span id="pickupStationAvailability" class="payment-coming-soon-badge">Checking availability…</span></strong><span>Choose an available collection station</span></label></div>
                         </div>
                         <div class="field-grid">
                             <div class="field"><label for="fullName">Full name</label><input id="fullName" required autocomplete="name" placeholder="Your name"></div>
@@ -45,7 +45,7 @@
                         </div>
                         <div id="deliveryFields">
                             <div class="field-grid">
-                                <div class="field"><label for="region">Region</label><select id="region" required autocomplete="address-level1"><option value="">Select region</option><option>Greater Banjul Area</option><option>West Coast Region</option><option>North Bank Region</option><option>Lower River Region</option><option>Central River Region</option><option>Upper River Region</option></select></div>
+                                <div class="field"><label for="region">Region</label><select id="region" required autocomplete="address-level1"><option value="">Select region</option><option>Greater Banjul Area</option><option>West Coast Region</option></select></div>
                                 <div class="field"><label for="area">Area / town</label><input id="area" required autocomplete="address-level2" placeholder="e.g. Serrekunda"></div>
                                 <div class="field full"><label for="address">Street / address</label><input id="address" required autocomplete="street-address" placeholder="House number, street"></div>
                                 <div class="field full"><label for="landmark">Nearest landmark <small>(optional)</small></label><input id="landmark" placeholder="Mosque, school, shop…"></div>
@@ -53,12 +53,24 @@
                             </div>
                             <label class="ck-remember"><input type="checkbox" id="rememberAddress" checked><span>Remember this address on this device</span></label>
                         </div>
-                        <div id="pickupStationFields" class="ck-station-card" hidden>
-                            <span class="ck-station-card__icon" aria-hidden="true">P</span>
-                            <div>
-                                <strong>JulaDirect Pickup Station</strong>
-                                <span class="ck-station-card__location">Banjul, The Gambia</span>
-                                <p>The seller will bring your order to this station. No courier is assigned. We will confirm the exact collection point before your order is ready.</p>
+                        <div id="pickupStationFields" hidden>
+                            <div class="field-grid">
+                                <div class="field">
+                                    <label for="pickupStationArea">Area / town where the station is located</label>
+                                    <select id="pickupStationArea" required disabled>
+                                        <option value="">Choose an area</option>
+                                    </select>
+                                </div>
+                                <div class="field">
+                                    <label for="pickupStationSelect">Pickup station</label>
+                                    <select id="pickupStationSelect" required disabled>
+                                        <option value="">Choose an area first</option>
+                                    </select>
+                                </div>
+                                <div class="field full">
+                                    <p id="pickupStationDetails" class="checkout-note" aria-live="polite">Choose an area to see the available collection stations.</p>
+                                    <p class="checkout-note">The seller takes your order to the selected station. No courier is assigned.</p>
+                                </div>
                             </div>
                         </div>
                     </div>
