@@ -12,6 +12,7 @@
      jdprofile:share    [{ url }]                jdprofile:search   [{ q }]
      jdprofile:sort     [{ sort }]               jdprofile:filter   [{ category }]
      jdprofile:quote    [{ product, quantity, name, phone, note }]   (supplier only)
+   Data: set data.sellerId (auto-looks up the published website) or data.website (a squashberrypro.pages.dev URL) to show the "Visit website" link.
    Data shapes are documented at the bottom of this file (DEMO_*).
    ========================================================= */
 (function () {
@@ -31,11 +32,18 @@
   let state = { kind: "seller", data: null, products: [], category: "All", sort: "new", q: "", following: false };
 
   /* ---------------- pieces ---------------- */
+  /* Website link: only for https://squashberrypro.pages.dev sites the seller published through JulaDirect. */
+  const siteOk = u => { try { const x = new URL(u); return x.origin === "https://squashberrypro.pages.dev" ? x.href : ""; } catch (e) { return ""; } };
+  const websiteItem = u => siteOk(u) ? '<li class="pf-site">' + I("globe", 15) + '<a href="' + esc(siteOk(u)) + '" target="_blank" rel="noopener noreferrer">Visit website ↗</a></li>' : "";
+  async function lookupWebsite(d) {
+    if (d.website || !d.sellerId || !window.JD || !JD.client) return;
+    try { const c = await JD.client(); const { data } = await c.rpc("public_store_website", { p_seller: d.sellerId }); const row = Array.isArray(data) ? data[0] : data; if (row && siteOk(row.public_url) && !$(".pf-site")) { const ul = $(".pf-meta"); if (ul) ul.insertAdjacentHTML("beforeend", websiteItem(row.public_url)); } } catch (e) { /* not published or not wired yet */ }
+  }
   function hero(d, kind) {
     const badges = [];
     if (d.verified) badges.push('<span class="pf-badge pf-badge--ok">' + I("shield", 14) + (kind === "supplier" ? "Verified supplier" : "Verified seller") + "</span>");
     if (d.topRated) badges.push('<span class="pf-badge pf-badge--gold">' + I("star", 14) + "Top rated</span>");
-    const meta = [d.location && [I("pin", 15), d.location], d.joined && [I("user", 15), "Member since " + d.joined], d.responseTime && [I("message", 15), "Replies " + d.responseTime]].filter(Boolean).map(m => "<li>" + m[0] + "<span>" + esc(m[1]) + "</span></li>").join("");
+    const meta = [d.location && [I("pin", 15), d.location], d.joined && [I("user", 15), "Member since " + d.joined], d.responseTime && [I("message", 15), "Replies " + d.responseTime]].filter(Boolean).map(m => "<li>" + m[0] + "<span>" + esc(m[1]) + "</span></li>").join("") + websiteItem(d.website);
     return '<header class="pf-hero"><div class="pf-cover">' + (url(d.cover) ? '<img src="' + esc(url(d.cover)) + '" alt="">' : "") + '<span class="pf-cover__shade"></span></div>' +
       '<div class="pf-head"><div class="pf-avatar">' + media(d.avatar, d.name) + "</div>" +
       '<div class="pf-id"><div class="pf-badges">' + badges.join("") + '</div><h1 class="pf-name">' + esc(d.name) + "</h1>" + (d.tagline ? '<p class="pf-tag">' + esc(d.tagline) + "</p>" : "") + '<ul class="pf-meta">' + meta + "</ul></div>" +
@@ -126,7 +134,7 @@
       : { products: productsPanel(kind), about: aboutPanel(d, kind), reviews: reviewsPanel(d.reviews), policies: policiesPanel(d) };
     const first = Object.keys(panels)[0];
     root.innerHTML = hero(d, kind) + stats(d, kind) + tabs(kind) + '<div class="pf-panels">' + Object.keys(panels).map(k => '<section class="pf-panel" id="pf-' + k + '" role="tabpanel"' + (k === first ? "" : " hidden") + ">" + panels[k] + "</section>").join("") + "</div>" + (kind === "supplier" ? quoteSheet(d) : "");
-    paintGrid();
+    paintGrid(); lookupWebsite(d);
     const hash = location.hash.replace("#", ""); if (hash && panels[hash]) show(hash, true);
     if (window.JD && JD.syncWishlist) JD.syncWishlist(root);
   }
@@ -167,6 +175,7 @@
   document.addEventListener("keydown", e => { if (e.key === "Escape") sheet(false); });
 
   window.JDProfile = {
+    lookupWebsite: () => lookupWebsite(state.data),
     mount,
     setProducts(list) { state.products = list.slice(); paintGrid(); },
     setReviews(r) { state.reviews = r; const p = $("#pf-reviews"); if (p) p.innerHTML = reviewsPanel(r); }
@@ -183,7 +192,7 @@
     ]
   };
   const DEMO_SELLER = {
-    name: "Banjul Tech Hub", tagline: "Phones, solar and home electronics you can trust.", verified: true, topRated: true,
+    name: "Banjul Tech Hub", website: "https://squashberrypro.pages.dev/banjul-tech", tagline: "Phones, solar and home electronics you can trust.", verified: true, topRated: true,
     location: "Serrekunda, The Gambia", joined: "March 2025", responseTime: "within 1 hour", rating: 4.7, reviewCount: 128, sold: 1840, productCount: 63, followers: 2310, responseRate: 98,
     about: "We are a family-run electronics store on Kairaba Avenue. Every item is tested before it is listed, and we describe condition honestly so you know exactly what you are buying. Ask us anything before you order.",
     highlights: [{ icon: "shield", title: "Tested before listing", text: "Every device is checked and photographed by us." }, { icon: "truck", title: "Fast delivery", text: "Same-day delivery around the Greater Banjul area." }, { icon: "wallet", title: "Pay on delivery", text: "Cash on delivery available on most items." }],

@@ -150,3 +150,5 @@
   .pf-sheet__grab{display:none}
 }
 @media (max-width:759px){.pf-container-bleed{margin-inline:-16px}}
+.pf-site a{color:var(--jd-blue-700);font-weight:700;text-decoration:none}
+.pf-site a:hover{text-decoration:underline}
