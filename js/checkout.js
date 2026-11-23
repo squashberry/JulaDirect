@@ -255,6 +255,21 @@
         if (n) setTimeout(() => { const f = target.querySelector("input:not([type=radio]):not([type=checkbox]):not([disabled]), select"); if (f && n === 1 && !f.value) f.focus({ preventScroll: true }); }, 350);
     }
 
+    function rememberAddress() {
+        if (!isDelivery()) return;
+        const saved = {
+            phone: $("phone").value.trim(),
+            region: $("region").value,
+            area: $("area").value.trim(),
+            address: $("address").value.trim(),
+            landmark: $("landmark").value.trim(),
+            instructions: $("instructions").value.trim()
+        };
+        try { localStorage.setItem(ADDRESS_KEY, JSON.stringify(saved)); } catch (error) {
+            console.warn("[JulaDirect Checkout] address could not be saved on this device:", error);
+        }
+    }
+
     function validateDelivery() {
         const ids = ["fullName", "phone", "email"].concat(isDelivery() ? ["region", "area", "address"] : []);
         for (const id of ids) {
