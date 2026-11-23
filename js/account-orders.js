@@ -37,6 +37,12 @@
 
   function card(o) {
     var st = steps(o), cancelled = o.status === "cancelled";
+    var isStation = Boolean(o.pickup_station_name);
+    var locationLabel = isStation ? "Pickup station" : (o.fulfillment_type === "pickup" ? "Pickup at" : "Delivery to");
+    var locationText = isStation
+      ? [o.pickup_station_name, o.pickup_station_city, o.pickup_station_address].filter(Boolean).join(", ")
+      : [o.area || "Greater Banjul", o.address].filter(Boolean).join(" ");
+    var locationNote = isStation ? '<small class="od__pickup-note">The seller brings your order here. No courier is assigned.</small>' : "";
     var track = cancelled ? '<div class="od__cancelled">This order was cancelled.</div>' :
       '<div class="od__track" aria-label="Order progress">' + st.names.map(function (nm, i) { return '<div class="od__step' + (i <= st.at ? " is-done" : "") + (i === st.at ? " is-now" : "") + '"><i></i>' + esc(nm) + "</div>"; }).join("") + "</div>";
     var items = (o.items || []).map(function (it) {
@@ -51,7 +57,7 @@
     if (o.status === "pending") acts.push('<button type="button" class="jd-btn jd-btn--ghost jd-btn--sm" data-act="cancel" data-number="' + esc(o.id) + '">Cancel order</button>');
     return '<article class="ac-card od" data-order="' + esc(o.order_id) + '"><div class="od__head"><div><span class="od__no">Order #' + esc(o.id) + '</span><span class="od__date">' + esc(when(o.created_at)) + '</span></div><span class="jd-badge ' + (TONE[o.status] || "") + '">' + esc(LABEL[o.status] || "Pending confirmation") + "</span></div>" + track +
       '<div class="od__items">' + (items || '<p class="ac-empty" style="padding-left:0">No items recorded.</p>') + "</div>" +
-      '<div class="od__meta"><div>' + JD.icon("pin", 16) + "<span><b>" + (o.fulfillment_type === "pickup" ? "Pickup at" : "Delivery to") + ":</b> " + esc(o.area || "Greater Banjul") + (o.address ? " (" + esc(o.address) + ")" : "") + "</span></div><div>" + JD.icon("wallet", 16) + "<span><b>Payment:</b> " + esc(payment(o)) + "</span></div></div>" +
+      '<div class="od__meta"><div>' + JD.icon("pin", 16) + "<span><b>" + esc(locationLabel) + ":</b> " + esc(locationText) + locationNote + "</span></div><div>" + JD.icon("wallet", 16) + "<span><b>Payment:</b> " + esc(payment(o)) + "</span></div></div>" +
       '<div class="od__foot"><div class="od__total"><small>Total</small><b>' + esc(JD.money(o.total_amount || 0)) + '</b></div><div class="od__act">' + acts.join("") + "</div></div></article>";
   }
 
