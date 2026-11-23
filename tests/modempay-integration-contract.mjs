@@ -42,6 +42,7 @@ assert.match(codMigration, /NEW\.order_status='confirmed'/);
 assert.match(onlineOnlyMigration, /v_method NOT IN \('wave','qmoney','afrimoney'\)/);
 assert.match(onlineOnlyMigration, /ONLINE_PAYMENT_REQUIRED/);
 assert.match(onlineOnlyMigration, /DROP TRIGGER IF EXISTS orders_available_payment_methods_only ON public\.orders/);
+assert.match(pickupRefundMigration, /ALTER COLUMN refund_provider_window_hours SET DEFAULT 24/);
 assert.match(pickupRefundMigration, /refund_provider_window_hours = 24/);
 assert.match(pickupRefundMigration, /make_interval\(hours => v_window_hours\)/);
 assert.match(pickupRefundMigration, /pickup_station_name text/);
