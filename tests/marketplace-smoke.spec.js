@@ -229,6 +229,10 @@ async function mockBackend(page, options = {}) {
       } else await json(rows);
       return;
     }
+    if (path === "/rest/v1/rpc/gambasket_get_pickup_station_config" && method === "POST") {
+      await json({ available: true, station_name: "JulaDirect Pickup Station", city: "Banjul", country: "The Gambia" });
+      return;
+    }
     if (path === "/rest/v1/rpc/gambasket_cod_checkout_eligibility" && method === "POST") {
       await json({
         eligible: true,
@@ -578,6 +582,8 @@ test("Pickup station checkout sends Banjul destination without delivery address"
   await page.locator("#fullName").fill("Test Buyer");
   await page.locator("#email").fill("gambasket-e2e@example.test");
   await page.locator("#phone").fill("+2207000000");
+  await expect(page.locator("#pickup")).toBeEnabled();
+  await expect(page.locator("#pickupStationAvailability")).toContainText("Banjul only");
   await page.locator("#pickup").check();
   await expect(page.locator("#deliveryFields")).toBeHidden();
   await expect(page.locator("#pickupStationFields")).toBeVisible();
@@ -661,6 +667,7 @@ test("Checkout offers online payment only and explains the refund request window
   await page.goto("/checkout.html");
   await expect(page.locator("#cod")).toHaveCount(0);
   await expect(page.locator("#pickup")).toHaveValue("pickup_station");
+  await expect(page.locator("#pickup")).toBeDisabled();
   await expect(page.locator("#pickupStationFields")).toContainText("Banjul");
   await expect(page.locator("#paymentAvailabilityNote")).toContainText("pay securely online");
   await expect(page.locator("#refundWindowNote")).toContainText("24-hour refund eligibility");
