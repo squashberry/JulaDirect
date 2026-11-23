@@ -283,7 +283,10 @@
       });
       recentQueries.forEach((query, index) => addTerms(query, Math.max(2, 9 - index)));
 
-      const searchTerms = [...termWeights.keys()].slice(0, 10);
+      const searchTerms = [...termWeights.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10)
+        .map(([term]) => term);
       const applyFilters = (query, includeBrand) => {
         if (filters.category && filters.category !== "All") query = query.eq("category_id", filters.category);
         if (filters.location && filters.location !== "all") query = query.ilike("location", "%" + clean(filters.location) + "%");
