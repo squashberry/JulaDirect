@@ -17,6 +17,27 @@
     const isPickupStation = () => document.querySelector('input[name="fulfillment"]:checked')?.value === "pickup_station";
     const selectedPayment = () => document.querySelector('input[name="payment"]:checked');
 
+    // Match the six service areas linked from the homepage "Shop near you" section.
+    const DELIVERY_AREAS = Object.freeze({
+        "Greater Banjul Area": ["Banjul", "Serrekunda", "Bakau", "Kololi", "Fajara"],
+        "West Coast Region": ["Brikama"]
+    });
+
+    function populateDeliveryAreas(preferredArea = "") {
+        const region = $("region")?.value || "";
+        const areaSelect = $("area");
+        if (!areaSelect) return;
+
+        const areas = DELIVERY_AREAS[region] || [];
+        areaSelect.innerHTML = '<option value="">' +
+            (region ? "Select area / town" : "Select region first") +
+            '</option>' +
+            areas.map(area => '<option value="' + escapeHTML(area) + '">' +
+                escapeHTML(area) + '</option>').join("");
+        areaSelect.disabled = areas.length === 0;
+        if (areas.includes(preferredArea)) areaSelect.value = preferredArea;
+    }
+
     /* ---------- cart helpers ---------- */
     async function migrateGuestCart() {
         let guestItems = [];
@@ -205,11 +226,10 @@
                 $("email").value = profile.email || session.user.email || "";
                 $("phone").value = profile.phone || saved.phone || "";
                 $("region").value = profile.region || saved.region || "";
-                $("area").value = profile.area || saved.area || "";
             }
             if (!$("email").value) $("email").value = session.user.email || "";
             if (!$("region").value && saved.region) $("region").value = saved.region;
-            if (!$("area").value && saved.area) $("area").value = saved.area;
+            populateDeliveryAreas(profile?.area || saved.area || "");
             if (saved.address) $("address").value = saved.address;
             if (saved.landmark) $("landmark").value = saved.landmark;
             if (saved.instructions) $("instructions").value = saved.instructions;
@@ -562,6 +582,15 @@
             if (document.referrer && history.length > 1) history.back(); else window.location.href = "cart.html";
         });
         document.querySelectorAll('input[name="fulfillment"]').forEach(input => input.addEventListener("change", () => { state.done[1] = false; calculateDelivery(); }));
+        $("region")?.addEventListener("change", () => {
+            state.done[1] = false;
+            populateDeliveryAreas();
+            fillSummaries();
+        });
+        $("area")?.addEventListener("change", () => {
+            state.done[1] = false;
+            fillSummaries();
+        });
         $("pickupStationArea")?.addEventListener("change", () => {
             state.done[1] = false;
             renderPickupStationsForArea();
