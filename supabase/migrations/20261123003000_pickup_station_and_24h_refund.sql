@@ -349,8 +349,12 @@ BEGIN
 
   v_window_hours := COALESCE(v_window_hours, 24);
 
-  IF v_payment.succeeded_at IS NULL
-     OR now() > v_payment.succeeded_at + make_interval(hours => v_window_hours) THEN
+  -- The 24-hour deadline applies until provider processing has begun.
+  -- Once the case is provider_pending, allow reconciliation/finalisation to
+  -- complete even if ModemPay confirms after the request window has elapsed.
+  IF v_case.status = 'approved'
+     AND (v_payment.succeeded_at IS NULL
+       OR now() > v_payment.succeeded_at + make_interval(hours => v_window_hours)) THEN
     RAISE EXCEPTION 'MODEMPAY_REFUND_WINDOW_EXPIRED';
   END IF;
 
