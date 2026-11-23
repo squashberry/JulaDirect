@@ -59,13 +59,18 @@ for (const method of ["wave", "qmoney", "afrimoney"]) {
 assert.match(allSql, /ALTER COLUMN refund_provider_window_hours SET DEFAULT 24/i);
 assert.match(allSql, /SET refund_provider_window_hours = 24/i);
 assert.match(allSql, /make_interval\(hours => v_window_hours\)/i);
-assert.match(allSql, /pickup_station_name text/i);
-assert.match(allSql, /JulaDirect Pickup Station/i);
+assert.match(allSql, /CREATE TABLE IF NOT EXISTS public\.pickup_stations/i);
+assert.match(allSql, /station_name text NOT NULL/i);
+assert.match(allSql, /'SRN'/i);
+assert.match(allSql, /pickup_station_id uuid/i);
+assert.match(allSql, /p_pickup_station_id uuid/i);
 assert.match(allSql, /gambasket_get_pickup_station_config/);
 assert.match(allSql, /gambasket_notify_pickup_station_ready/);
 assert.match(checkoutHtml, /24-hour refund eligibility/i);
 assert.match(checkoutHtml, /id="pickup" value="pickup_station"/i);
-assert.match(checkoutHtml, /Banjul, The Gambia/i);
+assert.match(checkoutHtml, /id="pickupStationArea"/i);
+assert.match(checkoutHtml, /id="pickupStationSelect"/i);
+assert.doesNotMatch(checkoutHtml, /Collect from our Banjul station/i);
 assert.match(checkoutHtml, /All requests are reviewed by JulaDirect/i);
 
 console.log("PASS: JulaDirect financial foundation schema and security contracts.");
