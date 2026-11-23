@@ -234,7 +234,7 @@
       if (recentIds.length) {
         try {
           const { data, error } = await c.from("products")
-            .select("id,category_id,title,attributes")
+            .select("id,category_id,title,description,attributes")
             .in("id", recentIds.slice(0, 8))
             .eq("status", "approved");
           if (!error) viewed = data || [];
@@ -278,6 +278,7 @@
         const recency = Math.max(1, 7 - index);
         addAttributes(p.attributes, recency);
         addTerms(p.title, recency + 2);
+        addTerms(p.description, recency + 1);
         addTerms(p.category_id, recency);
       });
       recentQueries.forEach((query, index) => addTerms(query, Math.max(2, 9 - index)));
