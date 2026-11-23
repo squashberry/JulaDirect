@@ -4,6 +4,11 @@
 
 BEGIN;
 
+-- Remove the pre-ModemPay trigger that rejected every non-COD payment method.
+-- The newer ModemPay trigger below now validates supported methods against
+-- server-created payment intents.
+DROP TRIGGER IF EXISTS orders_available_payment_methods_only ON public.orders;
+
 CREATE OR REPLACE FUNCTION public.create_order(
   p_items jsonb,
   p_fulfillment_type character varying,
