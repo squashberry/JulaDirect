@@ -87,7 +87,7 @@
                 <div class="seller-topbar">
                     <div>
                         <h1 class="seller-page-title">Customer Orders</h1>
-                        <p class="seller-page-subtitle">Track incoming purchases, fulfill items, and manage delivery status.</p>
+                        <p class="seller-page-subtitle">Manage incoming orders, delivery handovers and pickup-station collections.</p>
                     </div>
                 </div>
 
@@ -102,10 +102,11 @@
                     <input type="search" id="orderSearch" class="seller-input" style="flex:1;min-width:200px;" placeholder="Search by customer name, order number, or location...">
                     <select id="orderStatusFilter" class="seller-select">
                         <option value="all">All Orders</option>
-                        <option value="new">New / Pending</option>
+                        <option value="pending">New / Pending</option>
                         <option value="confirmed">Confirmed</option>
                         <option value="processing">Processing</option>
-                        <option value="ready">Ready for Pickup</option>
+                        <option value="ready_for_pickup">Ready for Pickup</option>
+                        <option value="ready_for_delivery">Ready for Courier</option>
                         <option value="completed">Completed</option>
                     </select>
                 </div>
@@ -151,6 +152,9 @@
 
         let allOrders = [];
         const tbody = document.getElementById("ordersTableBody");
+        const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, ch => ({
+            "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+        }[ch]));
 
         async function loadOrders() {
             try {
@@ -173,10 +177,13 @@
             const filter = document.getElementById("orderStatusFilter").value;
 
             const filtered = allOrders.filter(o => {
-                const num = (o.order_number || o.id || "").toLowerCase();
-                const cust = (o.delivery_name || o.customer_name || "Customer").toLowerCase();
-                const loc = (o.delivery_area || o.delivery_region || "").toLowerCase();
-                const status = (o.status || "new").toLowerCase();
+                const num = String(o.order_number || o.id || "").toLowerCase();
+                const cust = String(o.delivery_name || o.customer_name || "Customer").toLowerCase();
+                const station = Boolean(o.pickup_station_name);
+                const loc = station
+                    ? [o.pickup_station_name, o.pickup_station_city, o.pickup_station_address].filter(Boolean).join(" ").toLowerCase()
+                    : String(o.delivery_area || o.delivery_region || o.pickup_location || "").toLowerCase();
+                const status = String(o.order_status || o.status || "pending").toLowerCase();
 
                 if (query && !num.includes(query) && !cust.includes(query) && !loc.includes(query)) return false;
                 if (filter !== "all" && status !== filter) return false;
@@ -189,25 +196,35 @@
             }
 
             tbody.innerHTML = filtered.map(o => {
-                const status = o.status || "new";
+                const status = o.order_status || o.status || "pending";
+                const isStation = Boolean(o.pickup_station_name);
+                const isPickup = isStation || o.fulfillment_type === "pickup";
                 const num = o.order_number || ("#" + String(o.id).substring(0, 6));
                 const cust = o.delivery_name || o.customer_name || "Buyer";
                 const total = "D " + Number(o.total_amount || o.total || 0).toLocaleString();
-                const loc = o.delivery_area || o.delivery_region || "The Gambia";
+                const loc = isStation
+                    ? [o.pickup_station_name, o.pickup_station_city, o.pickup_station_address].filter(Boolean).join(", ")
+                    : (isPickup ? (o.pickup_location || "Seller pickup") : (o.delivery_area || o.delivery_region || "The Gambia"));
+                const destinationNote = isStation
+                    ? '<small class="seller-destination-note">Seller brings this order here. No courier is assigned.</small>'
+                    : "";
+                const nextAction = status === "pending"
+                    ? `<button class="seller-button seller-button-primary" style="min-height:30px;font-size:10px;" onclick="updateStatus('${escapeHtml(o.id)}', 'confirmed')">Confirm</button>`
+                    : status === "confirmed"
+                        ? `<button class="seller-button seller-button-primary" style="min-height:30px;font-size:10px;" onclick="updateStatus('${escapeHtml(o.id)}', 'processing')">Process</button>`
+                        : status === "processing"
+                            ? `<button class="seller-button seller-button-primary" style="min-height:30px;font-size:10px;" onclick="updateStatus('${escapeHtml(o.id)}', '${isPickup ? "ready_for_pickup" : "ready_for_delivery"}')">${isStation ? "Taken to station" : (isPickup ? "Ready for pickup" : "Ready for courier")}</button>`
+                            : status === "ready_for_pickup"
+                                ? `<button class="seller-button seller-button-primary" style="min-height:30px;font-size:10px;" onclick="updateStatus('${escapeHtml(o.id)}', 'completed')">Confirm collected</button>`
+                                : "";
                 return `
                     <tr>
-                        <td><strong>${num}</strong></td>
-                        <td>${cust}</td>
-                        <td>${loc}</td>
-                        <td><strong>${total}</strong></td>
-                        <td><span class="seller-status ${status === "completed" ? "success" : (status === "processing" ? "info" : "warning")}">${status.toUpperCase()}</span></td>
-                        <td>
-                            <div style="display:flex;gap:4px;">
-                                ${status === "new" ? `<button class="seller-button seller-button-primary" style="min-height:30px;font-size:10px;" onclick="updateStatus('${o.id}', 'confirmed')">Confirm</button>` : ""}
-                                ${status === "confirmed" ? `<button class="seller-button seller-button-primary" style="min-height:30px;font-size:10px;" onclick="updateStatus('${o.id}', 'processing')">Process</button>` : ""}
-                                ${status === "processing" ? `<button class="seller-button seller-button-primary" style="min-height:30px;font-size:10px;" onclick="updateStatus('${o.id}', 'ready')">Ready</button>` : ""}
-                            </div>
-                        </td>
+                        <td><strong>${escapeHtml(num)}</strong></td>
+                        <td>${escapeHtml(cust)}</td>
+                        <td><strong>${escapeHtml(loc)}</strong>${destinationNote}</td>
+                        <td><strong>${escapeHtml(total)}</strong></td>
+                        <td><span class="seller-status ${status === "completed" ? "success" : (status === "processing" ? "info" : "warning")}">${escapeHtml(status.replace(/_/g, " ").toUpperCase())}</span></td>
+                        <td><div style="display:flex;gap:4px;">${nextAction}</div></td>
                     </tr>
                 `;
             }).join("");
