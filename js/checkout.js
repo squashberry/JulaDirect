@@ -123,12 +123,12 @@
                 }
                 const hint = $(method + "ComingSoon");
                 if (hint) hint.textContent = enabled
-                    ? `Enter your ${PAY_LABEL[method] || method} wallet number on ModemPay.`
+                    ? `Choose ${PAY_LABEL[method] || method} on ModemPay and enter the number registered to that wallet.`
                     : "This payment method is temporarily unavailable.";
             });
             if (note) {
                 note.textContent = available.size
-                    ? "ModemPay will ask for the number registered to your selected wallet. Your JulaDirect contact number is not used for payment."
+                    ? "On ModemPay, confirm your selected wallet and enter the number registered to it. Your JulaDirect contact number is not used for payment."
                     : "No online payment methods are available right now. Please try again later.";
             }
         } catch (error) {
