@@ -47,6 +47,9 @@ assert.match(pickupRefundMigration, /make_interval\(hours => v_window_hours\)/);
 assert.match(pickupRefundMigration, /pickup_station_name text/);
 assert.match(pickupRefundMigration, /Only the Banjul pickup station is currently available/);
 assert.match(pickupRefundMigration, /No courier is assigned/);
+assert.match(pickupRefundMigration, /gambasket_get_pickup_station_config/);
+assert.match(pickupRefundMigration, /gambasket_notify_pickup_station_ready/);
+assert.doesNotMatch(pickupRefundMigration, /INSERT INTO public\.delivery_requests/i);
 assert.doesNotMatch(pickupRefundMigration, /interval '48 hours'/);
 
 assert.match(checkoutFn, /MODEMPAY_API_KEY/);
