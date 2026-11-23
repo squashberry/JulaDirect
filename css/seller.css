@@ -229,3 +229,13 @@ html { background: #eef1f8; }
    access is still gated by #sellerProtectedContent. */
 .seller-page:not(.seller-ready) .seller-main { opacity: 1; transform: none; }
 @media (prefers-reduced-motion: reduce) { @view-transition { navigation: none; } }
+
+/* Pickup-station destination guidance shown in seller orders */
+.seller-destination-note {
+  display: block;
+  max-width: 240px;
+  margin-top: 5px;
+  color: var(--text-secondary, #64748b);
+  font-size: 11px;
+  line-height: 1.4;
+}
