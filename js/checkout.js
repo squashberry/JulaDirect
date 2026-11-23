@@ -391,6 +391,11 @@
             const el = $(id);
             if (!el.checkValidity()) { el.reportValidity(); el.focus(); return false; }
         }
+        if (isPickupStation() && !selectedPickupStation()) {
+            showError("Choose an available pickup station for your selected area.");
+            $("pickupStationSelect")?.focus();
+            return false;
+        }
         const phone = $("phone");
         if (phone.value.replace(/\D/g, "").length < 7) {
             phone.setCustomValidity("Enter a phone number the seller can use to contact you.");
