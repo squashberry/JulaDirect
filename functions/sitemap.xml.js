@@ -19,12 +19,12 @@ async function credentials(env, request) {
 export async function onRequestGet({ request, env }) {
   const origin = new URL(request.url).origin;
   const entries = [["/", null, "daily", "1.0"], ["/explore", null, "hourly", "0.9"]];
-  ["/how-it-works", "/about", "/help", "/customer-care", "/security", "/privacy"].forEach(p => entries.push([p, null, "monthly", "0.4"]));
+  ["/how-it-works", "/about", "/help", "/customer-care", "/quick-sell", "/dropshipping", "/privacy"].forEach(p => entries.push([p, null, "monthly", "0.4"]));
 
   try {
     const c = await credentials(env, request);
     if (c) {
-      const res = await fetch(c.url + "/rest/v1/products?status=eq.approved&select=id,category_id,created_at,updated_at&order=updated_at.desc&limit=5000", {
+      const res = await fetch(c.url + "/rest/v1/products?status=eq.approved&select=id,category_id,seller_id,created_at,updated_at&order=updated_at.desc&limit=5000", {
         headers: { apikey: c.key, Authorization: "Bearer " + c.key, Accept: "application/json" }, signal: AbortSignal.timeout(5000)
       });
       if (res.ok) {
@@ -33,6 +33,9 @@ export async function onRequestGet({ request, env }) {
         rows.forEach(r => { if (r.category_id && r.category_id !== "All") cats.add(r.category_id); });
         [...cats].sort().forEach(cat => entries.push(["/explore?category=" + encodeURIComponent(cat), null, "daily", "0.7"]));
         rows.forEach(r => entries.push(["/product?id=" + r.id, r.updated_at || r.created_at || null, "weekly", "0.8"]));
+        [...new Set(rows.map(r => r.seller_id).filter(Boolean))].forEach(id => entries.push(["/seller?id=" + id, null, "weekly", "0.6"]));
+        const suppliers = await fetch(c.url + "/rest/v1/supplier_profiles?is_active=eq.true&select=id&limit=5000", { headers: { apikey: c.key, Authorization: "Bearer " + c.key, Accept: "application/json" }, signal: AbortSignal.timeout(5000) });
+        if (suppliers.ok) (await suppliers.json()).forEach(r => entries.push(["/supplier-profile?id=" + r.id, null, "weekly", "0.5"]));
       }
     }
   } catch (e) { /* static entries only */ }

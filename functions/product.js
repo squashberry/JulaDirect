@@ -62,10 +62,11 @@ export async function onRequestGet({ request, env, next }) {
     const price = money(p.price, p.currency);
     const title = p.title + " \u2014 JulaDirect";
     const clean = String(p.description || "").replace(/\s+/g, " ").trim();
-    const desc = (clean.slice(0, 155) || (p.title + " for " + price + (p.location ? " in " + p.location : "") + ". Pay on delivery on JulaDirect.")).trim();
+    const desc = (clean.slice(0, 155) || (p.title + " for " + price + (p.location ? " in " + p.location : "") + ". Check delivery and payment options at JulaDirect checkout.")).trim();
     const canonical = url.origin + "/product?id=" + id;
     const gallery = [p.main_image].concat((images || []).map(i => i.image_url)).map(httpsUrl).filter(Boolean);
     const image = gallery[0] || "";
+    const socialImage = image || (url.origin + "/assets/juladirect-og.svg");
     const sellerName = seller && seller.business_name ? seller.business_name : "";
 
     const ld = {
@@ -78,9 +79,9 @@ export async function onRequestGet({ request, env, next }) {
       '<link rel="canonical" href="' + esc(canonical) + '">' +
       '<meta property="og:type" content="product"><meta property="og:site_name" content="JulaDirect">' +
       '<meta property="og:title" content="' + esc(title) + '"><meta property="og:description" content="' + esc(desc) + '"><meta property="og:url" content="' + esc(canonical) + '">' +
-      (image ? '<meta property="og:image" content="' + esc(image) + '">' : "") +
+      '<meta property="og:image" content="' + esc(socialImage) + '"><meta property="og:image:secure_url" content="' + esc(socialImage) + '"><meta property="og:image:alt" content="' + esc(p.title) + ' on JulaDirect"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">' +
       '<meta property="product:price:amount" content="' + esc(Number(p.price || 0)) + '"><meta property="product:price:currency" content="' + esc(p.currency || "GMD") + '">' +
-      '<meta name="twitter:card" content="' + (image ? "summary_large_image" : "summary") + '"><meta name="twitter:title" content="' + esc(title) + '"><meta name="twitter:description" content="' + esc(desc) + '">' +
+      '<meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="' + esc(title) + '"><meta name="twitter:description" content="' + esc(desc) + '"><meta name="twitter:image" content="' + esc(socialImage) + '">' +
       '<script type="application/ld+json" id="jd-ld">' + JSON.stringify(ld).replace(/</g, "\\u003c") + "</script>";
 
     const attrs = p.attributes && typeof p.attributes === "object" ? Object.entries(p.attributes).filter(([, v]) => v !== null && typeof v !== "object" && String(v).trim() !== "").slice(0, 12) : [];

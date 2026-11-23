@@ -61,8 +61,9 @@
     const ld = {
       "@context": "https://schema.org", "@type": "Product", name: p.title,
       image: images.slice(0, 5), description: String(p.description || "").slice(0, 300),
-      offers: { "@type": "Offer", priceCurrency: p.currency || "GMD", price: Number(p.price || 0), availability: Number(p.stock || 0) > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock", url: location.href }
+      offers: { "@type": "Offer", priceCurrency: p.currency || "GMD", price: Number(p.price || 0), availability: Number(p.stock || 0) > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock", url: new URL("/product?id=" + encodeURIComponent(p.id), location.origin).href }
     };
+    ld.url = new URL("/product?id=" + encodeURIComponent(p.id), location.origin).href;
     if (seller) ld.offers.seller = { "@type": "Organization", name: JD.sellerName(seller) };
     if (count > 0) ld.aggregateRating = { "@type": "AggregateRating", ratingValue: avg.toFixed(1), reviewCount: count };
     let tag = document.getElementById("jd-ld");
@@ -334,10 +335,12 @@
   window.addEventListener("jd:pane:show", event => { if (event.detail && event.detail.route === "product") syncProductRoute(event.detail.url); });
 
   async function share() {
-    const title = current ? current.product.title : document.title;
+    const product = current && current.product;
+    const title = product ? product.title : document.title;
+    const shareUrl = product ? new URL("/product?id=" + encodeURIComponent(product.id), location.origin).href : location.href;
     try {
-      if (navigator.share) { await navigator.share({ title: title, url: location.href }); return; }
-      await navigator.clipboard.writeText(location.href);
+      if (navigator.share) { await navigator.share({ title: title, url: shareUrl }); return; }
+      await navigator.clipboard.writeText(shareUrl);
       JD.toast("Link copied", "ok");
     } catch (e) { /* cancelled or clipboard blocked */ }
   }

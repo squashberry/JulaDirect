@@ -260,7 +260,7 @@
   /* ---------- product card ---------- */
   JD.productCard = p => {
     const id = JD.esc(p.id);
-    const href = "product.html?id=" + encodeURIComponent(p.id);
+    const href = "/product?id=" + encodeURIComponent(p.id);
     const img = JD.safeUrl(p.main_image) || JD.placeholder;
     const s = p._seller || {};
     const stock = Number(p.stock || 0);

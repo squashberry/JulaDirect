@@ -65,10 +65,10 @@
   }
   function card(p, kind) {
     const tiers = kind === "supplier" && p.tiers && p.tiers.length ? '<div class="pf-tiers">' + p.tiers.slice(0, 3).map(t => "<span><b>" + money(t.price) + "</b> " + esc(t.qty) + "</span>").join("") + "</div>" : "";
-    return '<article class="pf-card"><a class="pf-card__media" href="' + esc(p.href || "product.html?id=" + encodeURIComponent(p.id || "")) + '" aria-label="' + esc(p.title) + '">' + media(p.image, p.title) + (p.badge ? '<span class="pf-card__badge">' + esc(p.badge) + "</span>" : "") + "</a>" +
+    return '<article class="pf-card"><a class="pf-card__media" href="' + esc(p.href || "/product?id=" + encodeURIComponent(p.id || "")) + '" aria-label="' + esc(p.title) + '">' + media(p.image, p.title) + (p.badge ? '<span class="pf-card__badge">' + esc(p.badge) + "</span>" : "") + "</a>" +
       '<button type="button" class="pf-card__fav" data-wish="' + esc(p.id || "") + '" aria-pressed="false" aria-label="Save to wishlist">' + I("heart", 18) + "</button>" +
       '<div class="pf-card__body"><div class="pf-card__price">' + (kind === "supplier" && p.priceFrom ? "<small>from</small> " : "") + money(p.price) + "</div>" +
-      '<a class="pf-card__title" href="' + esc(p.href || "product.html?id=" + encodeURIComponent(p.id || "")) + '">' + esc(p.title) + "</a>" + tiers +
+      '<a class="pf-card__title" href="' + esc(p.href || "/product?id=" + encodeURIComponent(p.id || "")) + '">' + esc(p.title) + "</a>" + tiers +
       '<div class="pf-card__meta">' + (kind === "supplier" && p.moq ? "<span>MOQ " + esc(p.moq) + "</span>" : p.rating ? stars(p.rating) + "<span>" + p.rating.toFixed(1) + "</span>" : "<span>New</span>") + (p.sold ? "<span>" + Number(p.sold).toLocaleString("en-GB") + " sold</span>" : "") + "</div></div></article>";
   }
   function productsPanel(kind) {
@@ -122,6 +122,40 @@
   }
 
   /* ---------------- mount ---------------- */
+  function setProfileMeta(d, kind) {
+    const id = kind === "supplier" ? d.supplierId : d.sellerId;
+    const route = kind === "supplier" ? "/supplier-profile" : "/seller";
+    const target = new URL(route, location.origin);
+    if (id) target.searchParams.set("id", id);
+    const canonical = target.href;
+    const description = String(d.about || d.tagline || (d.name + " on JulaDirect."))
+      .replace(/\\s+/g, " ").trim().slice(0, 155);
+    const image = url(d.cover) || url(d.avatar) || "https://juladirect.pages.dev/assets/juladirect-og.svg";
+    const title = d.name + (kind === "supplier" ? " — Supplier on JulaDirect" : " — Seller on JulaDirect");
+    const setMeta = (type, key, value) => {
+      const selector = "meta[" + type + "='" + key + "']";
+      let node = $(selector);
+      if (!node) { node = document.createElement("meta"); node.setAttribute(type, key); document.head.appendChild(node); }
+      node.setAttribute("content", value);
+    };
+    setMeta("name", "description", description);
+    setMeta("property", "og:type", "profile");
+    setMeta("property", "og:site_name", "JulaDirect");
+    setMeta("property", "og:title", title);
+    setMeta("property", "og:description", description);
+    setMeta("property", "og:url", canonical);
+    setMeta("property", "og:image", image);
+    setMeta("property", "og:image:alt", d.name + " profile on JulaDirect");
+    setMeta("name", "twitter:card", "summary_large_image");
+    setMeta("name", "twitter:title", title);
+    setMeta("name", "twitter:description", description);
+    setMeta("name", "twitter:image", image);
+    let link = $('link[rel="canonical"]');
+    if (!link) { link = document.createElement("link"); link.rel = "canonical"; document.head.appendChild(link); }
+    link.href = canonical;
+    document.title = title;
+  }
+
   function mount(opts) {
     opts = opts || {};
     const kind = opts.kind === "supplier" ? "supplier" : "seller";
@@ -133,7 +167,7 @@
       return;
     }
     state = { kind, data: d, products: (d.products || []).slice(), category: "All", sort: "new", q: "", following: !!d.following, reviews: d.reviews };
-    document.title = d.name + " — JulaDirect";
+    setProfileMeta(d, kind);
     const panels = kind === "supplier"
       ? { catalog: productsPanel(kind), about: aboutPanel(d, kind), capabilities: capabilitiesPanel(d), reviews: reviewsPanel(d.reviews), faq: faqPanel(d) }
       : { products: productsPanel(kind), about: aboutPanel(d, kind), reviews: reviewsPanel(d.reviews), policies: policiesPanel(d) };
@@ -173,7 +207,16 @@
     else if (k === "message") emit("message", { profile: state.data });
     else if (k === "quote") sheet(true);
     else if (k === "close") sheet(false);
-    else if (k === "share") { const u = location.href; emit("share", { url: u }); if (navigator.share) navigator.share({ title: state.data.name, url: u }).catch(() => {}); else if (navigator.clipboard) navigator.clipboard.writeText(u).then(() => window.JD && JD.toast && JD.toast("Link copied")).catch(() => {}); }
+    else if (k === "share") {
+      const id = state.kind === "supplier" ? state.data.supplierId : state.data.sellerId;
+      const path = state.kind === "supplier" ? "/supplier-profile" : "/seller";
+      const shareUrl = new URL(path, location.origin);
+      if (id) shareUrl.searchParams.set("id", id);
+      const u = shareUrl.href;
+      emit("share", { url: u });
+      if (navigator.share) navigator.share({ title: state.data.name, url: u }).catch(() => {});
+      else if (navigator.clipboard) navigator.clipboard.writeText(u).then(() => window.JD && JD.toast && JD.toast("Link copied")).catch(() => {});
+    }
   });
   document.addEventListener("input", e => { if (e.target.id === "pf-q") { state.q = e.target.value.trim().toLowerCase(); paintGrid(); emit("search", { q: state.q }); } });
   document.addEventListener("change", e => { if (e.target.id === "pf-sort") { state.sort = e.target.value; paintGrid(); emit("sort", { sort: state.sort }); } });

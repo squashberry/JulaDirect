@@ -47,7 +47,7 @@
       sold: Number(p.sales_count || 0),
       stock: Number(p.stock || 0),
       image: p.main_image || "",
-      href: "product.html?id=" + encodeURIComponent(p.id)
+      href: "/product?id=" + encodeURIComponent(p.id)
     };
   }
 
