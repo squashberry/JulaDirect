@@ -207,3 +207,6 @@ Product page v4: photos use object-fit: cover to fill the canvas (lightbox still
 
 ## Seller & Supplier profiles (UI only)
 `seller.html` and `supplier-profile.html` render through `js/jd-profile.js` + `css/jd-profile.css` (`pf-` prefix). Wire by calling `JDProfile.mount({kind, data})`, `setProducts`, `setReviews`, and listening to `jdprofile:*` events (follow, message, share, search, sort, filter, quote). Demo data at the bottom of the JS documents the expected shapes.
+
+## Restaurant service (off by default)
+Controlled by `platform_features.restaurants` (admin toggle at `admin/restaurants.html`). While OFF: no home section, no account row, `restaurants.html` / `restaurant.html` / `restaurant-studio.html` redirect home, and RLS returns no restaurant rows. Files: `js/jd-food.js` (data + flag), `jd-food-home.js`, `jd-food-browse.js`, `jd-food-page.js` (artistic menu), `jd-food-studio.js`, `css/jd-food.css`. Migration: `20261123140000_restaurants.sql`. Preview without backend: `localStorage.jdFoodDemo = "1"`. Orders emit `jdfood:order` and fall back to WhatsApp/call.

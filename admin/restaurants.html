@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>JulaDirect · Restaurants</title>
+<style>
+:root{--ink:#172033;--muted:#687386;--line:#e5eaf1;--blue:#2563eb;--bg:#f5f7fb}*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 Inter,system-ui,sans-serif}
+header{background:#fff;border-bottom:1px solid var(--line);padding:18px max(20px,calc((100vw - 1050px)/2));display:flex;justify-content:space-between;gap:16px}header a{color:var(--blue);font-weight:700;text-decoration:none}
+.wrap{max-width:1050px;margin:32px auto;padding:0 18px}h1{margin:0 0 4px;font-size:28px}p{color:var(--muted);margin:4px 0}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:20px;margin:14px 0;box-shadow:0 5px 18px #17203308}
+.sw{display:flex;align-items:center;gap:16px;justify-content:space-between;flex-wrap:wrap}
+.tog{position:relative;width:64px;height:36px;border-radius:99px;border:0;background:#cbd5e1;cursor:pointer;transition:.25s;flex:none}.tog::after{content:"";position:absolute;left:4px;top:4px;width:28px;height:28px;border-radius:50%;background:#fff;transition:.3s cubic-bezier(.34,1.7,.5,1);box-shadow:0 2px 6px #0003}.tog[aria-checked=true]{background:#16a34a}.tog[aria-checked=true]::after{left:32px}
+.r{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:14px 0;border-bottom:1px solid var(--line)}.r:last-child{border:0}.r div{flex:1;min-width:200px}
+.pill{font-size:12px;font-weight:800;padding:4px 10px;border-radius:99px;text-transform:uppercase}.pending{background:#fff6e0;color:#8a5a00}.approved{background:#e6f8ee;color:#126b3a}.suspended{background:#ffe9ec;color:#a3152c}
+button.b{border:0;border-radius:10px;padding:9px 14px;font-weight:700;cursor:pointer}.ok{background:var(--blue);color:#fff}.no{background:#fff1f2;color:#be123c}
+#st{color:var(--muted)}
+</style><script src="../js/jd-jelly.js" defer></script></head>
+<body><header><strong>JulaDirect · Admin</strong><nav><a href="index.html">Back to control center</a></nav></header>
+<main class="wrap"><h1>Restaurants</h1><p>Turn the restaurant service on or off for the whole website, and approve restaurants.</p>
+<div id="st" role="status">Checking administrator access…</div>
+<section class="card" id="flag" hidden><div class="sw"><div><strong>Restaurant service</strong><p id="flag-d"></p></div><button class="tog" id="tog" role="switch" aria-checked="false" aria-label="Restaurant service"></button></div></section>
+<section class="card" id="list" hidden></section></main>
+<script src="../js/config.js"></script><script src="../js/supabase.js"></script><script src="../js/auth-errors.js"></script><script src="../js/auth-guard.js"></script><script src="../js/jd-food.js"></script>
+<script>
+(async function(){"use strict";
+ const st=document.getElementById("st"),tog=document.getElementById("tog"),list=document.getElementById("list"),esc=JDFood.esc;let on=false;
+ await GamBasketAuth.ready();const s=await GamBasketAuth.getSession();if(!s?.user){st.textContent="Please sign in with an administrator account.";return;}
+ const {data:ok,error}=await GamBasketAuth.getClient().rpc("is_gambasket_admin");if(error||!ok){st.textContent="Administrator access is required.";return;}
+ st.textContent="";document.getElementById("flag").hidden=false;list.hidden=false;
+ function paintFlag(){tog.setAttribute("aria-checked",String(on));document.getElementById("flag-d").textContent=on?"ON: restaurants and meals are visible across the website.":"OFF: no restaurants or meals appear anywhere. The site looks exactly as before.";}
+ try{on=await JDFood.adminFlag();}catch(e){st.textContent="Run the restaurants migration first ("+(e.message||e)+")";}paintFlag();
+ tog.onclick=async()=>{tog.disabled=true;try{await JDFood.setEnabled(!on);on=!on;paintFlag();}catch(e){alert(e.message||"Could not change setting");}tog.disabled=false;};
+ async function load(){let rows=[];try{rows=await JDFood.adminList();}catch(e){list.innerHTML="<p>Could not load restaurants.</p>";return;}
+  list.innerHTML="<strong>"+rows.length+" restaurant(s)</strong>"+(rows.map(r=>'<div class="r"><div><b>'+esc(r.name)+'</b> <span class="pill '+esc(r.status)+'">'+esc(r.status)+'</span><p>'+esc((r.cuisines||[]).join(", "))+" · "+esc(r.location||"")+" · "+esc(r.phone||"")+'</p></div>'+(r.status!=="approved"?'<button class="b ok" data-a="'+esc(r.id)+'" data-s="approved">Approve</button>':"")+(r.status!=="suspended"?'<button class="b no" data-a="'+esc(r.id)+'" data-s="suspended">Suspend</button>':"")+'</div>').join("")||"<p>No restaurants have signed up yet.</p>");}
+ list.onclick=async e=>{const b=e.target.closest("[data-a]");if(!b)return;b.disabled=true;try{await JDFood.adminSetStatus(b.dataset.a,b.dataset.s);await load();}catch(er){alert(er.message);b.disabled=false;}};
+ load();})();
+</script></body></html>
