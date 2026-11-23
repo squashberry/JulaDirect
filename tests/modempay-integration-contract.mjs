@@ -2,11 +2,12 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 const read = (path) => readFile(new URL("../" + path, import.meta.url), "utf8");
-const [migration, codMigration, onlineOnlyMigration, checkoutFn, webhookFn, payoutFn, deliveryFn, refundFn, configFn, checkoutUi, deliveryUi, ordersUi, walletUi, codWalletUi, codAdminUi, supplierEarnings] =
+const [migration, codMigration, onlineOnlyMigration, pickupRefundMigration, checkoutFn, webhookFn, payoutFn, deliveryFn, refundFn, configFn, checkoutUi, deliveryUi, ordersUi, walletUi, codWalletUi, codAdminUi, supplierEarnings] =
   await Promise.all([
     read("supabase/migrations/20261114160000_gambasket_modempay_finance_lifecycle.sql"),
     read("supabase/migrations/20261114170000_gambasket_cod_commission_reserve.sql"),
     read("supabase/migrations/20261123001500_online_payment_only_checkout.sql"),
+    read("supabase/migrations/20261123003000_pickup_station_and_24h_refund.sql"),
     read("supabase/functions/gambasket-modempay-checkout/index.ts"),
     read("supabase/functions/gambasket-modempay-webhook/index.ts"),
     read("supabase/functions/gambasket-modempay-payouts/index.ts"),
@@ -19,7 +20,7 @@ const [migration, codMigration, onlineOnlyMigration, checkoutFn, webhookFn, payo
 
 assert.match(migration, /commission_rate/);
 assert.match(migration, /interval '24 hours'/);
-assert.match(migration, /interval '48 hours'/);
+
 assert.match(migration, /gambasket_guard_order_payment_method/);
 assert.match(migration, /gambasket_process_modempay_charge/);
 assert.match(migration, /gambasket_process_modempay_transfer_event/);
@@ -41,6 +42,12 @@ assert.match(codMigration, /NEW\.order_status='confirmed'/);
 assert.match(onlineOnlyMigration, /v_method NOT IN \('wave','qmoney','afrimoney'\)/);
 assert.match(onlineOnlyMigration, /ONLINE_PAYMENT_REQUIRED/);
 assert.match(onlineOnlyMigration, /DROP TRIGGER IF EXISTS orders_available_payment_methods_only ON public\.orders/);
+assert.match(pickupRefundMigration, /refund_provider_window_hours = 24/);
+assert.match(pickupRefundMigration, /make_interval\(hours => v_window_hours\)/);
+assert.match(pickupRefundMigration, /pickup_station_name text/);
+assert.match(pickupRefundMigration, /Only the Banjul pickup station is currently available/);
+assert.match(pickupRefundMigration, /No courier is assigned/);
+assert.doesNotMatch(pickupRefundMigration, /interval '48 hours'/);
 
 assert.match(checkoutFn, /MODEMPAY_API_KEY/);
 assert.ok(checkoutFn.includes("/v1/payments"));
@@ -69,8 +76,10 @@ assert.match(checkoutUi, /payment_method: payment/);
 assert.doesNotMatch(checkoutUi, /gambasket_cod_checkout_eligibility|cash_on_delivery/i);
 const checkoutPage = await read("checkout.html");
 assert.doesNotMatch(checkoutPage, /id="cod"/i);
-assert.match(checkoutPage, /48-hour refund eligibility/i);
-assert.match(checkoutPage, /subject to JulaDirect review/i);
+assert.match(checkoutPage, /24-hour refund eligibility/i);
+assert.match(checkoutPage, /All requests are reviewed by JulaDirect/i);
+assert.match(checkoutPage, /Pickup station/);
+assert.match(checkoutPage, /Banjul, The Gambia/);
 assert.match(codWalletUi, /seller_get_cod_reserve_summary/);
 assert.match(codWalletUi, /seller_fund_cod_commission_reserve/);
 assert.match(codWalletUi, /seller_set_cod_checkout_enabled/);
