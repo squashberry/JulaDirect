@@ -79,13 +79,13 @@ export async function onRequestGet({ request, env, next }) {
       '<link rel="canonical" href="' + esc(canonical) + '">' +
       '<meta property="og:type" content="product"><meta property="og:site_name" content="JulaDirect">' +
       '<meta property="og:title" content="' + esc(title) + '"><meta property="og:description" content="' + esc(desc) + '"><meta property="og:url" content="' + esc(canonical) + '">' +
-      '<meta property="og:image" content="' + esc(socialImage) + '"><meta property="og:image:secure_url" content="' + esc(socialImage) + '"><meta property="og:image:alt" content="' + esc(p.title) + ' on JulaDirect"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">' +
+      '<meta property="og:image" content="' + esc(socialImage) + '"><meta property="og:image:secure_url" content="' + esc(socialImage) + '"><meta property="og:image:alt" content="' + esc(p.title) + ' on JulaDirect">' +
       '<meta property="product:price:amount" content="' + esc(Number(p.price || 0)) + '"><meta property="product:price:currency" content="' + esc(p.currency || "GMD") + '">' +
       '<meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="' + esc(title) + '"><meta name="twitter:description" content="' + esc(desc) + '"><meta name="twitter:image" content="' + esc(socialImage) + '">' +
       '<script type="application/ld+json" id="jd-ld">' + JSON.stringify(ld).replace(/</g, "\\u003c") + "</script>";
 
     const attrs = p.attributes && typeof p.attributes === "object" ? Object.entries(p.attributes).filter(([, v]) => v !== null && typeof v !== "object" && String(v).trim() !== "").slice(0, 12) : [];
-    const rows2 = [["Condition", p.condition], ["Category", p.category_id], ["Location", p.location], ["Availability", Number(p.stock || 0) > 0 ? "In stock" : "Out of stock"], ["Delivery", p.delivery_available === true ? "Available" : "Not offered"]]
+    const rows2 = [["Condition", p.condition], ["Category", p.category_id], ["Location", p.location], ["Availability", Number(p.stock || 0) > 0 ? "In stock" : "Out of stock"], ["Delivery", "Available"]]
       .concat(attrs.map(([k, v]) => [String(k).replace(/[_-]+/g, " ").replace(/^./, ch => ch.toUpperCase()), v])).filter(r => r[1]);
     const ssr = '<article class="jd-ssr">' +
       '<nav aria-label="Breadcrumb"><a href="/">Home</a> / <a href="/explore">Explore</a>' + (p.category_id ? ' / <a href="/explore?category=' + encodeURIComponent(p.category_id) + '">' + esc(p.category_id) + "</a>" : "") + "</nav>" +
