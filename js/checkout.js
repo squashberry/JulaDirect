@@ -90,6 +90,33 @@
         }
     }
 
+    async function loadPickupStationConfig() {
+        const input = $("pickup");
+        const badge = $("pickupStationAvailability");
+        if (!input) return;
+        input.disabled = true;
+        try {
+            const client = window.GamBasketAuth?.getClient?.() || window.supabaseClient;
+            if (!client) throw new Error("Pickup station configuration is unavailable.");
+            const { data, error } = await client.rpc("gambasket_get_pickup_station_config");
+            const available = !error && data?.available === true && String(data?.city || "").toLowerCase() === "banjul";
+            input.disabled = !available;
+            if (badge) {
+                badge.textContent = available ? "Banjul only" : "Temporarily unavailable";
+                badge.className = available ? "payment-availability-badge" : "payment-coming-soon-badge";
+            }
+            const note = $("pickupStationFields");
+            if (note && !available) note.hidden = true;
+        } catch (error) {
+            input.disabled = true;
+            if (badge) {
+                badge.textContent = "Temporarily unavailable";
+                badge.className = "payment-coming-soon-badge";
+            }
+            console.warn("[JulaDirect Pickup Station] configuration is not deployed yet:", error);
+        }
+    }
+
     /* ---------- init ---------- */
     async function init() {
         decorate();
@@ -123,6 +150,7 @@
             const result = await window.GamBasketAuth.getCart();
             state.cart = result.items || [];
             await loadModemPayConfig();
+            await loadPickupStationConfig();
             if (!state.cart.length) {
                 const placed = new URLSearchParams(location.search).get("placed");
                 window.location.replace(placed ? `orders.html?order=${encodeURIComponent(placed)}&placed=1` : "cart.html");
