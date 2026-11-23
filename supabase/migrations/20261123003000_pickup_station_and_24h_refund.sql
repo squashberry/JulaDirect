@@ -9,6 +9,9 @@ ALTER TABLE public.orders
   ADD COLUMN IF NOT EXISTS pickup_station_city text,
   ADD COLUMN IF NOT EXISTS pickup_station_address text;
 
+ALTER TABLE public.gambasket_finance_settings
+  ALTER COLUMN refund_provider_window_hours SET DEFAULT 24;
+
 UPDATE public.gambasket_finance_settings
 SET refund_provider_window_hours = 24,
     updated_at = now()
