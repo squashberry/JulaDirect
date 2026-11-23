@@ -242,3 +242,18 @@ body.ms-embed .ms-shell { height: 100dvh; min-height: 0; margin: 0; max-width: n
 .ms-b.has-img.has-cap img { margin-bottom: 7px; }
 .ms-b.has-img.has-cap { overflow: hidden; }
 .ms-b.has-img.has-cap > :not(img):not(.ms-up) { padding: 0 10px; }
+
+/* composer sizing on narrow phones */
+.ms-field textarea::placeholder { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ms-comp { align-items: flex-end; gap: 8px; }
+@media (max-width: 520px) {
+  .ms-comp { padding: 8px 10px calc(10px + env(safe-area-inset-bottom, 0px)); }
+  .ms-sq { width: 44px; height: 44px; border-radius: 14px; }
+  .ms-sq svg { width: 22px; height: 22px; }
+  .ms-field { min-height: 44px; padding: 0 6px 0 14px; border-radius: 22px; }
+  .ms-field textarea { font-size: 16px; line-height: 22px; padding: 11px 0; height: 44px; }
+  .ms-field .ms-emoji { width: 36px; height: 36px; margin-bottom: 3px; }
+  .ms-send { width: 48px; height: 48px; }
+  .ms-send .ms-ic svg { width: 22px; height: 22px; }
+  .ms-rec { min-height: 44px; }
+}

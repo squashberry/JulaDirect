@@ -532,7 +532,7 @@
     }
 
     /* ---------- UI ---------- */
-    function autosizeState() { const i = $("messageInput"); i.style.height = "auto"; i.style.height = "52px"; i.style.height = `${Math.min(Math.max(i.scrollHeight, 52), 100)}px`; syncMode(); }
+    function autosizeState() { const i = $("messageInput"); i.style.height = "auto"; const base = window.innerWidth <= 520 ? 44 : 52; i.style.height = base + "px"; i.style.height = `${Math.min(Math.max(i.scrollHeight, base), 100)}px`; syncMode(); }
     function bindUI() {
         bindJelly(document);
         $("conversationSearch").addEventListener("input", e => { state.search = e.target.value; renderConversations(); });
