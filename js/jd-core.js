@@ -10,6 +10,22 @@
   const CFG = window.GAMBASKET_CONFIG || {};
   const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+  /* Install the root-scoped service worker so failed navigations can show
+     the cached JulaDirect offline page instead of the browser's network error. */
+  (function registerOfflineWorker() {
+    if (!("serviceWorker" in navigator)) return;
+    if (location.protocol !== "https:" && location.hostname !== "localhost") return;
+    if (window.__jdOfflineWorkerRegistration) return;
+    window.__jdOfflineWorkerRegistration = navigator.serviceWorker
+      .register("/sw.js", { scope: "/" })
+      .catch(error => {
+        window.__jdOfflineWorkerRegistration = null;
+        console.warn("[JulaDirect] offline support registration failed:", error && error.message);
+        return null;
+      });
+  })();
+
+
   /* ---------- utilities ---------- */
   /* Shell-level listeners must never be scoped to a single tab (see jd-router.js). */
   const rawOn = (t, type, fn, o) => (JD.rawAddEventListener || EventTarget.prototype.addEventListener).call(t, type, fn, o);

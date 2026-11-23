@@ -5,6 +5,19 @@
 (() => {
     "use strict";
 
+    // Legacy pages that don't load jd-core still need the root offline worker.
+    if ("serviceWorker" in navigator &&
+        (location.protocol === "https:" || location.hostname === "localhost") &&
+        !window.__jdOfflineWorkerRegistration) {
+        window.__jdOfflineWorkerRegistration = navigator.serviceWorker
+            .register("/sw.js", { scope: "/" })
+            .catch(error => {
+                window.__jdOfflineWorkerRegistration = null;
+                console.warn("[JulaDirect] offline support registration failed:", error && error.message);
+                return null;
+            });
+    }
+
     // Development mode console logging helper
     const log = (msg, data = "") => {
         const isDev = window.location.hostname === "localhost" || 
@@ -414,7 +427,7 @@
         }
 
         showOfflineScreen() {
-            if (this.offlinePageRedirecting || window.location.pathname === "/offline.html") return;
+            if (this.offlinePageRedirecting || /^\/offline(?:\.html)?\/?$/.test(window.location.pathname)) return;
             this.offlinePageRedirecting = true;
             this.hideSoftOfflineNotice();
             this.hideOfflineScreen(); // Clean up a leftover overlay from an older cached script.
