@@ -1315,11 +1315,24 @@
 
             try {
                 if (client) {
-                    const { data, error } = await client
+                    const orderItemsSelect = "order_items(id, product_id, title, price, quantity, subtotal)";
+                    const withStationFields = "id, order_number, fulfillment_type, delivery_address, delivery_area, delivery_phone, pickup_station_name, pickup_station_city, pickup_station_address, pickup_location, subtotal, delivery_fee, total, currency, payment_status, payment_method, order_status, created_at, " + orderItemsSelect;
+                    const legacyOrderFields = "id, order_number, fulfillment_type, delivery_address, delivery_area, delivery_phone, pickup_location, subtotal, delivery_fee, total, currency, payment_status, payment_method, order_status, created_at, " + orderItemsSelect;
+                    let { data, error } = await client
                         .from("orders")
-                        .select("*, order_items(id, product_id, title, price, quantity, subtotal)")
+                        .select(withStationFields)
                         .eq("buyer_id", userId)
                         .order("created_at", { ascending: false });
+
+                    // Keep order history working while the pickup-station migration
+                    // is being applied to production.
+                    if (error && /pickup_station_(name|city|address)|42703|PGRST204/i.test(String(error.message || error.code || ""))) {
+                        ({ data, error } = await client
+                            .from("orders")
+                            .select(legacyOrderFields)
+                            .eq("buyer_id", userId)
+                            .order("created_at", { ascending: false }));
+                    }
 
                     if (!error && Array.isArray(data)) {
                         const formatted = data.map(order => ({
