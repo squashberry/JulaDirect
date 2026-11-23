@@ -43,13 +43,22 @@ assert.match(refunds, /CREATE TABLE public\.delivery_otp_confirmations/);
 assert.match(refunds, /REVOKE ALL ON TABLE public\.order_refund_cases, public\.order_refund_events,/);
 assert.match(refunds, /No client policy exists for delivery_otp_confirmations/);
 
-const checkoutGuard = allSql.includes("guard_available_checkout_payment_method")
-  && allSql.includes("NEW.payment_method IS DISTINCT FROM 'cash_on_delivery'");
-assert.ok(checkoutGuard, "Online checkout must remain locked until signed provider integration is complete.");
+const onlineOnly = readFileSync(
+  "supabase/migrations/20261123001500_online_payment_only_checkout.sql",
+  "utf8"
+);
+assert.match(onlineOnly, /v_method NOT IN \('wave','qmoney','afrimoney'\)/);
+assert.match(onlineOnly, /ONLINE_PAYMENT_REQUIRED/);
+assert.match(onlineOnly, /NEW\.payment_method IN \('pending_online','wave','qmoney','afrimoney'\)/);
 
 const checkoutHtml = readFileSync("checkout.html", "utf8");
-assert.match(checkoutHtml, /id="cod"[^>]*checked/i, "Cash on Delivery should remain the default payment option.");
+assert.doesNotMatch(checkoutHtml, /id="cod"/i, "Cash on Delivery must not be offered to buyers.");
+for (const method of ["wave", "qmoney", "afrimoney"]) {
+  assert.match(checkoutHtml, new RegExp('id="' + method + '"'));
+}
+assert.match(checkoutHtml, /48-hour refund request window/i);
+assert.match(checkoutHtml, /reviewed by JulaDirect/i);
 
 console.log("PASS: JulaDirect financial foundation schema and security contracts.");
-console.log("PASS: 5% commission, 24-hour release policy, seller payout reservations and private OTP records.");
-console.log("PASS: Cash on Delivery remains enabled while online payment integration is incomplete.");
+console.log("PASS: 5% commission, 24-hour seller release window, 48-hour provider refund window and private OTP records.");
+console.log("PASS: New orders require Wave, QMoney or Afrimoney; COD remains historical only.");
