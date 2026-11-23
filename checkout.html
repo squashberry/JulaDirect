@@ -37,8 +37,8 @@
                         <div class="ck-seg" role="radiogroup" aria-label="How do you want to get it?">
                             <div class="choice" id="deliveryChoice"><input type="radio" name="fulfillment" id="delivery" value="delivery" checked><label for="delivery"><span class="ck-seg__ico" data-ico="truck"></span><strong>Delivery</strong><span>To your address</span></label></div>
                             <div class="choice" id="pickupStationChoice"><input type="radio" name="fulfillment" id="pickup" value="pickup_station" disabled><label for="pickup"><span class="ck-seg__ico" data-ico="store"></span><strong>Pickup station <span id="pickupStationAvailability" class="payment-coming-soon-badge">Checking availability…</span></strong><span>Choose an available collection station</span></label></div>
-                            <div class="choice" id="sellerPickupChoice"><input type="radio" name="fulfillment" id="sellerPickup" value="pickup"><label for="sellerPickup"><span class="ck-seg__ico" data-ico="store"></span><strong>Collect from seller</strong><span>Arrange collection directly with the seller through JulaDirect messages</span></label></div>
                         </div>
+                        <p id="fulfillmentAvailabilityNote" class="checkout-note" hidden></p>
                         <div class="field-grid">
                             <div class="field"><label for="fullName">Full name</label><input id="fullName" required autocomplete="name" placeholder="Your name"></div>
                             <div class="field"><label for="phone">Phone number</label><input id="phone" type="tel" inputmode="tel" placeholder="+220 000 0000" required autocomplete="tel"></div>
