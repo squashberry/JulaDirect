@@ -81,13 +81,6 @@ function safeProviderMessage(value: unknown) {
     .slice(0, 500);
 }
 
-function localGambianAccountNumber(value: unknown): string {
-  const digits = String(value || "").replace(/\D/g, "");
-  if (digits.startsWith("00220") && digits.length === 12) return digits.slice(5);
-  if (digits.startsWith("220") && digits.length === 10) return digits.slice(3);
-  return digits;
-}
-
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
@@ -119,7 +112,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const orderRows = await rest(
-      "orders?select=id,order_number,buyer_id,seller_id,total,currency,payment_status,payment_method,order_status,delivery_phone" +
+      "orders?select=id,order_number,buyer_id,seller_id,total,currency,payment_status,payment_method,order_status" +
       "&id=eq." + encodeURIComponent(orderId) +
       "&buyer_id=eq." + encodeURIComponent(user.id) +
       "&limit=1"
@@ -135,13 +128,6 @@ Deno.serve(async (req: Request) => {
       order.order_status === "cancelled"
     ) {
       return json({ error: "This order is not eligible for online payment." }, 409);
-    }
-
-    const accountNumber = localGambianAccountNumber(order.delivery_phone);
-    if (!/^\d{7}$/.test(accountNumber)) {
-      return json({
-        error: "Enter a valid 7-digit Gambian mobile number to continue with ModemPay."
-      }, 400);
     }
 
     const prior = await rest(
@@ -213,10 +199,10 @@ Deno.serve(async (req: Request) => {
           currency: "GMD",
           title: "JulaDirect order " + order.order_number,
           description: "Secure payment for your JulaDirect order",
-          // ModemPay mobile-wallet Direct Charge uses network + a local 7-digit
-          // account_number. payment_methods is a different method restriction field.
+          // Keep the selected wallet network, but deliberately omit account_number.
+          // ModemPay then creates a hosted payment intent and asks the payer to
+          // enter the number registered to that wallet on its own checkout page.
           network: method,
-          account_number: accountNumber,
           metadata: {
             gambasket_payment_id: paymentId,
             gambasket_order_id: order.id
