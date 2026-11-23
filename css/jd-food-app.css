@@ -119,3 +119,36 @@
 @media (prefers-reduced-motion:reduce){.fa *{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 .fa-cover span{animation:faBob2 3.6s ease-in-out infinite!important}
 @keyframes faBob2{50%{transform:translateY(-10px) rotate(5deg)}}
+/* ---- icons & polish ---- */
+.fa .fi{display:block;flex:none}
+.fa-pill i svg{color:var(--fa-o2)}.fa-pill[aria-pressed=true] i svg{color:#fff}
+.fa-rb svg,.fa-filter svg{margin:auto}.fa-filter{display:grid;place-items:center;color:var(--fa-ink)}.fa-filter[aria-pressed=true]{color:#fff}
+.fa-si{display:grid;color:var(--fa-mut)}
+.fa-nav b{display:grid;place-items:center;font-weight:400}.fa-nav button svg{stroke-width:2}
+.fa-time svg{color:var(--fa-o2)}
+.fa-star{display:inline-flex;align-items:center;gap:3px}.fa-star svg,.fa-tag--i svg{color:#f5a524}
+.fa-tag--i{display:inline-flex;align-items:center;gap:4px}.fa-tag--i svg[viewBox]:not([class*=x]){flex:none}
+.fa-spicy{display:inline-flex;vertical-align:-1px}.fa-spicy svg,.fa-row strong svg{color:#e5384f}
+.fa-row strong{display:inline-flex;align-items:center;gap:6px}
+.fa-card__e svg{width:150px;height:150px;filter:drop-shadow(0 18px 18px rgba(0,0,0,.3))}
+.fa-hero-e svg{width:min(62vw,250px);height:auto;filter:drop-shadow(0 30px 24px rgba(120,50,0,.35))}
+.fa-hero-e{font-size:0}
+.fa-crumb{color:var(--fa-o1)}
+.th .fi-plate,.fa-row .th .fi-plate,.fa-line .th .fi-plate{width:76%;height:76%}
+.fa-stack i .fi-plate{width:100%;height:100%}
+.fa-rest__img svg{color:#fff;width:42px;height:42px}
+.fa-cover span{font-size:0}.fa-cover span svg{width:128px;height:128px;filter:drop-shadow(0 14px 14px rgba(0,0,0,.3))}
+.fa-go svg{margin:auto}
+.fa-set a svg,.fa-set button svg{color:var(--fa-o2)}
+.fa-empty b{display:grid;place-items:center;margin-bottom:10px;color:#cdbfb3}
+.fa-done__i{color:var(--fa-o2)}
+.fa-meal__top .fa-rb[aria-pressed=true]{color:#fff}
+.fa-note{display:grid;gap:6px;margin:6px 0 10px;font-weight:700;font-size:13px;color:var(--fa-mut)}
+.fa-note textarea{font:inherit;font-weight:500;border:1.5px solid #eadfd5;border-radius:16px;padding:12px;background:#faf6f2;color:var(--fa-ink);resize:none;min-height:56px}.fa-note textarea:focus{outline:0;border-color:var(--fa-o1)}
+.fa-closed{display:flex;gap:8px;align-items:center;background:#fff1e0;color:#a35a00;font-weight:700;font-size:13.5px;border-radius:16px;padding:12px 14px;margin:14px 0 0}
+.fa-add:disabled{background:#d9d0c8;box-shadow:none}
+.fa-sk{border-radius:20px;background:linear-gradient(100deg,#f1e7de 30%,#fbf5ef 50%,#f1e7de 70%);background-size:200% 100%;animation:faSk 1.3s linear infinite}
+@keyframes faSk{to{background-position:-200% 0}}
+.fa :focus-visible{outline:3px solid rgba(242,106,0,.55);outline-offset:2px;border-radius:14px}
+.fa-nav button:focus-visible{outline-offset:-3px}
+.fa-nav b svg{width:22px;height:22px}
