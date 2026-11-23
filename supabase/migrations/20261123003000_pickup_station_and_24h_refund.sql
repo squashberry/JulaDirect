@@ -143,6 +143,50 @@ BEGIN
 END;
 $function$;
 
+-- Notify the buyer when the seller physically takes the order to the station.
+CREATE OR REPLACE FUNCTION public.gambasket_notify_pickup_station_ready()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO ''
+AS $fn$
+BEGIN
+  IF NEW.pickup_station_name IS NOT NULL
+     AND NEW.order_status = 'ready_for_pickup'
+     AND OLD.order_status IS DISTINCT FROM NEW.order_status THEN
+    INSERT INTO public.notifications(user_id, type, title, message, data)
+    VALUES (
+      NEW.buyer_id,
+      'order',
+      'Your order is ready at the Banjul pickup station',
+      'Your order has reached the JulaDirect Pickup Station in Banjul and is ready for collection.',
+      jsonb_build_object(
+        'order_id', NEW.id,
+        'fulfillment_type', 'pickup_station',
+        'pickup_station_name', NEW.pickup_station_name,
+        'pickup_station_city', NEW.pickup_station_city,
+        'pickup_station_address', NEW.pickup_station_address
+      )
+    );
+  END IF;
+  RETURN NEW;
+END;
+$fn$;
+
+REVOKE ALL ON FUNCTION public.gambasket_notify_pickup_station_ready()
+FROM PUBLIC, anon, authenticated;
+
+DROP TRIGGER IF EXISTS orders_notify_pickup_station_ready ON public.orders;
+CREATE TRIGGER orders_notify_pickup_station_ready
+AFTER UPDATE OF order_status ON public.orders
+FOR EACH ROW
+WHEN (
+  OLD.order_status IS DISTINCT FROM NEW.order_status
+  AND NEW.order_status = 'ready_for_pickup'
+  AND NEW.pickup_station_name IS NOT NULL
+)
+EXECUTE FUNCTION public.gambasket_notify_pickup_station_ready();
+
 CREATE OR REPLACE FUNCTION public.gambasket_request_order_refund(
   p_order_id uuid,
   p_amount numeric,
