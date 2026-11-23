@@ -688,7 +688,7 @@ test("Checkout offers online payment only and explains the refund request window
   await expect(page.locator("#region option")).toHaveCount(3);
   await expect(page.locator("#region")).not.toContainText("North Bank Region");
   await expect(page.locator("#paymentAvailabilityNote")).toContainText("pay securely online");
-  await expect(page.locator("#refundWindowNote")).toContainText("24-hour refund eligibility");
+  await expect(page.locator("#refundWindowNote")).toContainText("submitted within 24 hours");
   await expect(page.locator("#refundWindowNote")).toContainText("All requests are reviewed by JulaDirect");
   for (const id of ["wave", "qmoney", "afrimoney"]) {
     await expect(page.locator(`#${id}`)).toBeDisabled();
