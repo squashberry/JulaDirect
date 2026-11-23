@@ -92,7 +92,7 @@
     const stock = Number(p.stock || 0), reviews = d.reviews || [];
     const avg = reviews.length ? reviews.reduce((t, r) => t + Number(r.rating || 0), 0) / reviews.length : 0;
     const sold = Number(p.sales_count || 0), sellerName = JD.sellerName(s), verified = !!(s && s.is_seller_verified), cid = JD.esc(p.id);
-    const avatar = JD.safeUrl(s && s.avatar_url), delivery = p.delivery_available === true;
+    const avatar = JD.safeUrl(s && s.avatar_url), delivery = true;
     qty = 1;
     document.title = p.title + " — JulaDirect";
     const meta = document.querySelector('meta[name="description"]');

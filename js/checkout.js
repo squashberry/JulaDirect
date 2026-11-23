@@ -15,7 +15,7 @@
 
     const isDelivery = () => document.querySelector('input[name="fulfillment"]:checked')?.value === "delivery";
     const isPickupStation = () => document.querySelector('input[name="fulfillment"]:checked')?.value === "pickup_station";
-    const canDeliverCart = () => state.cart.length > 0 && state.cart.every(item => productFor(item).delivery_available === true);
+    const canDeliverCart = () => state.cart.length > 0;
     const canUsePickupStation = () => state.pickupStations.length > 0;
 
     function applyFulfillmentAvailability() {

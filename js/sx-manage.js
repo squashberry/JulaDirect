@@ -141,37 +141,49 @@
   });
 
   /* =====================================================
-     PICKUP & DELIVERY (per listing)
+     PICKUP LOCATION (delivery is mandatory on every listing)
      ===================================================== */
   SX.register("delivery", "Pickup & delivery", async function (el) {
     el.innerHTML = skel(3);
     const { data: store } = await client().from("stores").select("location").eq("seller_id", uid()).maybeSingle();
-    let products = (await D.products(true)).filter(p => p.status !== "archived");
+    const products = (await D.products(true)).filter(p => p.status !== "archived");
     const paint = () => {
-      const on = products.filter(p => p.delivery_available).length;
-      el.innerHTML = '<div class="sx-note sx-note--info">Buyers can always collect from your pickup location. Switch <b>delivery</b> on for listings a courier can bring to the buyer. Pickup location defaults to your store address' + (store && store.location ? " (" + esc(store.location) + ")" : "") + ".</div>" +
-        '<div class="sx-toolbar" style="margin-top:14px"><b>' + on + " of " + products.length + ' listings offer delivery</b><span class="sx-toolbar__space"></span><button class="sx-btn sx-btn--sm" data-dl="all" type="button">Enable for all</button><button class="sx-btn sx-btn--sm" data-dl="none" type="button">Disable for all</button></div>' +
-        (products.length ? '<section class="sx-card"><div class="sx-card__body"><div class="sx-rows">' + products.map(p => '<div class="sx-row sm-dl"><div class="sm-dl__p">' + thumb(p.main_image, p.title) + '<div><div class="sx-row__t">' + esc(p.title) + '</div><div class="sx-row__s">' + esc(U.label(p.status)) + '</div></div></div><label class="sx-field sm-dl__loc">Pickup location<input class="sx-input" data-dl-loc="' + esc(p.id) + '" value="' + esc(p.location || "") + '" maxlength="120" placeholder="' + esc((store && store.location) || "Where buyers collect") + '"></label><label class="sm-switch"><input type="checkbox" data-dl-on="' + esc(p.id) + '"' + (p.delivery_available ? " checked" : "") + '><span>Delivery</span></label></div>').join("") + "</div></div></section>" : empty("No listings yet", "Add a product, then choose how buyers receive it.", '<p><a class="sx-btn sx-btn--primary" href="#/add">Add a product</a></p>'));
+      el.innerHTML =
+        '<div class="sx-note sx-note--info">Delivery is required for every JulaDirect listing. Keep each pickup location up to date so a courier knows where to collect the order. Delivery fees and service areas are confirmed at checkout.' +
+          (store && store.location ? " Your store address is " + esc(store.location) + "." : "") +
+        '</div>' +
+        '<div class="sx-toolbar" style="margin-top:14px"><b>Delivery required · ' + products.length + ' listings</b><span class="sx-toolbar__space"></span></div>' +
+        (products.length
+          ? '<section class="sx-card"><div class="sx-card__body"><div class="sx-rows">' +
+            products.map(p =>
+              '<div class="sx-row sm-dl"><div class="sm-dl__p">' + thumb(p.main_image, p.title) +
+              '<div><div class="sx-row__t">' + esc(p.title) + '</div><div class="sx-row__s">' + esc(U.label(p.status)) + '</div></div></div>' +
+              '<label class="sx-field sm-dl__loc">Courier pickup location<input class="sx-input" data-dl-loc="' + esc(p.id) +
+              '" value="' + esc(p.location || "") + '" maxlength="120" placeholder="' + esc((store && store.location) || "Where the courier collects") + '"></label>' +
+              '<span class="sx-pill">Delivery required</span></div>'
+            ).join("") +
+            "</div></div></section>"
+          : empty("No listings yet", "Add a product and delivery will be included automatically.", '<p><a class="sx-btn sx-btn--primary" href="#/add">Add a product</a></p>'));
       hydrate(el);
     };
     paint();
     const save = async (id, patch) => {
       const { error } = await client().from("products").update(patch).eq("id", id).eq("seller_id", uid());
       if (error) throw error;
-      const p = products.find(x => x.id === id); if (p) Object.assign(p, patch); D.invalidate();
+      const p = products.find(x => x.id === id);
+      if (p) Object.assign(p, patch);
+      D.invalidate();
     };
     el.onchange = async ev => {
       const t = ev.target;
+      if (!t.hasAttribute("data-dl-loc")) return;
       try {
-        if (t.hasAttribute("data-dl-on")) { await save(t.getAttribute("data-dl-on"), { delivery_available: t.checked }); toast(t.checked ? "Delivery on" : "Delivery off", "good"); const b = $(".sx-toolbar b", el); b.textContent = products.filter(p => p.delivery_available).length + " of " + products.length + " listings offer delivery"; }
-        else if (t.hasAttribute("data-dl-loc")) { await save(t.getAttribute("data-dl-loc"), { location: t.value.trim() || null }); toast("Pickup location saved", "good"); }
-      } catch (err) { toast(errMsg(err), "bad"); paint(); }
-    };
-    el.onclick = async ev => {
-      const b = ev.target.closest("[data-dl]"); if (!b) return;
-      const to = b.getAttribute("data-dl") === "all"; b.disabled = true;
-      try { for (const p of products) if (!!p.delivery_available !== to) await save(p.id, { delivery_available: to }); toast(to ? "Delivery enabled for all listings" : "Delivery disabled for all listings", "good"); } catch (err) { toast(errMsg(err), "bad"); }
-      paint();
+        await save(t.getAttribute("data-dl-loc"), { location: t.value.trim() || null });
+        toast("Courier pickup location saved", "good");
+      } catch (err) {
+        toast(errMsg(err), "bad");
+        paint();
+      }
     };
   });
 
@@ -223,7 +235,7 @@
       '<div class="sm-two">' + field("Price (GMD)", input("apPrice", p.price, { type: "number", ph: "0" })) + field("Stock", input("apStock", p.stock == null ? 1 : p.stock, { type: "number", ph: "1" })) + "</div>" +
       field("Description", '<textarea class="sx-textarea" id="apDesc" rows="5" maxlength="2000" placeholder="Condition, what is included, anything a buyer should know">' + esc(p.description || "") + "</textarea>") +
       field("Pickup location", input("apLoc", p.location || (U.state.store && U.state.store.location), { max: 120, ph: "e.g. Serrekunda" })) +
-      '<label class="sm-switch"><input type="checkbox" id="apDel"' + (p.delivery_available ? " checked" : "") + "><span>Offer delivery for this product</span></label></div></section>" +
+      '<p class="sx-note sx-note--info">Delivery is required for every JulaDirect listing and is included automatically.</p></div></section>' +
       '<section class="sx-card"><div class="sx-card__body" id="apAttrs"></div></section></div>' +
       '<aside class="sm-stack" style="max-width:none"><section class="sx-card"><div class="sx-card__head"><h2>Photos</h2><span class="sx-hint" style="margin:0">Up to 8 · first is the cover</span></div><div class="sx-card__body"><div class="sm-photos" id="apPhotos"></div><input type="file" id="apFile" accept="image/jpeg,image/png,image/webp,image/gif" multiple class="sx-sr"></div></section>' +
       '<section class="sx-card"><div class="sx-card__body"><dl class="sx-kv" style="grid-template-columns:1fr auto"><dt>Price</dt><dd id="apPv">—</dd><dt>Est. fee (' + FEE + '%)</dt><dd id="apFee">—</dd><dt>You receive</dt><dd id="apNet"><b>—</b></dd></dl><p class="sx-hint">Estimate only. New listings and price changes are reviewed before buyers see them.</p>' +
@@ -284,7 +296,7 @@
         const urls = [];
         for (const x of photos) urls.push(x.file ? await auth().uploadImage(x.file, "products") : x.url);
         const attributes = attrs && attrs.read ? attrs.read($("#apAttrs")) : (p.attributes || {});
-        const row = { title, price, currency: "GMD", category_id: val("apCat"), attributes, description: desc, condition: val("apCond"), stock, location: loc, delivery_available: $("#apDel").checked, main_image: urls[0] };
+        const row = { title, price, currency: "GMD", category_id: val("apCat"), attributes, description: desc, condition: val("apCond"), stock, location: loc, delivery_available: true, main_image: urls[0] };
         let pid = p.id;
         if (pid) { const { error } = await client().from("products").update(row).eq("id", pid).eq("seller_id", uid()); if (error) throw error; await client().from("product_images").delete().eq("product_id", pid); }
         else { const { data, error } = await client().from("products").insert({ ...row, status: "pending_review", seller_id: uid() }).select("id").single(); if (error) throw error; pid = data.id; }

@@ -71,7 +71,7 @@
                             seller_type: seller?.seller_type === "business" ? "business" : "individual",
                             has_business_store: seller?.has_business_store === true,
                             store_name: seller?.business_name || null,
-                            delivery_available: data.delivery_available === true,
+                            delivery_available: true,
                             description: data.description || "",
                             listing_type: data.listing_type || "retail",
                             wholesale_price: data.wholesale_price,
@@ -204,7 +204,7 @@
             delivery.hidden = !p.delivery_available;
             delivery.style.display = p.delivery_available ? "" : "none";
             const note = delivery.querySelector("[data-delivery-note]");
-            if (note) note.textContent = "The seller offers delivery. Charges and service area are confirmed at checkout.";
+            if (note) note.textContent = "Delivery is available on all JulaDirect listings. Charges and service area are confirmed at checkout.";
         }
         const compareButton = document.getElementById("detailCompareBtn");
         if (compareButton) {

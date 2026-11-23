@@ -758,7 +758,7 @@
                 seller: row.seller || row.store_name || "JulaDirect member",
                 seller_type: row.seller_type === "business" ? "business" : "individual",
                 seller_verified: Boolean(row.seller_verified),
-                delivery_available: row.delivery_available === true,
+                delivery_available: true,
                 fulfillment_type: row.fulfillment_type || null,
                 store_name: row.store_name || null,
                 description: row.description || ""
