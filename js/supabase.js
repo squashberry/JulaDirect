@@ -1083,20 +1083,17 @@
         getConversation: async function (conversationId) {
             await this.ready();
             const client = this.getClient();
-            const { data: conversation, error } = await client
-                .from("conversations")
-                .select("id, product_id, order_id, created_at, updated_at, product:products(id, title, price, stock, status, main_image)")
-                .eq("id", conversationId)
-                .single();
-            if (error) throw error;
-            const messages = await this.getConversationMessages(conversationId);
-            const session = await this.getSession();
-            const { data: members, error: memberError } = await client
-                .from("conversation_participants")
-                .select("user_id")
-                .eq("conversation_id", conversationId);
-            if (memberError) throw memberError;
-            const other = (members || []).find(member => member.user_id !== session?.user?.id);
+            /* Everything that does not depend on another result runs together. */
+            const [convRes, msgs, session, memRes] = await Promise.all([
+                client.from("conversations").select("id, product_id, order_id, created_at, updated_at, product:products(id, title, price, stock, status, main_image)").eq("id", conversationId).single(),
+                this.getConversationMessages(conversationId),
+                this.getSession(),
+                client.from("conversation_participants").select("user_id").eq("conversation_id", conversationId)
+            ]);
+            if (convRes.error) throw convRes.error;
+            if (memRes.error) throw memRes.error;
+            const conversation = convRes.data, messages = msgs;
+            const other = (memRes.data || []).find(member => member.user_id !== session?.user?.id);
             let otherProfile = null;
             if (other?.user_id) {
                 const { data: safeProfile, error: profileError } = await client

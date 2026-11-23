@@ -124,18 +124,24 @@
         if (!$("messagesShell")) return;
         fillStaticIcons(); bindUI(); buildPopovers();
         $("conversationList").innerHTML = '<div class="ms-skel"></div><div class="ms-skel"></div><div class="ms-skel"></div>';
+        /* Direct-to-chat links (?conversation / ?product): show the chat pane at once and open it first; the list loads after. */
+        const direct = /[?&](conversation|product)=/.test(location.search);
+        if (direct) {
+            document.body.classList.add("ms-open"); $("chatEmpty").hidden = true;
+            const chat = $("chatEmpty").parentNode, w = document.createElement("div");
+            w.id = "chatOpening"; w.style.cssText = "position:absolute;inset:0;display:grid;place-items:center;color:#66759a;font-weight:600;background:#fff;z-index:2";
+            w.innerHTML = "<span>Opening chat…</span>"; chat.appendChild(w);
+        }
+        const clearOpening = () => { const w = $("chatOpening"); if (w) w.remove(); };
         await window.GamBasketAuth.ready();
         const session = await window.GamBasketAuth.getSession();
         if (!session?.user) { location.href = `login.html?redirect=${encodeURIComponent(location.href)}`; return; }
         state.user = session.user;
-        /* Direct-to-chat links (?conversation / ?product) open the chat immediately; the list loads alongside, not before. */
-        const direct = /[?&](conversation|product)=/.test(location.search);
-        if (direct) document.body.classList.add("ms-open");
-        const listP = loadConversations();
-        const routeP = direct ? routeFromUrl(location.href) : null;
-        await listP; state.loaded = true;
-        if (routeP) { await routeP; if (!state.active) document.body.classList.remove("ms-open"); }
-        else await routeFromUrl(location.href);
+        if (direct) {
+            try { await routeFromUrl(location.href); } finally { clearOpening(); }
+            if (!state.active) { document.body.classList.remove("ms-open"); $("chatEmpty").hidden = false; }
+            await loadConversations(); state.loaded = true;
+        } else { await loadConversations(); state.loaded = true; await routeFromUrl(location.href); }
     }
     async function routeFromUrl(href) {
         const u = new URL(href, location.href);
@@ -170,7 +176,7 @@
         try {
             const result = await window.GamBasketAuth.startConversation(productId);
             const id = result?.conversation?.id || result?.id;
-            if (id) { history.replaceState({}, "", `messages.html?conversation=${encodeURIComponent(id)}&product=${encodeURIComponent(productId)}`); await loadConversations(); await openConversation(id); }
+            if (id) { history.replaceState({}, "", `messages.html?conversation=${encodeURIComponent(id)}&product=${encodeURIComponent(productId)}`); await openConversation(id); }
         } catch (error) { console.error("[JulaDirect Start Conversation]", error); showToast("Unable to start conversation", "Please try again."); }
     }
 
