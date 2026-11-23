@@ -56,7 +56,13 @@ assert.doesNotMatch(checkoutHtml, /id="cod"/i, "Cash on Delivery must not be off
 for (const method of ["wave", "qmoney", "afrimoney"]) {
   assert.match(checkoutHtml, new RegExp('id="' + method + '"'));
 }
-assert.match(checkoutHtml, /48-hour refund eligibility/i);
+assert.match(allSql, /SET refund_provider_window_hours = 24/i);
+assert.match(allSql, /make_interval\(hours => v_window_hours\)/i);
+assert.match(allSql, /pickup_station_name text/i);
+assert.match(allSql, /JulaDirect Pickup Station/i);
+assert.match(checkoutHtml, /24-hour refund eligibility/i);
+assert.match(checkoutHtml, /id="pickup" value="pickup_station"/i);
+assert.match(checkoutHtml, /Banjul, The Gambia/i);
 assert.match(checkoutHtml, /subject to JulaDirect review/i);
 
 console.log("PASS: JulaDirect financial foundation schema and security contracts.");
