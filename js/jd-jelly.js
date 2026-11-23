@@ -256,3 +256,38 @@
 
   window.Jelly = { slide, sheet, pop, edge };
 })();
+
+/* ---------- Boot loader: a small jelly bag that drops in, pours out its items, flips back and repeats ---------- */
+(function () {
+  "use strict";
+  if (/[?&]embed=1/.test(location.search) || window.__jdBoot) return;
+  window.__jdBoot = true;
+  var reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var css = document.createElement("style");
+  css.textContent =
+    "#jd-boot{position:fixed;inset:0;z-index:2147483000;display:grid;place-items:center;background:rgba(7,17,43,.42);backdrop-filter:blur(2px);transition:opacity .3s}" +
+    "#jd-boot.is-out{opacity:0;pointer-events:none}" +
+    "#jd-boot .b-drop{width:96px;height:140px;animation:jdbDrop .75s cubic-bezier(.2,.9,.3,1) both}" +
+    "#jd-boot svg{width:96px;height:140px;overflow:visible;display:block}" +
+    "#jd-boot .b-bag{transform-origin:48px 96px;animation:jdbFlip 2.6s ease-in-out .7s infinite}" +
+    "#jd-boot .b-it{transform-box:fill-box;transform-origin:center;opacity:0;animation:jdbPour 2.6s ease-in .7s infinite}" +
+    "#jd-boot .b-it:nth-of-type(2){animation-delay:.82s}#jd-boot .b-it:nth-of-type(3){animation-delay:.94s}#jd-boot .b-it:nth-of-type(4){animation-delay:1.06s}" +
+    "@keyframes jdbDrop{0%{transform:translateY(-70vh) scale(.9,1.15)}55%{transform:translateY(0) scale(1.18,.8)}72%{transform:translateY(-14px) scale(.93,1.08)}86%{transform:translateY(0) scale(1.05,.95)}100%{transform:none}}" +
+    "@keyframes jdbFlip{0%,10%{transform:rotate(0) scale(1,1)}18%{transform:rotate(0) scale(1.08,.9)}38%,58%{transform:rotate(180deg) scale(.96,1.06)}66%{transform:rotate(180deg) scale(1.08,.92)}84%{transform:rotate(360deg) scale(.95,1.07)}92%{transform:rotate(360deg) scale(1.06,.94)}100%{transform:rotate(360deg) scale(1,1)}}" +
+    "@keyframes jdbPour{0%,34%{opacity:0;transform:translate(0,0) scale(.4)}40%{opacity:1;transform:translate(0,6px) scale(1)}62%{opacity:1;transform:translate(var(--dx),64px) rotate(var(--r)) scale(1)}72%{opacity:0;transform:translate(var(--dx),70px) rotate(var(--r)) scale(.7)}100%{opacity:0}}" +
+    (reduce ? "#jd-boot .b-drop,#jd-boot .b-bag,#jd-boot .b-it{animation:none}#jd-boot .b-it{opacity:0}" : "");
+  document.head.appendChild(css);
+  var el = document.createElement("div");
+  el.id = "jd-boot"; el.setAttribute("role", "status"); el.setAttribute("aria-label", "Loading");
+  el.innerHTML = '<div class="b-drop"><svg viewBox="0 0 96 140" aria-hidden="true"><g class="b-bag">' +
+    '<circle class="b-it" cx="38" cy="62" r="7" fill="#ffc83d" style="--dx:-26px;--r:-90deg"/><rect class="b-it" x="44" y="56" width="14" height="14" rx="4" fill="#ff6b8a" style="--dx:4px;--r:120deg"/><circle class="b-it" cx="52" cy="64" r="6" fill="#4ade9b" style="--dx:30px;--r:90deg"/><rect class="b-it" x="40" y="60" width="12" height="12" rx="3" fill="#7aa5ff" style="--dx:-6px;--r:-140deg"/>' +
+    '<path d="M16 50h64l-5 58c-.5 6-5 10-11 10H32c-6 0-10.500-4-11-10L16 50Z" fill="#1451e6"/><path d="M16 50h64l-1.200 14H17.200L16 50Z" fill="#0e3dbd"/>' +
+    '<path d="M34 50V40a14 14 0 0 1 28 0v10" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round"/><ellipse cx="34" cy="86" rx="5" ry="9" fill="#fff" opacity=".18"/></g></svg></div>';
+  function mount() { if (document.body && !el.parentNode) document.body.appendChild(el); }
+  mount(); document.addEventListener("DOMContentLoaded", mount);
+  var t0 = Date.now(), gone = false;
+  function hide() { if (gone) return; gone = true; el.classList.add("is-out"); setTimeout(function () { el.remove(); css.remove(); }, 350); }
+  function ready() { var wait = Math.max(0, 1500 - (Date.now() - t0)); setTimeout(hide, wait); }
+  if (document.readyState === "complete") ready(); else window.addEventListener("load", ready);
+  setTimeout(hide, 7000);
+})();
