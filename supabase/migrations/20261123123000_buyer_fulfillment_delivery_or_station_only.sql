@@ -152,9 +152,7 @@ BEGIN
 
   RETURN v_order;
 END;
-$function$
-
-
+$function$;
 ALTER FUNCTION public.create_order(
   jsonb, character varying, uuid, text, character varying, character varying,
   character varying, text, character varying, character varying
