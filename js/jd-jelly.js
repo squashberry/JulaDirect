@@ -283,11 +283,15 @@
     '<circle class="b-it" cx="38" cy="62" r="7" fill="#ffc83d" style="--dx:-26px;--r:-90deg"/><rect class="b-it" x="44" y="56" width="14" height="14" rx="4" fill="#ff6b8a" style="--dx:4px;--r:120deg"/><circle class="b-it" cx="52" cy="64" r="6" fill="#4ade9b" style="--dx:30px;--r:90deg"/><rect class="b-it" x="40" y="60" width="12" height="12" rx="3" fill="#7aa5ff" style="--dx:-6px;--r:-140deg"/>' +
     '<path d="M16 50h64l-5 58c-.5 6-5 10-11 10H32c-6 0-10.500-4-11-10L16 50Z" fill="#1451e6"/><path d="M16 50h64l-1.200 14H17.200L16 50Z" fill="#0e3dbd"/>' +
     '<path d="M34 50V40a14 14 0 0 1 28 0v10" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round"/><ellipse cx="34" cy="86" rx="5" ry="9" fill="#fff" opacity=".18"/></g></svg></div>';
+  /* Only the very first load of a visit, and only if it is actually slow (>350ms). Later pages and back/forward never show it. */
+  var seen = false, nav = performance.getEntriesByType && performance.getEntriesByType("navigation")[0];
+  try { seen = sessionStorage.getItem("jdBooted") === "1"; sessionStorage.setItem("jdBooted", "1"); } catch (e) {}
+  if (seen || (nav && nav.type === "back_forward") || document.readyState === "complete") { css.remove(); return; }
+  var shownAt = 0, gone = false;
   function mount() { if (document.body && !el.parentNode) document.body.appendChild(el); }
-  mount(); document.addEventListener("DOMContentLoaded", mount);
-  var t0 = Date.now(), gone = false;
-  function hide() { if (gone) return; gone = true; el.classList.add("is-out"); setTimeout(function () { el.remove(); css.remove(); }, 350); }
-  function ready() { var wait = Math.max(0, 1500 - (Date.now() - t0)); setTimeout(hide, wait); }
-  if (document.readyState === "complete") ready(); else window.addEventListener("load", ready);
+  function show() { if (gone) return; mount(); shownAt = Date.now(); }
+  function hide() { if (gone) return; gone = true; if (!shownAt) { css.remove(); return; } var wait = Math.max(0, 800 - (Date.now() - shownAt)); setTimeout(function () { el.classList.add("is-out"); setTimeout(function () { el.remove(); css.remove(); }, 350); }, wait); }
+  setTimeout(show, 350);
+  window.addEventListener("load", hide);
   setTimeout(hide, 7000);
 })();

@@ -230,6 +230,17 @@
   }
   JD.refreshCartCount = refreshCartCount;
 
+  /* Button loading state: label is replaced by the little jelly bag; width is kept so nothing jumps. */
+  JD.busy = (btn, on) => {
+    if (!btn) return;
+    if (on) {
+      if (btn.__jdBusy) return; btn.__jdBusy = btn.innerHTML; btn.style.minWidth = btn.offsetWidth + "px"; btn.style.minHeight = btn.offsetHeight + "px";
+      btn.classList.add("is-busy"); btn.setAttribute("aria-busy", "true"); btn.disabled = true;
+      btn.innerHTML = '<span class="jd-bag" aria-hidden="true"><svg viewBox="0 0 40 40"><g class="jd-bag__g"><circle class="jd-bag__i" cx="17" cy="19" r="2.6"/><rect class="jd-bag__i" x="20" y="18" width="5" height="5" rx="1.5"/><path d="M8 17h24l-2 15a3 3 0 0 1-3 2.500H13A3 3 0 0 1 10 32L8 17Z"/><path d="M14 17v-3a6 6 0 0 1 12 0v3" fill="none" stroke="currentColor" stroke-width="2.600" stroke-linecap="round"/></g></svg></span><span class="jd-sr">Loading</span>';
+    } else if (btn.__jdBusy != null) {
+      btn.innerHTML = btn.__jdBusy; btn.__jdBusy = null; btn.style.minWidth = btn.style.minHeight = ""; btn.classList.remove("is-busy"); btn.removeAttribute("aria-busy"); btn.disabled = false;
+    }
+  };
   JD.addToCart = async (id, qty) => {
     const A = JD.auth();
     if (!A) { JD.toast("Shopping is unavailable right now.", "error"); return { success: false }; }
@@ -353,9 +364,8 @@
         } catch (err) { JD.toast("We could not update your wishlist.", "error"); }
       } else if (add) {
         e.preventDefault();
-        add.disabled = true;
-        await JD.addToCart(add.getAttribute("data-add"), 1);
-        add.disabled = false;
+        JD.busy(add, true);
+        try { await JD.addToCart(add.getAttribute("data-add"), 1); } finally { JD.busy(add, false); }
       } else if (cmp) {
         e.preventDefault();
         const r = JD.compare.toggle(cmp.getAttribute("data-compare"));

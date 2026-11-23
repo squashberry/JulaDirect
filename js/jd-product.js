@@ -391,9 +391,9 @@
     else if ((b = t("[data-lightbox]"))) openLightbox(Number(b.getAttribute("data-lightbox")));
     else if ((b = t("img[data-zoom]"))) openLightbox(Number(b.getAttribute("data-zoom")));
     else if ((b = t("[data-qty]"))) setQty(qty + Number(b.getAttribute("data-qty")));
-    else if ((b = t("[data-pdp-add]"))) { b.disabled = true; await JD.addToCart(current.product.id, qty); b.disabled = false; }
-    else if ((b = t("[data-pdp-buy]"))) { b.disabled = true; const r = await JD.addToCart(current.product.id, qty); if (r && r.success) location.href = "checkout.html"; else b.disabled = false; }
-    else if (t("#jd-msg") || t("#jd-msg-2")) messageSeller();
+    else if ((b = t("[data-pdp-add]"))) { JD.busy(b, true); try { await JD.addToCart(current.product.id, qty); } finally { JD.busy(b, false); } }
+    else if ((b = t("[data-pdp-buy]"))) { JD.busy(b, true); let r; try { r = await JD.addToCart(current.product.id, qty); } catch (e) {} if (r && r.success) location.href = "checkout.html"; else JD.busy(b, false); }
+    else if ((b = t("#jd-msg") || t("#jd-msg-2"))) { JD.busy(b, true); try { await messageSeller(); } finally { setTimeout(() => JD.busy(b, false), 4000); } }
     else if (t("#jd-share-2")) share();
     else if (t("#pd-report")) openReport();
     else if ((b = t("#pd-desc-toggle"))) { const d = document.getElementById("pd-desc"), open = d.classList.toggle("is-clamped") === false; b.textContent = open ? "Show less" : "Read more"; b.setAttribute("aria-expanded", String(open)); }

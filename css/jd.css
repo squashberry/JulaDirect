@@ -1094,3 +1094,15 @@ form.sx-hasvs button.sx-cam > svg { display: none; }
 form.sx-hasvs.vs-on button.sx-cam .sx-vthumb { transform: scale(1.08); }
 @keyframes sxThumb { from { transform: scale(.2) rotate(-12deg); opacity: 0; } to { transform: none; opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .sx-vthumb { animation: none; } }
+
+/* ---------- button loading: the jelly bag replaces the label ---------- */
+.jd-bag{display:inline-grid;place-items:center;width:26px;height:26px;color:currentColor}
+.jd-bag svg{width:26px;height:26px;overflow:visible;fill:currentColor}
+.jd-bag__g{transform-origin:20px 26px;animation:jdBagFlip 1.6s ease-in-out infinite}
+.jd-bag__i{fill:#ffc83d;opacity:0;transform-box:fill-box;transform-origin:center;animation:jdBagPour 1.6s ease-in infinite}
+.jd-bag__i:nth-child(2){fill:#ff6b8a;animation-delay:.1s}
+.is-busy{cursor:progress}
+.jd-btn.is-busy:disabled,.is-busy:disabled{opacity:1}
+@keyframes jdBagFlip{0%,12%{transform:rotate(0) scale(1)}22%{transform:rotate(0) scale(1.1,.88)}40%,60%{transform:rotate(180deg) scale(.95,1.08)}72%{transform:rotate(180deg) scale(1.1,.9)}90%,100%{transform:rotate(360deg) scale(1)}}
+@keyframes jdBagPour{0%,36%{opacity:0;transform:translateY(0)}42%{opacity:1}62%{opacity:1;transform:translateY(16px)}70%,100%{opacity:0;transform:translateY(20px)}}
+@media (prefers-reduced-motion:reduce){.jd-bag__g,.jd-bag__i{animation:none}}
