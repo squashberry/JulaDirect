@@ -6,8 +6,8 @@ const [migration, codMigration, onlineOnlyMigration, pickupRefundMigration, chec
   await Promise.all([
     read("supabase/migrations/20261114160000_gambasket_modempay_finance_lifecycle.sql"),
     read("supabase/migrations/20261114170000_gambasket_cod_commission_reserve.sql"),
-    read("supabase/migrations/20261123001500_online_payment_only_checkout.sql"),
-    read("supabase/migrations/20261123003000_pickup_station_and_24h_refund.sql"),
+    read("supabase/migrations/20261123020824_online_payment_only_checkout_20261123001500.sql"),
+    read("supabase/migrations/20261123020838_dynamic_pickup_stations_and_24h_refund_20261123003000.sql"),
     read("supabase/functions/gambasket-modempay-checkout/index.ts"),
     read("supabase/functions/gambasket-modempay-webhook/index.ts"),
     read("supabase/functions/gambasket-modempay-payouts/index.ts"),
