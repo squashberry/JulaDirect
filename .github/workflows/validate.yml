@@ -224,7 +224,7 @@ jobs:
               "safe public seller badges": "ADD COLUMN IF NOT EXISTS is_seller_verified boolean NOT NULL DEFAULT false" in all_sql and "ADD COLUMN IF NOT EXISTS has_business_store boolean NOT NULL DEFAULT false" in all_sql,
               "coupon validation is authenticated only": "REVOKE ALL ON FUNCTION public.validate_coupon(character varying,numeric) FROM PUBLIC, anon" in all_sql,
               "internal accounting tables deny client access": all(token in all_sql for token in ["deny_client_access ON public.affiliate_commissions", "deny_client_access ON public.campaign_products", "deny_client_access ON public.earning_rules", "deny_client_access ON public.payout_requests"]),
-              "online methods fail closed until launch": all(token in all_sql for token in ["guard_available_checkout_payment_method", "NEW.payment_method IS DISTINCT FROM 'cash_on_delivery'", "orders_available_payment_methods_only"]),
+              "online-only checkout enforced by the trusted database wrapper": all(token in all_sql for token in ["ONLINE_PAYMENT_REQUIRED", "v_method NOT IN ('wave','qmoney','afrimoney')", "gambasket_guard_order_payment_method"]),
           }
           for label, passed in checks.items():
               print(("PASS" if passed else "FAIL") + ": " + label)
@@ -239,13 +239,13 @@ jobs:
           def radio_tag(element_id):
               return re.search(r'<input[^>]*id="' + re.escape(element_id) + r'"[^>]*>', checkout, re.IGNORECASE)
           cod = radio_tag("cod")
-          assert cod and re.search(r'\bchecked\b', cod.group(0), re.IGNORECASE), "Cash on Delivery must be selected by default."
-          assert not re.search(r'\bdisabled\b', cod.group(0), re.IGNORECASE), "Cash on Delivery must remain enabled."
+          assert cod is None, "Cash on Delivery must not be offered to buyers."
           for provider in ("wave", "qmoney", "afrimoney"):
               radio = radio_tag(provider)
-              assert radio and re.search(r'\bdisabled\b', radio.group(0), re.IGNORECASE), f"{provider} must remain disabled until launch."
+              assert radio and re.search(r'\bdisabled\b', radio.group(0), re.IGNORECASE), f"{provider} must fail closed until ModemPay confirms availability."
               label = re.search(r'<label[^>]*for="' + re.escape(provider) + r'"[^>]*>[\s\S]*?</label>', checkout, re.IGNORECASE)
-              assert label and "Coming soon" in label.group(0), f"{provider} must be visibly marked Coming soon."
-          assert "paymentAvailabilityNote" in checkout, "Checkout must explain the currently available payment method."
-          print("Validated checkout payment availability: Cash on Delivery enabled; Wave, QMoney and Afrimoney disabled and labelled Coming soon.")
+              assert label and "Coming soon" in label.group(0), f"{provider} must have a fallback label before configuration loads."
+          assert "paymentAvailabilityNote" in checkout, "Checkout must explain secure online payment availability."
+          assert "48-hour refund request window" in checkout, "Checkout must disclose the accurate provider refund request window."
+          print("Validated checkout payment availability: online-only; providers fail closed until ModemPay enables them.");
           PY
