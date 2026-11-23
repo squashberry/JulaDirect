@@ -225,6 +225,8 @@ jobs:
               "coupon validation is authenticated only": "REVOKE ALL ON FUNCTION public.validate_coupon(character varying,numeric) FROM PUBLIC, anon" in all_sql,
               "internal accounting tables deny client access": all(token in all_sql for token in ["deny_client_access ON public.affiliate_commissions", "deny_client_access ON public.campaign_products", "deny_client_access ON public.earning_rules", "deny_client_access ON public.payout_requests"]),
               "online-only checkout enforced by the trusted database wrapper": all(token in all_sql for token in ["ONLINE_PAYMENT_REQUIRED", "v_method NOT IN ('wave','qmoney','afrimoney')", "gambasket_guard_order_payment_method", "DROP TRIGGER IF EXISTS orders_available_payment_methods_only ON public.orders"]),
+              "24-hour refund eligibility enforced at request and provider processing": all(token in all_sql for token in ["refund_provider_window_hours = 24", "gambasket_request_order_refund", "gambasket_validate_refund_case", "make_interval(hours => v_window_hours)"]),
+              "Banjul pickup station uses pickup fulfilment without courier dispatch": all(token in all_sql for token in ["pickup_station_name text", "Only the Banjul pickup station is currently available", "v_internal_fulfillment := 'pickup'", "JulaDirect Pickup Station", "No courier is assigned"]),
           }
           for label, passed in checks.items():
               print(("PASS" if passed else "FAIL") + ": " + label)
@@ -248,5 +250,6 @@ jobs:
           assert "paymentAvailabilityNote" in checkout, "Checkout must explain secure online payment availability."
           assert "24-hour refund eligibility" in checkout, "Checkout must disclose the 24-hour refund eligibility window."
           assert 'id="pickup" value="pickup_station"' in checkout and "Banjul" in checkout, "Checkout must offer the Banjul pickup station."
+          assert "Store pickup" not in checkout, "Store pickup must be replaced by Pickup station."
           print("Validated checkout payment availability: online-only; providers fail closed until ModemPay enables them.");
           PY
