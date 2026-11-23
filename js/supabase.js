@@ -1292,7 +1292,7 @@
                 p_delivery_area: payload.delivery_area || null,
                 p_delivery_phone: payload.delivery_phone || null,
                 p_delivery_instructions: payload.delivery_instructions || null,
-                p_payment_method: payload.payment_method || "cash_on_delivery",
+                p_payment_method: payload.payment_method || null,
                 p_coupon_code: payload.coupon_code || null
             });
             if (error) throw error;
