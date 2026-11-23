@@ -1293,7 +1293,8 @@
                 p_delivery_phone: payload.delivery_phone || null,
                 p_delivery_instructions: payload.delivery_instructions || null,
                 p_payment_method: payload.payment_method || null,
-                p_coupon_code: payload.coupon_code || null
+                p_coupon_code: payload.coupon_code || null,
+                p_pickup_station_id: payload.pickup_station_id || null
             });
             if (error) throw error;
             window.dispatchEvent(new CustomEvent("gambasket:orders:change", { detail: { order: data } }));
@@ -1316,7 +1317,7 @@
             try {
                 if (client) {
                     const orderItemsSelect = "order_items(id, product_id, title, price, quantity, subtotal)";
-                    const withStationFields = "id, order_number, fulfillment_type, delivery_address, delivery_area, delivery_phone, pickup_station_name, pickup_station_city, pickup_station_address, pickup_location, subtotal, delivery_fee, total, currency, payment_status, payment_method, order_status, created_at, " + orderItemsSelect;
+                    const withStationFields = "id, order_number, fulfillment_type, delivery_address, delivery_area, delivery_phone, pickup_station_id, pickup_station_name, pickup_station_city, pickup_station_address, pickup_location, subtotal, delivery_fee, total, currency, payment_status, payment_method, order_status, created_at, " + orderItemsSelect;
                     const legacyOrderFields = "id, order_number, fulfillment_type, delivery_address, delivery_area, delivery_phone, pickup_location, subtotal, delivery_fee, total, currency, payment_status, payment_method, order_status, created_at, " + orderItemsSelect;
                     let { data, error } = await client
                         .from("orders")
@@ -1326,7 +1327,7 @@
 
                     // Keep order history working while the pickup-station migration
                     // is being applied to production.
-                    if (error && /pickup_station_(name|city|address)|42703|PGRST204/i.test(String(error.message || error.code || ""))) {
+                    if (error && /pickup_station_(id|name|city|address)|42703|PGRST204/i.test(String(error.message || error.code || ""))) {
                         ({ data, error } = await client
                             .from("orders")
                             .select(legacyOrderFields)
@@ -1343,6 +1344,7 @@
                             fulfillment_type: order.fulfillment_type || "delivery",
                             address: order.delivery_address || "",
                             area: order.delivery_area || order.pickup_station_city || "Greater Banjul",
+                            pickup_station_id: order.pickup_station_id || "",
                             pickup_station_name: order.pickup_station_name || "",
                             pickup_station_city: order.pickup_station_city || "",
                             pickup_station_address: order.pickup_station_address || "",
