@@ -1,13 +1,67 @@
--- Add JulaDirect's Banjul pickup-station fulfilment and enforce the 24-hour refund window.
--- Pickup-station orders use the existing pickup status lifecycle and intentionally
--- do not create a delivery_requests row or enter courier dispatch.
+-- Dynamic pickup-station directory and 24-hour refund eligibility.
+-- Pickup-station orders follow the existing seller pickup lifecycle and never
+-- create a courier delivery request. Station records can be added without UI changes.
 
 BEGIN;
 
+CREATE TABLE IF NOT EXISTS public.pickup_stations (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  station_name text NOT NULL CHECK (length(trim(station_name)) BETWEEN 2 AND 120),
+  region text NOT NULL CHECK (length(trim(region)) BETWEEN 2 AND 100),
+  area text NOT NULL CHECK (length(trim(area)) BETWEEN 2 AND 100),
+  address text NOT NULL CHECK (length(trim(address)) BETWEEN 2 AND 300),
+  instructions text,
+  is_active boolean NOT NULL DEFAULT true,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (station_name, region, area)
+);
+
+ALTER TABLE public.pickup_stations ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE public.pickup_stations FROM PUBLIC, anon, authenticated;
+
+-- First live pickup station. Add future locations as rows in this table.
+INSERT INTO public.pickup_stations(station_name, region, area, address, instructions)
+VALUES (
+  'SRN',
+  'Greater Banjul Area',
+  'Banjul',
+  'SRN, Banjul, The Gambia',
+  'Collect from the SRN pickup point in Banjul.'
+)
+ON CONFLICT (station_name, region, area) DO UPDATE
+SET address = EXCLUDED.address,
+    instructions = EXCLUDED.instructions,
+    is_active = true,
+    updated_at = now();
+
 ALTER TABLE public.orders
+  ADD COLUMN IF NOT EXISTS pickup_station_id uuid,
+  ADD COLUMN IF NOT EXISTS pickup_station_region text,
   ADD COLUMN IF NOT EXISTS pickup_station_name text,
   ADD COLUMN IF NOT EXISTS pickup_station_city text,
   ADD COLUMN IF NOT EXISTS pickup_station_address text;
+
+DO $constraint$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'orders_pickup_station_id_fkey'
+      AND conrelid = 'public.orders'::regclass
+  ) THEN
+    ALTER TABLE public.orders
+      ADD CONSTRAINT orders_pickup_station_id_fkey
+      FOREIGN KEY (pickup_station_id)
+      REFERENCES public.pickup_stations(id)
+      ON DELETE RESTRICT;
+  END IF;
+END;
+$constraint$;
+
+CREATE INDEX IF NOT EXISTS pickup_stations_active_area_idx
+ON public.pickup_stations(region, area, station_name)
+WHERE is_active = true;
 
 ALTER TABLE public.gambasket_finance_settings
   ALTER COLUMN refund_provider_window_hours SET DEFAULT 24;
@@ -17,32 +71,50 @@ SET refund_provider_window_hours = 24,
     updated_at = now()
 WHERE id = 1;
 
--- Authenticated checkout clients use this to enable the station option only
--- after the schema and server-side pickup workflow are deployed.
+-- Return every active station to authenticated checkout clients. The client
+-- groups these records by area; adding another row automatically adds a choice.
 CREATE OR REPLACE FUNCTION public.gambasket_get_pickup_station_config()
 RETURNS jsonb
 LANGUAGE sql
 STABLE
-SECURITY INVOKER
+SECURITY DEFINER
 SET search_path TO ''
 AS $fn$
   SELECT jsonb_build_object(
-    'available', true,
-    'station_name', 'JulaDirect Pickup Station',
-    'city', 'Banjul',
-    'country', 'The Gambia'
+    'available', COUNT(*) > 0,
+    'stations', COALESCE(
+      jsonb_agg(
+        jsonb_build_object(
+          'id', ps.id,
+          'station_name', ps.station_name,
+          'region', ps.region,
+          'area', ps.area,
+          'address', ps.address,
+          'instructions', ps.instructions,
+          'is_active', ps.is_active
+        )
+        ORDER BY ps.region, ps.area, ps.station_name
+      ),
+      '[]'::jsonb
+    )
   )
-  WHERE (SELECT auth.uid()) IS NOT NULL;
+  FROM public.pickup_stations ps
+  WHERE ps.is_active = true
+    AND (SELECT auth.uid()) IS NOT NULL;
 $fn$;
 
+ALTER FUNCTION public.gambasket_get_pickup_station_config() OWNER TO postgres;
 REVOKE ALL ON FUNCTION public.gambasket_get_pickup_station_config()
-FROM PUBLIC, anon;
+FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.gambasket_get_pickup_station_config()
 TO authenticated;
 
+-- Ten-argument trusted order wrapper. The station ID is a separate argument,
+-- not smuggled through the delivery address/instructions fields.
 CREATE OR REPLACE FUNCTION public.create_order(
   p_items jsonb,
   p_fulfillment_type character varying,
+  p_pickup_station_id uuid,
   p_delivery_address text DEFAULT NULL::text,
   p_delivery_region character varying DEFAULT NULL::character varying,
   p_delivery_area character varying DEFAULT NULL::character varying,
@@ -64,8 +136,7 @@ DECLARE
   v_seller_id uuid;
   v_buyer_id uuid := auth.uid();
   v_order_id uuid;
-  v_station_name constant text := 'JulaDirect Pickup Station';
-  v_station_city constant text := 'Banjul';
+  v_station public.pickup_stations%ROWTYPE;
 BEGIN
   IF v_buyer_id IS NULL THEN RAISE EXCEPTION 'UNAUTHENTICATED'; END IF;
 
@@ -78,27 +149,48 @@ BEGIN
   END IF;
 
   IF v_fulfillment = 'pickup_station' THEN
-    IF lower(trim(COALESCE(p_delivery_area, ''))) <> 'banjul' THEN
-      RAISE EXCEPTION 'PICKUP_STATION_UNAVAILABLE: Only the Banjul pickup station is currently available';
+    IF p_pickup_station_id IS NULL THEN
+      RAISE EXCEPTION 'PICKUP_STATION_REQUIRED: Choose an available pickup station';
     END IF;
+
+    SELECT *
+    INTO v_station
+    FROM public.pickup_stations
+    WHERE id = p_pickup_station_id
+      AND is_active = true
+    FOR SHARE;
+
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'PICKUP_STATION_UNAVAILABLE: This pickup station is no longer available';
+    END IF;
+
+    IF lower(trim(COALESCE(p_delivery_region, ''))) <> lower(trim(v_station.region))
+       OR lower(trim(COALESCE(p_delivery_area, ''))) <> lower(trim(v_station.area)) THEN
+      RAISE EXCEPTION 'PICKUP_STATION_LOCATION_MISMATCH';
+    END IF;
+
     IF NULLIF(trim(COALESCE(p_delivery_phone, '')), '') IS NULL THEN
       RAISE EXCEPTION 'PICKUP_CONTACT_REQUIRED';
     END IF;
+
     v_internal_fulfillment := 'pickup';
   ELSE
+    IF p_pickup_station_id IS NOT NULL THEN
+      RAISE EXCEPTION 'UNEXPECTED_PICKUP_STATION';
+    END IF;
     v_internal_fulfillment := v_fulfillment;
   END IF;
 
-  -- Reuse the existing atomic inventory/coupon/order routine. For station
-  -- fulfilment, send 'pickup' so it does not create a courier delivery request.
+  -- Reuse the existing atomic inventory/coupon/order routine. Station orders
+  -- are passed as ordinary pickup so no courier delivery request is created.
   PERFORM set_config('app.gambasket_order_creation', 'on', true);
 
   v_order := public.gambasket_create_order_internal(
     p_items,
     v_internal_fulfillment,
     CASE WHEN v_fulfillment = 'pickup_station' THEN NULL ELSE p_delivery_address END,
-    CASE WHEN v_fulfillment = 'pickup_station' THEN v_station_city ELSE p_delivery_region END,
-    CASE WHEN v_fulfillment = 'pickup_station' THEN v_station_city ELSE p_delivery_area END,
+    CASE WHEN v_fulfillment = 'pickup_station' THEN v_station.region ELSE p_delivery_region END,
+    CASE WHEN v_fulfillment = 'pickup_station' THEN v_station.area ELSE p_delivery_area END,
     p_delivery_phone,
     CASE WHEN v_fulfillment = 'pickup_station' THEN NULL ELSE p_delivery_instructions END,
     'cash_on_delivery',
@@ -107,19 +199,21 @@ BEGIN
 
   v_order_id := (v_order->>'id')::uuid;
 
-  -- Complete the online-only payment-method transition within the same trusted
-  -- transaction. The installed guard permits this specific order-creation path.
-  -- Switch payment method and set any station destination metadata in ONE update.
-  -- The payment-method guard only permits this one COD-to-online transition during
-  -- trusted order creation; a second update would correctly require a payment intent.
+  -- Complete payment-method transition and station snapshot in a single update.
+  -- The existing trigger allows this trusted COD-to-online order-creation update.
   UPDATE public.orders
   SET payment_method = v_method,
-      pickup_station_name = CASE WHEN v_fulfillment = 'pickup_station' THEN v_station_name ELSE pickup_station_name END,
-      pickup_station_city = CASE WHEN v_fulfillment = 'pickup_station' THEN v_station_city ELSE pickup_station_city END,
-      pickup_station_address = CASE WHEN v_fulfillment = 'pickup_station' THEN NULL ELSE pickup_station_address END,
-      pickup_location = CASE WHEN v_fulfillment = 'pickup_station' THEN v_station_name || ', ' || v_station_city ELSE pickup_location END,
-      delivery_region = CASE WHEN v_fulfillment = 'pickup_station' THEN v_station_city ELSE delivery_region END,
-      delivery_area = CASE WHEN v_fulfillment = 'pickup_station' THEN v_station_city ELSE delivery_area END,
+      pickup_station_id = CASE WHEN v_fulfillment = 'pickup_station' THEN v_station.id ELSE NULL END,
+      pickup_station_region = CASE WHEN v_fulfillment = 'pickup_station' THEN v_station.region ELSE NULL END,
+      pickup_station_name = CASE WHEN v_fulfillment = 'pickup_station' THEN v_station.station_name ELSE NULL END,
+      pickup_station_city = CASE WHEN v_fulfillment = 'pickup_station' THEN v_station.area ELSE NULL END,
+      pickup_station_address = CASE WHEN v_fulfillment = 'pickup_station' THEN v_station.address ELSE NULL END,
+      pickup_location = CASE WHEN v_fulfillment = 'pickup_station'
+        THEN v_station.station_name || ', ' || v_station.area
+        ELSE pickup_location
+      END,
+      delivery_region = CASE WHEN v_fulfillment = 'pickup_station' THEN v_station.region ELSE delivery_region END,
+      delivery_area = CASE WHEN v_fulfillment = 'pickup_station' THEN v_station.area ELSE delivery_area END,
       delivery_address = CASE WHEN v_fulfillment = 'pickup_station' THEN NULL ELSE delivery_address END,
       delivery_instructions = CASE WHEN v_fulfillment = 'pickup_station' THEN NULL ELSE delivery_instructions END,
       updated_at = now()
@@ -132,36 +226,47 @@ BEGIN
   IF NOT FOUND THEN RAISE EXCEPTION 'ONLINE_ORDER_SETUP_FAILED'; END IF;
 
   IF v_fulfillment = 'pickup_station' THEN
-    -- Replace the generic new-order notice with actionable station instructions.
     UPDATE public.notifications
-    SET title = 'New Banjul pickup-station order',
-        message = 'Prepare this order and take it to the JulaDirect Pickup Station in Banjul. No courier is assigned; you must bring the order to the station.',
+    SET title = 'New pickup-station order',
+        message = 'Prepare this order and take it to ' || v_station.station_name || ', ' ||
+          v_station.area || '. No courier is assigned; bring the order directly to the selected station.',
         data = COALESCE(data, '{}'::jsonb) || jsonb_build_object(
           'order_id', v_order_id,
           'fulfillment_type', 'pickup_station',
-          'pickup_station_name', v_station_name,
-          'pickup_station_city', v_station_city,
-          'seller_instruction', 'Bring this order to the JulaDirect Pickup Station in Banjul. No courier is required.'
+          'pickup_station_id', v_station.id,
+          'pickup_station_name', v_station.station_name,
+          'pickup_station_region', v_station.region,
+          'pickup_station_area', v_station.area,
+          'pickup_station_address', v_station.address,
+          'seller_instruction', 'Bring this order to ' || v_station.station_name || ', ' ||
+            v_station.area || '. No courier is required.'
         )
     WHERE user_id = v_seller_id
       AND data->>'order_id' = v_order_id::text;
 
     UPDATE public.notifications
-    SET title = 'Order placed — Banjul pickup station',
-        message = 'Your order will be taken to the JulaDirect Pickup Station in Banjul. We will confirm the collection details when it is ready.',
+    SET title = 'Order placed — pickup station',
+        message = 'Your order will be taken to ' || v_station.station_name || ', ' ||
+          v_station.area || '. We will notify you when it is ready for collection.',
         data = COALESCE(data, '{}'::jsonb) || jsonb_build_object(
           'order_id', v_order_id,
           'fulfillment_type', 'pickup_station',
-          'pickup_station_name', v_station_name,
-          'pickup_station_city', v_station_city
+          'pickup_station_id', v_station.id,
+          'pickup_station_name', v_station.station_name,
+          'pickup_station_region', v_station.region,
+          'pickup_station_area', v_station.area,
+          'pickup_station_address', v_station.address
         )
     WHERE user_id = v_buyer_id
       AND data->>'order_id' = v_order_id::text;
 
     RETURN v_order || jsonb_build_object(
       'fulfillment_type', 'pickup_station',
-      'pickup_station_name', v_station_name,
-      'pickup_station_city', v_station_city
+      'pickup_station_id', v_station.id,
+      'pickup_station_name', v_station.station_name,
+      'pickup_station_region', v_station.region,
+      'pickup_station_area', v_station.area,
+      'pickup_station_address', v_station.address
     );
   END IF;
 
@@ -169,7 +274,66 @@ BEGIN
 END;
 $function$;
 
--- Notify the buyer when the seller physically takes the order to the station.
+-- Keep the nine-argument RPC signature for older cached clients, but disallow
+-- pickup_station without an explicit station ID. New clients call the 10-arg RPC.
+CREATE OR REPLACE FUNCTION public.create_order(
+  p_items jsonb,
+  p_fulfillment_type character varying,
+  p_delivery_address text DEFAULT NULL::text,
+  p_delivery_region character varying DEFAULT NULL::character varying,
+  p_delivery_area character varying DEFAULT NULL::character varying,
+  p_delivery_phone character varying DEFAULT NULL::character varying,
+  p_delivery_instructions text DEFAULT NULL::text,
+  p_payment_method character varying DEFAULT NULL::character varying,
+  p_coupon_code character varying DEFAULT NULL::character varying
+)
+RETURNS jsonb
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path TO ''
+AS $legacy$
+  SELECT public.create_order(
+    p_items,
+    p_fulfillment_type,
+    NULL::uuid,
+    p_delivery_address,
+    p_delivery_region,
+    p_delivery_area,
+    p_delivery_phone,
+    p_delivery_instructions,
+    p_payment_method,
+    p_coupon_code
+  );
+$legacy$;
+
+ALTER FUNCTION public.create_order(
+  jsonb, character varying, uuid, text, character varying, character varying,
+  character varying, text, character varying, character varying
+) OWNER TO postgres;
+ALTER FUNCTION public.create_order(
+  jsonb, character varying, text, character varying, character varying,
+  character varying, text, character varying, character varying
+) OWNER TO postgres;
+
+REVOKE ALL ON FUNCTION public.create_order(
+  jsonb, character varying, uuid, text, character varying, character varying,
+  character varying, text, character varying, character varying
+) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.create_order(
+  jsonb, character varying, uuid, text, character varying, character varying,
+  character varying, text, character varying, character varying
+) TO authenticated;
+
+REVOKE ALL ON FUNCTION public.create_order(
+  jsonb, character varying, text, character varying, character varying,
+  character varying, text, character varying, character varying
+) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.create_order(
+  jsonb, character varying, text, character varying, character varying,
+  character varying, text, character varying, character varying
+) TO authenticated;
+
+-- Inform the buyer when the seller takes the order to its selected station.
 CREATE OR REPLACE FUNCTION public.gambasket_notify_pickup_station_ready()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -177,19 +341,23 @@ SECURITY DEFINER
 SET search_path TO ''
 AS $fn$
 BEGIN
-  IF NEW.pickup_station_name IS NOT NULL
+  IF NEW.pickup_station_id IS NOT NULL
      AND NEW.order_status = 'ready_for_pickup'
      AND OLD.order_status IS DISTINCT FROM NEW.order_status THEN
     INSERT INTO public.notifications(user_id, type, title, message, data)
     VALUES (
       NEW.buyer_id,
       'order',
-      'Your order is ready at the Banjul pickup station',
-      'Your order has reached the JulaDirect Pickup Station in Banjul and is ready for collection.',
+      'Your order is ready at ' || COALESCE(NEW.pickup_station_name, 'the pickup station'),
+      'Your order has reached ' || COALESCE(NEW.pickup_station_address,
+        concat_ws(', ', NEW.pickup_station_name, NEW.pickup_station_city)) ||
+        ' and is ready for collection.',
       jsonb_build_object(
         'order_id', NEW.id,
         'fulfillment_type', 'pickup_station',
+        'pickup_station_id', NEW.pickup_station_id,
         'pickup_station_name', NEW.pickup_station_name,
+        'pickup_station_region', NEW.pickup_station_region,
         'pickup_station_city', NEW.pickup_station_city,
         'pickup_station_address', NEW.pickup_station_address
       )
@@ -209,7 +377,7 @@ FOR EACH ROW
 WHEN (
   OLD.order_status IS DISTINCT FROM NEW.order_status
   AND NEW.order_status = 'ready_for_pickup'
-  AND NEW.pickup_station_name IS NOT NULL
+  AND NEW.pickup_station_id IS NOT NULL
 )
 EXECUTE FUNCTION public.gambasket_notify_pickup_station_ready();
 
