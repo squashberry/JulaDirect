@@ -36,7 +36,7 @@
                     <div class="ck-step__body">
                         <div class="ck-seg" role="radiogroup" aria-label="How do you want to get it?">
                             <div class="choice"><input type="radio" name="fulfillment" id="delivery" value="delivery" checked><label for="delivery"><span class="ck-seg__ico" data-ico="truck"></span><strong>Delivery</strong><span>To your address</span></label></div>
-                            <div class="choice"><input type="radio" name="fulfillment" id="pickup" value="pickup"><label for="pickup"><span class="ck-seg__ico" data-ico="store"></span><strong>Store pickup</strong><span>Collect from the seller</span></label></div>
+                            <div class="choice"><input type="radio" name="fulfillment" id="pickup" value="pickup_station"><label for="pickup"><span class="ck-seg__ico" data-ico="store"></span><strong>Pickup station</strong><span>Collect from our Banjul station</span></label></div>
                         </div>
                         <div class="field-grid">
                             <div class="field"><label for="fullName">Full name</label><input id="fullName" required autocomplete="name" placeholder="Your name"></div>
@@ -53,7 +53,14 @@
                             </div>
                             <label class="ck-remember"><input type="checkbox" id="rememberAddress" checked><span>Remember this address on this device</span></label>
                         </div>
-                        <p class="checkout-note" id="pickupNote" hidden>The seller's pickup location is confirmed once they accept your order.</p>
+                        <div id="pickupStationFields" class="ck-station-card" hidden>
+                            <span class="ck-station-card__icon" aria-hidden="true">P</span>
+                            <div>
+                                <strong>JulaDirect Pickup Station</strong>
+                                <span class="ck-station-card__location">Banjul, The Gambia</span>
+                                <p>The seller will bring your order to this station. No courier is assigned. We will confirm the exact collection point before your order is ready.</p>
+                            </div>
+                        </div>
                     </div>
                 </section>
 
@@ -69,18 +76,18 @@
                         <div class="payment-grid">
                             <div class="choice">
                                 <input type="radio" name="payment" id="wave" value="wave" disabled aria-describedby="waveComingSoon">
-                                <label for="wave"><span class="ck-pay__ico ck-pay__ico--wave">W</span><span class="ck-pay__t"><strong>Wave <span class="payment-coming-soon-badge">Coming soon</span><span class="payment-refund-badge">48-hour refund eligibility</span></strong><span id="waveComingSoon">Secure online payment with Wave.</span></span></label>
+                                <label for="wave"><span class="ck-pay__ico ck-pay__ico--wave">W</span><span class="ck-pay__t"><strong>Wave <span class="payment-coming-soon-badge">Coming soon</span><span class="payment-refund-badge">24-hour refund eligibility</span></strong><span id="waveComingSoon">Secure online payment with Wave.</span></span></label>
                             </div>
                             <div class="choice">
                                 <input type="radio" name="payment" id="qmoney" value="qmoney" disabled aria-describedby="qmoneyComingSoon">
-                                <label for="qmoney"><span class="ck-pay__ico ck-pay__ico--q">Q</span><span class="ck-pay__t"><strong>QMoney <span class="payment-coming-soon-badge">Coming soon</span><span class="payment-refund-badge">48-hour refund eligibility</span></strong><span id="qmoneyComingSoon">Secure online payment with QMoney.</span></span></label>
+                                <label for="qmoney"><span class="ck-pay__ico ck-pay__ico--q">Q</span><span class="ck-pay__t"><strong>QMoney <span class="payment-coming-soon-badge">Coming soon</span><span class="payment-refund-badge">24-hour refund eligibility</span></strong><span id="qmoneyComingSoon">Secure online payment with QMoney.</span></span></label>
                             </div>
                             <div class="choice">
                                 <input type="radio" name="payment" id="afrimoney" value="afrimoney" disabled aria-describedby="afrimoneyComingSoon">
-                                <label for="afrimoney"><span class="ck-pay__ico ck-pay__ico--a">A</span><span class="ck-pay__t"><strong>Afrimoney <span class="payment-coming-soon-badge">Coming soon</span><span class="payment-refund-badge">48-hour refund eligibility</span></strong><span id="afrimoneyComingSoon">Secure online payment with Afrimoney.</span></span></label>
+                                <label for="afrimoney"><span class="ck-pay__ico ck-pay__ico--a">A</span><span class="ck-pay__t"><strong>Afrimoney <span class="payment-coming-soon-badge">Coming soon</span><span class="payment-refund-badge">24-hour refund eligibility</span></strong><span id="afrimoneyComingSoon">Secure online payment with Afrimoney.</span></span></label>
                             </div>
                         </div>
-                        <p id="refundWindowNote" class="checkout-note">Refunds are subject to JulaDirect review. Approved refunds must be processed within ModemPay's 48-hour eligibility window after the original payment.</p>
+                        <p id="refundWindowNote" class="checkout-note">Refund requests must be submitted within 24 hours of successful payment. All requests are reviewed by JulaDirect; approval is not automatic.</p>
                     </div>
                 </section>
 
