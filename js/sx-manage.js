@@ -227,7 +227,9 @@
       '<section class="sx-card"><div class="sx-card__body" id="apAttrs"></div></section></div>' +
       '<aside class="sm-stack" style="max-width:none"><section class="sx-card"><div class="sx-card__head"><h2>Photos</h2><span class="sx-hint" style="margin:0">Up to 8 · first is the cover</span></div><div class="sx-card__body"><div class="sm-photos" id="apPhotos"></div><input type="file" id="apFile" accept="image/jpeg,image/png,image/webp,image/gif" multiple class="sx-sr"></div></section>' +
       '<section class="sx-card"><div class="sx-card__body"><dl class="sx-kv" style="grid-template-columns:1fr auto"><dt>Price</dt><dd id="apPv">—</dd><dt>Est. fee (' + FEE + '%)</dt><dd id="apFee">—</dd><dt>You receive</dt><dd id="apNet"><b>—</b></dd></dl><p class="sx-hint">Estimate only. New listings and price changes are reviewed before buyers see them.</p>' +
-      '<div class="sm-actions"><button class="sx-btn sx-btn--primary" type="submit" id="apSave">' + (p.id ? "Save changes" : "Submit for review") + '</button><a class="sx-btn" href="#/products">Cancel</a></div></div></section></aside></form>';
+      '<div class="sm-actions"><button class="sx-btn sx-btn--primary" type="submit" id="apSave">' + (p.id ? "Save changes" : "Submit for review") + '</button>' +
+      (p.id ? '<button class="sx-btn sx-btn--danger" type="button" id="apDelete">Delete listing</button>' : "") +
+      '<a class="sx-btn" href="#/products">Cancel</a></div></div></section></aside></form>';
     const paintPhotos = () => {
       $("#apPhotos").innerHTML = photos.map((x, i) => '<figure class="sm-ph' + (i === 0 ? " is-main" : "") + '"><span style="background-image:url(&quot;' + esc(x.url) + '&quot;)"></span>' + (i ? '<button type="button" data-ph="main" data-i="' + i + '" title="Make cover">★</button>' : '<em>Cover</em>') + '<button type="button" data-ph="del" data-i="' + i + '" aria-label="Remove photo">×</button></figure>').join("") +
         (photos.length < 8 ? '<label class="sm-ph sm-ph--add" for="apFile"><span>+</span>Add photo</label>' : "");
@@ -248,6 +250,26 @@
     $("#apCat").addEventListener("change", () => { p.attributes = {}; paintAttrs(); });
     const calc = () => { const v = U.num(val("apPrice")); $("#apPv").textContent = v ? U.money(v) : "—"; $("#apFee").textContent = v ? U.money(v * FEE / 100) : "—"; $("#apNet").innerHTML = "<b>" + (v ? U.money(v - v * FEE / 100) : "—") + "</b>"; };
     $("#apPrice").addEventListener("input", calc); calc();
+
+    if (p.id) {
+      $("#apDelete")?.addEventListener("click", async () => {
+        if (!window.confirm("Delete this listing? It will disappear from JulaDirect. This cannot be undone.")) return;
+        const button = $("#apDelete");
+        button.disabled = true;
+        button.textContent = "Deleting…";
+        try {
+          const { error } = await client().rpc("seller_delete_product", { p_product_id: p.id });
+          if (error) throw error;
+          D.invalidate();
+          toast("Product deleted", "good");
+          location.hash = "#/products";
+        } catch (err) {
+          toast(errMsg(err), "bad");
+          button.disabled = false;
+          button.textContent = "Delete listing";
+        }
+      });
+    }
 
     $("#apForm").addEventListener("submit", async ev => {
       ev.preventDefault();

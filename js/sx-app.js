@@ -110,7 +110,11 @@
   function actionsFor(o) {
     const s = o.order_status, delivery = o.fulfillment_type === "delivery";
     const cancel = { to: "cancelled", text: "Cancel order", danger: true };
-    if (s === "pending") return [{ to: "confirmed", text: "Confirm order", primary: true }, cancel];
+    if (s === "pending") {
+      // A pending order is not actionable until the payment provider marks it paid.
+      if (o.payment_status !== "paid") return [cancel];
+      return [{ to: "confirmed", text: "Confirm order", primary: true }, cancel];
+    }
     if (s === "confirmed") return [{ to: "processing", text: "Start preparing", primary: true }, cancel];
     if (s === "processing") return [{ to: delivery ? "ready_for_delivery" : "ready_for_pickup", text: delivery ? "Ready for courier" : "Ready for pickup", primary: true }, cancel];
     if (s === "ready_for_delivery") return [cancel];
@@ -148,12 +152,19 @@
     if (!s) { el.innerHTML = empty("Couldn't load your numbers", "Check your connection and try again.", '<p><button class="sx-btn" data-act="reload">Retry</button></p>'); return; }
     const goalPct = num(s.goal_revenue) > 0 ? Math.min(100, Math.round(num(s.month_revenue) / num(s.goal_revenue) * 100)) : null;
     const hello = new Date().getHours() < 12 ? "Good morning" : new Date().getHours() < 18 ? "Good afternoon" : "Good evening";
-    const headline = num(s.pending_orders) ? num(s.pending_orders) + (num(s.pending_orders) === 1 ? " order is" : " orders are") + " waiting for you to confirm."
-      : num(s.in_progress_orders) ? num(s.in_progress_orders) + " " + (num(s.in_progress_orders) === 1 ? "order is" : "orders are") + " on their way to customers."
-      : "You're all caught up. New orders will appear here.";
+    const paidPending = orders.filter(o => o.order_status === "pending" && o.payment_status === "paid");
+    const awaitingPayment = orders.filter(o => o.order_status === "pending" && o.payment_status !== "paid");
+    const overduePaid = paidPending.filter(o => Date.now() - new Date(o.created_at).getTime() > 86400000).length;
+    const headline = paidPending.length
+      ? paidPending.length + (paidPending.length === 1 ? " paid order is" : " paid orders are") + " waiting for you to confirm."
+      : awaitingPayment.length
+        ? awaitingPayment.length + (awaitingPayment.length === 1 ? " order is" : " orders are") + " awaiting buyer payment. You can confirm after payment clears."
+        : num(s.in_progress_orders) ? num(s.in_progress_orders) + " " + (num(s.in_progress_orders) === 1 ? "order is" : "orders are") + " on their way to customers."
+        : "You're all caught up. New orders will appear here.";
     const todo = [];
-    if (num(s.overdue_orders)) todo.push(["bad", num(s.overdue_orders) + " pending " + (num(s.overdue_orders) === 1 ? "order has" : "orders have") + " waited over 24 hours", "#/orders", "Confirm now"]);
-    else if (num(s.pending_orders)) todo.push(["warn", num(s.pending_orders) + " new " + (num(s.pending_orders) === 1 ? "order" : "orders") + " to confirm", "#/orders", "Open orders"]);
+    if (overduePaid) todo.push(["bad", overduePaid + (overduePaid === 1 ? " paid order has" : " paid orders have") + " waited over 24 hours", "#/orders", "Confirm now"]);
+    else if (paidPending.length) todo.push(["warn", paidPending.length + (paidPending.length === 1 ? " paid order" : " paid orders") + " ready to confirm", "#/orders", "Open orders"]);
+    if (awaitingPayment.length) todo.push(["warn", awaitingPayment.length + (awaitingPayment.length === 1 ? " order is" : " orders are") + " awaiting buyer payment", "#/orders", "View orders"]);
     if (num(s.out_of_stock)) todo.push(["bad", num(s.out_of_stock) + " live " + (num(s.out_of_stock) === 1 ? "product is" : "products are") + " out of stock", "#/products", "Restock"]);
     if (num(s.low_stock)) todo.push(["warn", num(s.low_stock) + " running low (3 or fewer left)", "#/products", "Review"]);
     if (num(s.unanswered_reviews)) todo.push(["", num(s.unanswered_reviews) + " customer " + (num(s.unanswered_reviews) === 1 ? "review has" : "reviews have") + " no reply", "#/reviews", "Reply"]);
@@ -237,6 +248,9 @@
     const acts = actionsFor(o);
     const body =
       '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">' + pill(o.order_status) + '<span class="sx-pill">' + esc(label(o.payment_method || "cash_on_delivery")) + '</span><span class="sx-pill sx-pill--' + (o.payment_status === "paid" ? "good" : "warn") + '">' + esc(label(o.payment_status)) + "</span></div>" +
+      (o.order_status === "pending" && o.payment_status !== "paid"
+        ? '<p class="sx-note sx-note--info">Payment is still pending. You can cancel this order, but it can only be confirmed after payment is marked paid.</p>'
+        : "") +
       '<div class="sx-sec"><h3>Customer</h3><dl class="sx-kv"><dt>Name</dt><dd>' + esc(buyer.name) + "</dd><dt>Phone</dt><dd>" + (o.delivery_phone ? '<a href="tel:' + esc(o.delivery_phone) + '" style="color:var(--sx-brand)">' + esc(o.delivery_phone) + "</a>" : "—") + "</dd><dt>" + (o.fulfillment_type === "delivery" ? "Deliver to" : "Pickup") + "</dt><dd>" + esc((o.fulfillment_type === "delivery" ? [o.delivery_address, o.delivery_area, o.delivery_region].filter(Boolean).join(", ") : o.pickup_location) || "—") + "</dd>" + (o.delivery_instructions ? "<dt>Instructions</dt><dd>" + esc(o.delivery_instructions) + "</dd>" : "") + "</dl></div>" +
       '<div class="sx-sec"><h3>Items</h3><div class="sx-rows">' + items.map(i => '<div class="sx-row" style="grid-template-columns:minmax(0,1fr) auto"><div style="min-width:0"><div class="sx-row__t">' + esc(i.title) + '</div><div class="sx-row__s sx-num">' + num(i.quantity) + " × " + esc(money(i.price)) + '</div></div><div class="sx-row__r sx-num">' + esc(money(i.subtotal)) + "</div></div>").join("") + "</div>" +
       '<dl class="sx-kv" style="margin-top:12px"><dt>Subtotal</dt><dd class="sx-num">' + esc(money(o.subtotal)) + "</dd>" + (num(o.discount_amount) ? "<dt>Discount</dt><dd class=\"sx-num\">− " + esc(money(o.discount_amount)) + "</dd>" : "") + "<dt>Delivery</dt><dd class=\"sx-num\">" + esc(money(o.delivery_fee)) + "</dd><dt>Total</dt><dd class=\"sx-num\"><b>" + esc(money(o.total)) + "</b></dd></dl></div>" +

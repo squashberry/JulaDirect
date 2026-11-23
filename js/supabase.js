@@ -1092,7 +1092,7 @@
             ]);
             if (convRes.error) throw convRes.error;
             if (memRes.error) throw memRes.error;
-            const conversation = convRes.data, messages = msgs;
+            const conversation = convRes.data, messages = Array.isArray(msgs) ? msgs : (Array.isArray(msgs?.messages) ? msgs.messages : []);
             const other = (memRes.data || []).find(member => member.user_id !== session?.user?.id);
             let otherProfile = null;
             if (other?.user_id) {
