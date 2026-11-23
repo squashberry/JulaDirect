@@ -246,6 +246,7 @@ jobs:
               label = re.search(r'<label[^>]*for="' + re.escape(provider) + r'"[^>]*>[\s\S]*?</label>', checkout, re.IGNORECASE)
               assert label and "Coming soon" in label.group(0), f"{provider} must have a fallback label before configuration loads."
           assert "paymentAvailabilityNote" in checkout, "Checkout must explain secure online payment availability."
-          assert "48-hour refund eligibility" in checkout, "Checkout must disclose the accurate provider refund window."
+          assert "24-hour refund eligibility" in checkout, "Checkout must disclose the 24-hour refund eligibility window."
+          assert 'id="pickup" value="pickup_station"' in checkout and "Banjul" in checkout, "Checkout must offer the Banjul pickup station."
           print("Validated checkout payment availability: online-only; providers fail closed until ModemPay enables them.");
           PY
