@@ -37,8 +37,25 @@
         return { ...data, status: data.order_status, seller_cancel_reason: reason };
     }
 
+    function calculateStats(items) {
+        const rows = Array.isArray(items) ? items : [];
+        const status = order => order.order_status || order.status || "pending";
+        return {
+            new: rows.filter(order => status(order) === "pending").length,
+            processing: rows.filter(order => status(order) === "processing").length,
+            ready: rows.filter(order => ["ready_for_pickup", "ready_for_delivery"].includes(status(order))).length,
+            outForDelivery: rows.filter(order => ["delivery_assigned", "picked_up", "out_for_delivery"].includes(status(order))).length,
+            revenue: rows.reduce((sum, order) => sum + (
+                order.payment_status === "paid"
+                    ? Number(order.total_amount || order.total || 0)
+                    : 0
+            ), 0)
+        };
+    }
+
     window.GamBasketSellerOrders = {
         sellerCancelOrder,
+        calculateStats,
 
         async list(options = {}) {
             let user = null;
