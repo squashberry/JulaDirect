@@ -167,6 +167,7 @@
     function render() {
         $("summaryItems").innerHTML = state.cart.map(itemRow).join("");
         $("summarySubtotal").textContent = money(subtotal());
+        $("summaryDeliveryLabel").textContent = isPickupStation() ? "Pickup station · Banjul" : "Delivery";
         $("summaryDelivery").textContent = state.deliveryFee ? money(state.deliveryFee) : "Free";
         const d = discount();
         $("ck-discount-row").hidden = !d;
