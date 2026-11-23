@@ -15,20 +15,49 @@
 
     const isDelivery = () => document.querySelector('input[name="fulfillment"]:checked')?.value === "delivery";
     const isPickupStation = () => document.querySelector('input[name="fulfillment"]:checked')?.value === "pickup_station";
-    const isSellerPickup = () => document.querySelector('input[name="fulfillment"]:checked')?.value === "pickup";
+    const canDeliverCart = () => state.cart.length > 0 && state.cart.every(item => productFor(item).delivery_available === true);
+    const canUsePickupStation = () => state.pickupStations.length > 0;
 
     function applyFulfillmentAvailability() {
-        const canDeliver = state.cart.length > 0 && state.cart.every(item => productFor(item).delivery_available === true);
+        const canDeliver = canDeliverCart();
+        const canPickupStation = canUsePickupStation();
         const deliveryChoice = $("deliveryChoice");
         const stationChoice = $("pickupStationChoice");
         const delivery = $("delivery");
         const station = $("pickup");
-        const sellerPickup = $("sellerPickup");
+
         if (deliveryChoice) deliveryChoice.hidden = !canDeliver;
-        if (stationChoice) stationChoice.hidden = !canDeliver;
+        if (stationChoice) stationChoice.hidden = !canPickupStation;
         if (delivery) delivery.disabled = !canDeliver;
-        if (station) station.disabled = !canDeliver || !state.pickupStations.length;
-        if (!canDeliver && sellerPickup) sellerPickup.checked = true;
+        if (station) station.disabled = !canPickupStation;
+
+        const selected = document.querySelector('input[name="fulfillment"]:checked');
+        const selectionInvalid = !selected ||
+            !["delivery", "pickup_station"].includes(selected.value) ||
+            (selected.value === "delivery" && !canDeliver) ||
+            (selected.value === "pickup_station" && !canPickupStation);
+        if (selectionInvalid) {
+            if (canDeliver && delivery) delivery.checked = true;
+            else if (canPickupStation && station) station.checked = true;
+            else {
+                if (delivery) delivery.checked = false;
+                if (station) station.checked = false;
+            }
+        }
+
+        const note = $("fulfillmentAvailabilityNote");
+        if (note) {
+            if (!canDeliver && canPickupStation) {
+                note.textContent = "Delivery is unavailable for one or more items in your cart. Please choose an available pickup station.";
+                note.hidden = false;
+            } else if (!canDeliver && !canPickupStation) {
+                note.textContent = "Neither delivery nor a pickup station is currently available for this cart. Please remove these items or contact support.";
+                note.hidden = false;
+            } else {
+                note.hidden = true;
+                note.textContent = "";
+            }
+        }
     }
     const selectedPayment = () => document.querySelector('input[name="payment"]:checked');
 
@@ -309,7 +338,7 @@
         const activeStation = isPickupStation() ? selectedPickupStation() : null;
         $("summaryDeliveryLabel").textContent = activeStation
             ? "Pickup station · " + activeStation.area
-            : (isPickupStation() ? "Pickup station" : (isSellerPickup() ? "Collect from seller" : "Delivery"));
+            : (isPickupStation() ? "Pickup station" : (isDelivery() ? "Delivery" : "Choose fulfilment"));
         $("summaryDelivery").textContent = state.deliveryFee ? money(state.deliveryFee) : "Free";
         const d = discount();
         $("ck-discount-row").hidden = !d;
@@ -347,12 +376,15 @@
 
     function completeDelivery() {
         const base = ["fullName", "phone", "email"].every(id => $(id).value.trim());
+        const fulfillmentValid = (isDelivery() && canDeliverCart()) ||
+            (isPickupStation() && Boolean(selectedPickupStation()));
         const destination = isDelivery()
             ? ["region", "area", "address"].every(id => $(id).value.trim())
             : isPickupStation()
                 ? Boolean(selectedPickupStation())
-                : true;
-        return base && destination && $("phone").value.replace(/\D/g, "").length >= 7;
+                : false;
+        return base && fulfillmentValid && destination &&
+            $("phone").value.replace(/\D/g, "").length >= 7;
     }
 
     function fillSummaries() {
@@ -367,7 +399,7 @@
                             ? `Pickup station · ${station.station_name} · ${station.area} · ${name} · ${phone}`
                             : "Choose a pickup station";
                     })()
-                    : (isSellerPickup() ? `Collect from seller · ${name} · ${phone}` : `Pickup · ${name} · ${phone}`))
+                    : "Choose delivery or a pickup station")
             : "Who is receiving this order and where it goes.";
         const pay = selectedPayment();
         $("ck-s2-sum").textContent = state.done[2] && pay
@@ -392,7 +424,9 @@
     }
 
     function syncPlaceOrderAvailability() {
-        const off = state.submitting || blocked();
+        const fulfillmentValid = (isDelivery() && canDeliverCart()) ||
+            (isPickupStation() && canUsePickupStation());
+        const off = state.submitting || blocked() || !fulfillmentValid;
         $("placeOrderBtn").disabled = off;
         $("ck-dock-btn").disabled = off;
         labelPrimary();
@@ -431,11 +465,21 @@
     }
 
     function validateDelivery() {
+        if (!isDelivery() && !isPickupStation()) {
+            showError("Choose delivery or an available pickup station.");
+            return false;
+        }
+        if (isDelivery() && !canDeliverCart()) {
+            showError("Delivery is unavailable for one or more items. Choose a pickup station instead.");
+            return false;
+        }
+        if (isPickupStation() && !canUsePickupStation()) {
+            showError("No pickup station is currently available. Choose delivery instead.");
+            return false;
+        }
         const destinationIds = isDelivery()
             ? ["region", "area", "address"]
-            : isPickupStation()
-                ? ["pickupStationArea", "pickupStationSelect"]
-                : [];
+            : ["pickupStationArea", "pickupStationSelect"];
         const ids = ["fullName", "phone", "email"].concat(destinationIds);
         for (const id of ids) {
             const el = $(id);
@@ -536,8 +580,15 @@
         state.submitting = true;
         syncPlaceOrderAvailability();
         try {
-            const fulfillment = document.querySelector('input[name="fulfillment"]:checked').value;
+            const selectedFulfillment = document.querySelector('input[name="fulfillment"]:checked');
+            const fulfillment = selectedFulfillment?.value || "";
             const payment = pay.value;
+            if (!["delivery", "pickup_station"].includes(fulfillment)) {
+                throw new Error("Choose delivery or an available pickup station.");
+            }
+            if (fulfillment === "delivery" && !canDeliverCart()) {
+                throw new Error("Delivery is unavailable for one or more items. Choose a pickup station instead.");
+            }
             const station = fulfillment === "pickup_station" ? selectedPickupStation() : null;
             if (fulfillment === "pickup_station" && !station) {
                 throw new Error("Choose an available pickup station.");
