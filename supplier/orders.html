@@ -206,7 +206,7 @@
                     ? (o.pickup_station_address || [o.pickup_station_name, o.pickup_station_city].filter(Boolean).join(", "))
                     : (isPickup ? (o.pickup_location || "Seller pickup") : (o.delivery_area || o.delivery_region || "The Gambia"));
                 const destinationNote = isStation
-                    ? '<small class="seller-destination-note">Seller brings this order here. No courier is assigned.</small>'
+                    ? '<small class="seller-destination-note">Take this order to the selected station. No courier is assigned.</small>'
                     : "";
                 const nextAction = status === "pending"
                     ? `<button class="seller-button seller-button-primary" style="min-height:30px;font-size:10px;" onclick="updateStatus('${escapeHtml(o.id)}', 'confirmed')">Confirm</button>`
