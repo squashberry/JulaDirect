@@ -91,7 +91,7 @@ assert.match(checkoutPage, /id="pickupStationSelect"/);
 assert.doesNotMatch(checkoutPage, /Collect from our Banjul station/);
 assert.match(checkoutPage, /pickupStationAvailability/);
 const sellerOrdersPage = await read("supplier/orders.html");
-assert.match(sellerOrdersPage, /Seller brings this order here\. No courier is assigned\./);
+assert.match(sellerOrdersPage, /Take this order to the selected station\. No courier is assigned\./);
 assert.match(sellerOrdersPage, /ready_for_pickup/);
 assert.match(codWalletUi, /seller_get_cod_reserve_summary/);
 assert.match(codWalletUi, /seller_fund_cod_commission_reserve/);
