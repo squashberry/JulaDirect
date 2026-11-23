@@ -93,7 +93,7 @@ export async function onRequestGet({ request, env, next }) {
       "<p><strong>" + esc(price) + "</strong></p>" + (clean ? "<p>" + esc(clean.slice(0, 1200)) + "</p>" : "") +
       "<ul>" + rows2.map(r => "<li><strong>" + esc(r[0]) + ":</strong> " + esc(r[1]) + "</li>").join("") + "</ul>" +
       (sellerName ? "<p>Sold by " + esc(sellerName) + (seller.is_seller_verified ? " (verified seller)" : "") + "</p>" : "") +
-      "<p>Pay on delivery is available at checkout.</p></article>";
+      "<p>Delivery and online payment options are confirmed at checkout.</p></article>";
 
     const out = new HTMLRewriter()
       .on("title", { element(el) { el.setInnerContent(title); } })
