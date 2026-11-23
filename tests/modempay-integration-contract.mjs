@@ -38,6 +38,9 @@ assert.match(codMigration, /ONLINE_PAYMENT_REQUIRED/);
 assert.match(codMigration, /pending_online/);
 assert.match(codMigration, /SELLER_COD_NOT_ELIGIBLE/);
 assert.match(codMigration, /NEW\.order_status='confirmed'/);
+assert.match(onlineOnlyMigration, /v_method NOT IN \('wave','qmoney','afrimoney'\)/);
+assert.match(onlineOnlyMigration, /ONLINE_PAYMENT_REQUIRED/);
+assert.match(onlineOnlyMigration, /DROP TRIGGER IF EXISTS orders_available_payment_methods_only ON public\.orders/);
 
 assert.match(checkoutFn, /MODEMPAY_API_KEY/);
 assert.ok(checkoutFn.includes("/v1/payments"));
