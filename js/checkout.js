@@ -14,6 +14,7 @@
     const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     const isDelivery = () => document.querySelector('input[name="fulfillment"]:checked')?.value === "delivery";
+    const isPickupStation = () => document.querySelector('input[name="fulfillment"]:checked')?.value === "pickup_station";
     const selectedPayment = () => document.querySelector('input[name="payment"]:checked');
 
     /* ---------- cart helpers ---------- */
@@ -174,7 +175,7 @@
         $("ck-dock-total").textContent = money(total());
         const del = isDelivery();
         $("deliveryFields").hidden = !del;
-        $("pickupNote").hidden = del;
+        $("pickupStationFields").hidden = !isPickupStation();
         const warn = blocked();
         const box = $("checkoutError");
         if (warn) { box.innerHTML = `Some items are unavailable or exceed the stock left. <a href="cart.html">Review your cart</a> or adjust the quantities below.`; box.hidden = false; }
@@ -201,7 +202,11 @@
     function fillSummaries() {
         const name = $("fullName").value.trim(), phone = $("phone").value.trim();
         $("ck-s1-sum").textContent = state.done[1]
-            ? (isDelivery() ? `${name} · ${phone} · ${[$("address").value.trim(), $("area").value.trim()].filter(Boolean).join(", ")}` : `Store pickup · ${name} · ${phone}`)
+            ? (isDelivery()
+                ? `${name} · ${phone} · ${[$("address").value.trim(), $("area").value.trim()].filter(Boolean).join(", ")}`
+                : isPickupStation()
+                    ? `Pickup station · Banjul · ${name} · ${phone}`
+                    : `Pickup · ${name} · ${phone}`)
             : "Who is receiving this order and where it goes.";
         const pay = selectedPayment();
         $("ck-s2-sum").textContent = state.done[2] && pay
@@ -257,7 +262,7 @@
         }
         const phone = $("phone");
         if (phone.value.replace(/\D/g, "").length < 7) {
-            phone.setCustomValidity("Enter a phone number the courier can call.");
+            phone.setCustomValidity("Enter a phone number the seller can use to contact you.");
             phone.reportValidity();
             phone.addEventListener("input", () => phone.setCustomValidity(""), { once: true });
             phone.focus();
@@ -351,8 +356,8 @@
                 fulfillment_type: fulfillment,
                 payment_method: payment,
                 delivery_address: fulfillment === "delivery" ? `${$("address").value.trim()}${$("landmark").value.trim() ? `, ${$("landmark").value.trim()}` : ""}` : null,
-                delivery_region: fulfillment === "delivery" ? $("region").value : null,
-                delivery_area: fulfillment === "delivery" ? $("area").value.trim() : null,
+                delivery_region: fulfillment === "pickup_station" ? "Banjul" : (fulfillment === "delivery" ? $("region").value : null),
+                delivery_area: fulfillment === "pickup_station" ? "Banjul" : (fulfillment === "delivery" ? $("area").value.trim() : null),
                 delivery_phone: $("phone").value.trim(),
                 delivery_instructions: fulfillment === "delivery" ? $("instructions").value.trim() : null,
                 coupon_code: state.coupon?.code || null
