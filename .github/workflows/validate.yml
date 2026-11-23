@@ -226,7 +226,7 @@ jobs:
               "internal accounting tables deny client access": all(token in all_sql for token in ["deny_client_access ON public.affiliate_commissions", "deny_client_access ON public.campaign_products", "deny_client_access ON public.earning_rules", "deny_client_access ON public.payout_requests"]),
               "online-only checkout enforced by the trusted database wrapper": all(token in all_sql for token in ["ONLINE_PAYMENT_REQUIRED", "v_method NOT IN ('wave','qmoney','afrimoney')", "gambasket_guard_order_payment_method", "DROP TRIGGER IF EXISTS orders_available_payment_methods_only ON public.orders"]),
               "24-hour refund eligibility enforced at request and provider processing": all(token in all_sql for token in ["ALTER COLUMN refund_provider_window_hours SET DEFAULT 24", "refund_provider_window_hours = 24", "gambasket_request_order_refund", "gambasket_validate_refund_case", "make_interval(hours => v_window_hours)"]),
-              "Banjul pickup station uses pickup fulfilment without courier dispatch": all(token in all_sql for token in ["pickup_station_name text", "Only the Banjul pickup station is currently available", "v_internal_fulfillment := 'pickup'", "JulaDirect Pickup Station", "No courier is assigned", "gambasket_get_pickup_station_config", "gambasket_notify_pickup_station_ready"]),
+              "Area-based pickup stations use pickup fulfilment without courier dispatch": all(token in all_sql for token in ["CREATE TABLE IF NOT EXISTS public.pickup_stations", "pickup_station_id uuid", "p_pickup_station_id uuid", "'SRN'", "v_internal_fulfillment := 'pickup'", "No courier is assigned", "gambasket_get_pickup_station_config", "gambasket_notify_pickup_station_ready"]),
           }
           for label, passed in checks.items():
               print(("PASS" if passed else "FAIL") + ": " + label)
@@ -249,7 +249,10 @@ jobs:
               assert label and "Coming soon" in label.group(0), f"{provider} must have a fallback label before configuration loads."
           assert "paymentAvailabilityNote" in checkout, "Checkout must explain secure online payment availability."
           assert "24-hour refund eligibility" in checkout, "Checkout must disclose the 24-hour refund eligibility window."
-          assert 'id="pickup" value="pickup_station"' in checkout and "Banjul" in checkout, "Checkout must offer the Banjul pickup station."
-          assert "Store pickup" not in checkout, "Store pickup must be replaced by Pickup station."
+          assert 'id="pickup" value="pickup_station"' in checkout, "Checkout must offer Pickup station."
+          assert 'id="pickupStationArea"' in checkout and 'id="pickupStationSelect"' in checkout, "Pickup station must be chosen by area and station."
+          assert "Greater Banjul Area" in checkout and "West Coast Region" in checkout, "Delivery must be limited to Greater Banjul and West Coast."
+          assert "North Bank Region" not in checkout and "Store pickup" not in checkout, "Unsupported delivery regions and old Store pickup must be removed."
+          assert "Collect from our Banjul station" not in checkout, "Pickup station must not hard-code Banjul into the option card."
           print("Validated checkout payment availability: online-only; providers fail closed until ModemPay enables them.");
           PY
