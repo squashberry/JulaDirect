@@ -56,6 +56,7 @@ assert.doesNotMatch(checkoutHtml, /id="cod"/i, "Cash on Delivery must not be off
 for (const method of ["wave", "qmoney", "afrimoney"]) {
   assert.match(checkoutHtml, new RegExp('id="' + method + '"'));
 }
+assert.match(allSql, /ALTER COLUMN refund_provider_window_hours SET DEFAULT 24/i);
 assert.match(allSql, /SET refund_provider_window_hours = 24/i);
 assert.match(allSql, /make_interval\(hours => v_window_hours\)/i);
 assert.match(allSql, /pickup_station_name text/i);
