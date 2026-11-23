@@ -83,29 +83,29 @@ BEGIN
 
   -- Complete the online-only payment-method transition within the same trusted
   -- transaction. The installed guard permits this specific order-creation path.
+  -- Switch payment method and set any station destination metadata in ONE update.
+  -- The payment-method guard only permits this one COD-to-online transition during
+  -- trusted order creation; a second update would correctly require a payment intent.
   UPDATE public.orders
   SET payment_method = v_method,
+      pickup_station_name = CASE WHEN v_fulfillment = 'pickup_station' THEN v_station_name ELSE pickup_station_name END,
+      pickup_station_city = CASE WHEN v_fulfillment = 'pickup_station' THEN v_station_city ELSE pickup_station_city END,
+      pickup_station_address = CASE WHEN v_fulfillment = 'pickup_station' THEN NULL ELSE pickup_station_address END,
+      pickup_location = CASE WHEN v_fulfillment = 'pickup_station' THEN v_station_name || ', ' || v_station_city ELSE pickup_location END,
+      delivery_region = CASE WHEN v_fulfillment = 'pickup_station' THEN v_station_city ELSE delivery_region END,
+      delivery_area = CASE WHEN v_fulfillment = 'pickup_station' THEN v_station_city ELSE delivery_area END,
+      delivery_address = CASE WHEN v_fulfillment = 'pickup_station' THEN NULL ELSE delivery_address END,
+      delivery_instructions = CASE WHEN v_fulfillment = 'pickup_station' THEN NULL ELSE delivery_instructions END,
       updated_at = now()
   WHERE id = v_order_id
     AND buyer_id = v_buyer_id
     AND order_status = 'pending'
-    AND payment_status = 'pending';
+    AND payment_status = 'pending'
+  RETURNING seller_id INTO v_seller_id;
 
   IF NOT FOUND THEN RAISE EXCEPTION 'ONLINE_ORDER_SETUP_FAILED'; END IF;
 
   IF v_fulfillment = 'pickup_station' THEN
-    UPDATE public.orders
-    SET pickup_station_name = v_station_name,
-        pickup_station_city = v_station_city,
-        pickup_station_address = NULL,
-        pickup_location = v_station_name || ', ' || v_station_city,
-        delivery_region = v_station_city,
-        delivery_area = v_station_city,
-        delivery_address = NULL,
-        delivery_instructions = NULL
-    WHERE id = v_order_id
-    RETURNING seller_id INTO v_seller_id;
-
     -- Replace the generic new-order notice with actionable station instructions.
     UPDATE public.notifications
     SET title = 'New Banjul pickup-station order',
