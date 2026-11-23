@@ -14,6 +14,29 @@ SET refund_provider_window_hours = 24,
     updated_at = now()
 WHERE id = 1;
 
+-- Authenticated checkout clients use this to enable the station option only
+-- after the schema and server-side pickup workflow are deployed.
+CREATE OR REPLACE FUNCTION public.gambasket_get_pickup_station_config()
+RETURNS jsonb
+LANGUAGE sql
+STABLE
+SECURITY INVOKER
+SET search_path TO ''
+AS $fn$
+  SELECT jsonb_build_object(
+    'available', true,
+    'station_name', 'JulaDirect Pickup Station',
+    'city', 'Banjul',
+    'country', 'The Gambia'
+  )
+  WHERE (SELECT auth.uid()) IS NOT NULL;
+$fn$;
+
+REVOKE ALL ON FUNCTION public.gambasket_get_pickup_station_config()
+FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.gambasket_get_pickup_station_config()
+TO authenticated;
+
 CREATE OR REPLACE FUNCTION public.create_order(
   p_items jsonb,
   p_fulfillment_type character varying,
