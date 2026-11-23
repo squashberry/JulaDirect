@@ -109,6 +109,18 @@ async function mockBackend(page, options = {}) {
       body: JSON.stringify(body)
     });
 
+    if (path === "/functions/v1/gambasket-modempay-config" && method === "GET") {
+      await json({ checkout_enabled: true, payment_methods: ["wave", "qmoney", "afrimoney"], currency: "GMD", provider: "ModemPay" });
+      return;
+    }
+    if (path === "/functions/v1/gambasket-modempay-checkout" && method === "POST") {
+      let body = null;
+      try { body = request.postDataJSON(); } catch {}
+      writes.push({ table: "functions/gambasket-modempay-checkout", body });
+      await json({ success: true, payment_url: "https://checkout.modempay.com/test-payment", payment_id: "77777777-7777-4777-8777-777777777777" });
+      return;
+    }
+
     if (path === "/auth/v1/settings") {
       await json({
         disable_signup: false,
@@ -512,7 +524,7 @@ test("Authenticated saved-search form writes only the filter criteria contract",
   expect(insert.body.criteria.brandModel).toBe("Apple");
 });
 
-test("Checkout submits cart items through the server-authoritative create_order RPC", async ({ page }) => {
+test("Checkout creates an online-only order and opens ModemPay", async ({ page }) => {
   const writes = [];
   const cartRows = [{
     id: "66666666-6666-4666-8666-666666666666",
@@ -522,8 +534,12 @@ test("Checkout submits cart items through the server-authoritative create_order 
     product: iphone
   }];
   await mockBackend(page, { products: [iphone], cartRows, authenticated: true, writes });
+  await page.route("https://checkout.modempay.com/**", route => route.fulfill({
+    status: 200, contentType: "text/html", body: "<title>ModemPay test checkout</title>"
+  }));
   await page.goto("/checkout.html");
   await expect(page.locator("#summaryItems")).toContainText("iPhone 13 128GB");
+  await expect(page.locator("#cod")).toHaveCount(0);
   await page.locator("#fullName").fill("Test Buyer");
   await page.locator("#email").fill("gambasket-e2e@example.test");
   await page.locator("#phone").fill("+2207000000");
@@ -531,13 +547,18 @@ test("Checkout submits cart items through the server-authoritative create_order 
   await page.locator("#area").fill("Brikama");
   await page.locator("#address").fill("Test Street");
   await page.locator("#placeOrderBtn").click();
-  await expect(page.locator("#orderSuccess")).toHaveClass(/show/);
-  await expect(page.locator("#successOrderNumber")).toHaveText("GB-TEST-0001");
+  await page.locator("#wave").check();
+  await page.locator("#placeOrderBtn").click();
+  await page.locator("#placeOrderBtn").click();
+  await expect(page).toHaveURL(/checkout\.modempay\.com\/test-payment/);
   const orderCall = writes.find(row => row.table === "rpc/create_order");
   expect(orderCall).toBeTruthy();
   expect(orderCall.body.p_items).toEqual([{ product_id: IPHONE_ID, quantity: 1 }]);
   expect(orderCall.body.p_delivery_area).toBe("Brikama");
   expect(orderCall.body.p_fulfillment_type).toBe("delivery");
+  expect(orderCall.body.p_payment_method).toBe("wave");
+  const paymentCall = writes.find(row => row.table === "functions/gambasket-modempay-checkout");
+  expect(paymentCall.body.payment_method).toBe("wave");
 });
 
 test("Image upload falls back to Supabase Storage when Cloudinary is unset", async ({ page }) => {
@@ -591,17 +612,18 @@ test("Mobile Explore does not hide the key search/filters controls", async ({ pa
   await expect(page.locator("#ex-brand")).toBeVisible();
 });
 
-test("Checkout enables only Cash on Delivery and labels future methods Coming soon", async ({ page }) => {
-  // Inspect shipped HTML controls without app JavaScript triggering auth redirects.
+test("Checkout offers online payment only and explains the refund request window", async ({ page }) => {
+  // Inspect the shipped checkout UI without running authentication or payment JS.
   await page.route("**/js/**", route => route.fulfill({
     status: 200,
     contentType: "application/javascript",
     body: ""
   }));
   await page.goto("/checkout.html");
-  await expect(page.locator("#cod")).toBeChecked();
-  await expect(page.locator("#cod")).toBeEnabled();
-  await expect(page.locator("#paymentAvailabilityNote")).toContainText("depends on the seller");
+  await expect(page.locator("#cod")).toHaveCount(0);
+  await expect(page.locator("#paymentAvailabilityNote")).toContainText("pay securely online");
+  await expect(page.locator("#refundWindowNote")).toContainText("48-hour refund request window");
+  await expect(page.locator("#refundWindowNote")).toContainText("reviewed by JulaDirect");
   for (const id of ["wave", "qmoney", "afrimoney"]) {
     await expect(page.locator(`#${id}`)).toBeDisabled();
     await expect(page.locator(`label[for="${id}"]`)).toContainText("Coming soon");
