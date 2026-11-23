@@ -1317,7 +1317,7 @@
                 if (client) {
                     const { data, error } = await client
                         .from("orders")
-                        .select("id, order_number, fulfillment_type, delivery_address, delivery_area, delivery_phone, pickup_station_name, pickup_station_city, pickup_station_address, pickup_location, subtotal, delivery_fee, total, currency, payment_status, payment_method, order_status, created_at, order_items(id, product_id, title, price, quantity, subtotal)")
+                        .select("*, order_items(id, product_id, title, price, quantity, subtotal)")
                         .eq("buyer_id", userId)
                         .order("created_at", { ascending: false });
 
