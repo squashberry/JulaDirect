@@ -80,7 +80,7 @@
     const site = !websiteResult.error ? (Array.isArray(websiteResult.data) ? websiteResult.data[0] : websiteResult.data) : null;
     const name = store.name || profile.business_name || [profile.first_name,profile.last_name].filter(Boolean).join(" ") || "JulaDirect seller";
     const sales = products.reduce((n,p)=>n+Number(p.sales_count||0),0);
-    const avg = reviews.summary.average || Number(store.rating||0);
+    const avg = reviews.summary.average;
     const deliveryCount = products.filter(p=>p.delivery_available === true).length;
     const data = {
       sellerId,
