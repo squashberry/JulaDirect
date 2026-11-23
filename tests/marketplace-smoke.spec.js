@@ -230,7 +230,17 @@ async function mockBackend(page, options = {}) {
       return;
     }
     if (path === "/rest/v1/rpc/gambasket_get_pickup_station_config" && method === "POST") {
-      await json({ available: true, station_name: "JulaDirect Pickup Station", city: "Banjul", country: "The Gambia" });
+      await json({
+        available: true,
+        stations: [{
+          id: "88888888-8888-4888-8888-888888888888",
+          station_name: "SRN",
+          region: "Greater Banjul Area",
+          area: "Banjul",
+          address: "SRN, Banjul, The Gambia",
+          is_active: true
+        }]
+      });
       return;
     }
     if (path === "/rest/v1/rpc/gambasket_cod_checkout_eligibility" && method === "POST") {
@@ -565,7 +575,7 @@ test("Checkout creates an online-only order and opens ModemPay", async ({ page }
   expect(paymentCall.body.payment_method).toBe("wave");
 });
 
-test("Pickup station checkout sends Banjul destination without delivery address", async ({ page }) => {
+test("Pickup station checkout sends the selected station ID and area without a delivery address", async ({ page }) => {
   const writes = [];
   const cartRows = [{
     id: "66666666-6666-4666-8666-666666666666",
@@ -583,10 +593,13 @@ test("Pickup station checkout sends Banjul destination without delivery address"
   await page.locator("#email").fill("gambasket-e2e@example.test");
   await page.locator("#phone").fill("+2207000000");
   await expect(page.locator("#pickup")).toBeEnabled();
-  await expect(page.locator("#pickupStationAvailability")).toContainText("Banjul only");
+  await expect(page.locator("#pickupStationAvailability")).toContainText("1 station");
   await page.locator("#pickup").check();
   await expect(page.locator("#deliveryFields")).toBeHidden();
   await expect(page.locator("#pickupStationFields")).toBeVisible();
+  await page.locator("#pickupStationArea").selectOption("Greater Banjul Area|||Banjul");
+  await page.locator("#pickupStationSelect").selectOption("88888888-8888-4888-8888-888888888888");
+  await expect(page.locator("#pickupStationDetails")).toContainText("SRN, Banjul, The Gambia");
   await expect(page.locator("#summaryDeliveryLabel")).toContainText("Pickup station");
   await page.locator("#placeOrderBtn").click();
   await page.locator("#wave").check();
@@ -597,7 +610,8 @@ test("Pickup station checkout sends Banjul destination without delivery address"
   const orderCall = writes.find(row => row.table === "rpc/create_order");
   expect(orderCall).toBeTruthy();
   expect(orderCall.body.p_fulfillment_type).toBe("pickup_station");
-  expect(orderCall.body.p_delivery_region).toBe("Banjul");
+  expect(orderCall.body.p_pickup_station_id).toBe("88888888-8888-4888-8888-888888888888");
+  expect(orderCall.body.p_delivery_region).toBe("Greater Banjul Area");
   expect(orderCall.body.p_delivery_area).toBe("Banjul");
   expect(orderCall.body.p_delivery_address).toBeNull();
   expect(orderCall.body.p_delivery_instructions).toBeNull();
@@ -668,7 +682,11 @@ test("Checkout offers online payment only and explains the refund request window
   await expect(page.locator("#cod")).toHaveCount(0);
   await expect(page.locator("#pickup")).toHaveValue("pickup_station");
   await expect(page.locator("#pickup")).toBeDisabled();
-  await expect(page.locator("#pickupStationFields")).toContainText("Banjul");
+  await expect(page.locator("#pickupStationArea")).toBeDisabled();
+  await expect(page.locator("#pickupStationSelect")).toBeDisabled();
+  await expect(page.locator("#pickupStationFields")).toContainText("Choose an area");
+  await expect(page.locator("#region option")).toHaveCount(3);
+  await expect(page.locator("#region")).not.toContainText("North Bank Region");
   await expect(page.locator("#paymentAvailabilityNote")).toContainText("pay securely online");
   await expect(page.locator("#refundWindowNote")).toContainText("24-hour refund eligibility");
   await expect(page.locator("#refundWindowNote")).toContainText("All requests are reviewed by JulaDirect");
