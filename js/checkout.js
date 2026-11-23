@@ -249,7 +249,7 @@
         if (state.submitting) label = "Securing your order…";
         else if (state.open === 1) label = "Continue to payment";
         else if (state.open === 2) label = "Review your order";
-        else if (!state.done[1]) label = "Add delivery details";
+        else if (!state.done[1]) label = "Add order details";
         else if (!state.done[2]) label = "Choose payment";
         else {
             const pay = selectedPayment();
