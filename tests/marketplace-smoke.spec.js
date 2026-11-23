@@ -557,8 +557,11 @@ test("Checkout creates an online-only order and opens ModemPay", async ({ page }
   await page.locator("#fullName").fill("Test Buyer");
   await page.locator("#email").fill("gambasket-e2e@example.test");
   await page.locator("#phone").fill("+2207000000");
+  await page.locator("#region").selectOption({ label: "Greater Banjul Area" });
+  await expect(page.locator("#area option")).toHaveText(["Select area / town", "Banjul", "Serrekunda", "Bakau", "Kololi", "Fajara"]);
   await page.locator("#region").selectOption({ label: "West Coast Region" });
-  await page.locator("#area").fill("Brikama");
+  await expect(page.locator("#area option")).toHaveText(["Select area / town", "Brikama"]);
+  await page.locator("#area").selectOption("Brikama");
   await page.locator("#address").fill("Test Street");
   await page.locator("#placeOrderBtn").click();
   await page.locator("#wave").check();
