@@ -65,7 +65,7 @@ assert.match(allSql, /gambasket_notify_pickup_station_ready/);
 assert.match(checkoutHtml, /24-hour refund eligibility/i);
 assert.match(checkoutHtml, /id="pickup" value="pickup_station"/i);
 assert.match(checkoutHtml, /Banjul, The Gambia/i);
-assert.match(checkoutHtml, /subject to JulaDirect review/i);
+assert.match(checkoutHtml, /All requests are reviewed by JulaDirect/i);
 
 console.log("PASS: JulaDirect financial foundation schema and security contracts.");
 console.log("PASS: 5% commission, 24-hour seller release and refund eligibility windows, pickup station routing and private OTP records.");
