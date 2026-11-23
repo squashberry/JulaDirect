@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="css/jd.css">
     <link rel="stylesheet" href="css/jd-profile.css">
 </head>
-<body class="jd">
+<body class="jd" data-profile-kind="supplier">
     <div id="jd-header"></div>
 
     <main id="jd-main" class="jd-container pf"><div id="pf-root" aria-live="polite"></div></main>
@@ -24,6 +24,7 @@
     <script src="js/jd-core.js"></script>
     <script src="js/jd-data.js"></script>
     <script src="js/jd-profile.js"></script>
-    <script>JD.mountShell({active:""});JDProfile.mount({kind:"supplier"});</script>
+    <script src="js/jd-profile-live.js"></script>
+    <script>JD.mountShell({active:""});</script>
 </body>
 </html>

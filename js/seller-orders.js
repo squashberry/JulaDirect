@@ -19,7 +19,8 @@
             throw new Error("Invalid cancellation reason.");
         }
 
-        if (!window.supabaseClient) throw new Error("Order service unavailable.");
+        const client = window.supabaseClient || window.GamBasketAuth?.getClient?.();
+        if (!client) throw new Error("Order service unavailable.");
 
         const reasonLabels = {
             customer_request: "Customer request",
@@ -28,7 +29,7 @@
             seller_unavailable: "Seller unavailable",
             other: "Other"
         };
-        const { data, error } = await window.supabaseClient.rpc("seller_update_order_status", {
+        const { data, error } = await client.rpc("seller_update_order_status", {
             p_order_id: orderId,
             p_next_status: "cancelled",
             p_reason: reasonLabels[reason]
@@ -93,8 +94,9 @@
         },
 
         async updateStatus(orderId, newStatus) {
-            if (!window.supabaseClient) throw new Error("Order service unavailable.");
-            const { data, error } = await window.supabaseClient.rpc("seller_update_order_status", {
+            const client = window.supabaseClient || window.GamBasketAuth?.getClient?.();
+            if (!client) throw new Error("Order service unavailable.");
+            const { data, error } = await client.rpc("seller_update_order_status", {
                 p_order_id: orderId,
                 p_next_status: newStatus,
                 p_reason: null

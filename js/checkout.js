@@ -15,6 +15,21 @@
 
     const isDelivery = () => document.querySelector('input[name="fulfillment"]:checked')?.value === "delivery";
     const isPickupStation = () => document.querySelector('input[name="fulfillment"]:checked')?.value === "pickup_station";
+    const isSellerPickup = () => document.querySelector('input[name="fulfillment"]:checked')?.value === "pickup";
+
+    function applyFulfillmentAvailability() {
+        const canDeliver = state.cart.length > 0 && state.cart.every(item => productFor(item).delivery_available === true);
+        const deliveryChoice = $("deliveryChoice");
+        const stationChoice = $("pickupStationChoice");
+        const delivery = $("delivery");
+        const station = $("pickup");
+        const sellerPickup = $("sellerPickup");
+        if (deliveryChoice) deliveryChoice.hidden = !canDeliver;
+        if (stationChoice) stationChoice.hidden = !canDeliver;
+        if (delivery) delivery.disabled = !canDeliver;
+        if (station) station.disabled = !canDeliver || !state.pickupStations.length;
+        if (!canDeliver && sellerPickup) sellerPickup.checked = true;
+    }
     const selectedPayment = () => document.querySelector('input[name="payment"]:checked');
 
     // Match the six service areas linked from the homepage "Shop near you" section.
@@ -294,13 +309,14 @@
         const activeStation = isPickupStation() ? selectedPickupStation() : null;
         $("summaryDeliveryLabel").textContent = activeStation
             ? "Pickup station · " + activeStation.area
-            : (isPickupStation() ? "Pickup station" : "Delivery");
+            : (isPickupStation() ? "Pickup station" : (isSellerPickup() ? "Collect from seller" : "Delivery"));
         $("summaryDelivery").textContent = state.deliveryFee ? money(state.deliveryFee) : "Free";
         const d = discount();
         $("ck-discount-row").hidden = !d;
         $("summaryDiscount").textContent = `- ${money(d)}`;
         $("summaryTotal").textContent = money(total());
         $("ck-dock-total").textContent = money(total());
+        applyFulfillmentAvailability();
         const del = isDelivery();
         $("deliveryFields").hidden = !del;
         $("pickupStationFields").hidden = !isPickupStation();
@@ -314,6 +330,7 @@
     }
 
     function calculateDelivery() {
+        applyFulfillmentAvailability();
         const delivery = isDelivery();
         const stationPickup = isPickupStation();
         state.deliveryFee = delivery ? 100 : 0;
@@ -350,7 +367,7 @@
                             ? `Pickup station · ${station.station_name} · ${station.area} · ${name} · ${phone}`
                             : "Choose a pickup station";
                     })()
-                    : `Pickup · ${name} · ${phone}`)
+                    : (isSellerPickup() ? `Collect from seller · ${name} · ${phone}` : `Pickup · ${name} · ${phone}`))
             : "Who is receiving this order and where it goes.";
         const pay = selectedPayment();
         $("ck-s2-sum").textContent = state.done[2] && pay

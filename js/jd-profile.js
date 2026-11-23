@@ -125,9 +125,14 @@
   function mount(opts) {
     opts = opts || {};
     const kind = opts.kind === "supplier" ? "supplier" : "seller";
-    const d = opts.data || (window.JD_PROFILE_DATA) || (kind === "supplier" ? DEMO_SUPPLIER : DEMO_SELLER);
-    state = { kind, data: d, products: (d.products || []).slice(), category: "All", sort: "new", q: "", following: false, reviews: d.reviews };
     const root = $("#pf-root"); if (!root) return;
+    const d = opts.data || window.JD_PROFILE_DATA || (opts.demo === true ? (kind === "supplier" ? DEMO_SUPPLIER : DEMO_SELLER) : null);
+    if (!d || !d.name) {
+      root.innerHTML = '<section class="pf-card2" role="status"><h1>Profile unavailable</h1><p class="pf-prose">This profile is not published or could not be loaded. Please return to the marketplace and try again.</p></section>';
+      document.title = "Profile unavailable — JulaDirect";
+      return;
+    }
+    state = { kind, data: d, products: (d.products || []).slice(), category: "All", sort: "new", q: "", following: !!d.following, reviews: d.reviews };
     document.title = d.name + " — JulaDirect";
     const panels = kind === "supplier"
       ? { catalog: productsPanel(kind), about: aboutPanel(d, kind), capabilities: capabilitiesPanel(d), reviews: reviewsPanel(d.reviews), faq: faqPanel(d) }
@@ -135,6 +140,12 @@
     const first = Object.keys(panels)[0];
     root.innerHTML = hero(d, kind) + stats(d, kind) + tabs(kind) + '<div class="pf-panels">' + Object.keys(panels).map(k => '<section class="pf-panel" id="pf-' + k + '" role="tabpanel"' + (k === first ? "" : " hidden") + ">" + panels[k] + "</section>").join("") + "</div>" + (kind === "supplier" ? quoteSheet(d) : "");
     paintGrid(); lookupWebsite(d);
+    const followButton = $('[data-pf="follow"]');
+    if (followButton) {
+      followButton.setAttribute("aria-pressed", String(!!d.following));
+      const followLabel = $("span", followButton);
+      if (followLabel) followLabel.textContent = d.following ? "Following" : "Follow";
+    }
     const hash = location.hash.replace("#", ""); if (hash && panels[hash]) show(hash, true);
     if (window.JD && JD.syncWishlist) JD.syncWishlist(root);
   }
@@ -170,7 +181,7 @@
     if (e.target.id !== "pf-quote") return;
     e.preventDefault(); const f = Object.fromEntries(new FormData(e.target).entries());
     emit("quote", { product: f.product, quantity: Number(f.quantity), name: f.name, phone: f.phone, note: f.note });
-    sheet(false); e.target.reset(); if (window.JD && JD.toast) JD.toast("Quote request sent (demo)");
+    sheet(false); e.target.reset(); if (!window.JDProfileLive && window.JD && JD.toast) JD.toast("Quote request sent (demo)");
   });
   document.addEventListener("keydown", e => { if (e.key === "Escape") sheet(false); });
 
@@ -195,11 +206,11 @@
     name: "Banjul Tech Hub", website: "https://squashberrypro.pages.dev/banjul-tech", tagline: "Phones, solar and home electronics you can trust.", verified: true, topRated: true,
     location: "Serrekunda, The Gambia", joined: "March 2025", responseTime: "within 1 hour", rating: 4.7, reviewCount: 128, sold: 1840, productCount: 63, followers: 2310, responseRate: 98,
     about: "We are a family-run electronics store on Kairaba Avenue. Every item is tested before it is listed, and we describe condition honestly so you know exactly what you are buying. Ask us anything before you order.",
-    highlights: [{ icon: "shield", title: "Tested before listing", text: "Every device is checked and photographed by us." }, { icon: "truck", title: "Fast delivery", text: "Same-day delivery around the Greater Banjul area." }, { icon: "wallet", title: "Pay on delivery", text: "Cash on delivery available on most items." }],
+    highlights: [{ icon: "shield", title: "Tested before listing", text: "Every device is checked and photographed by us." }, { icon: "truck", title: "Fast delivery", text: "Same-day delivery around the Greater Banjul area." }, { icon: "wallet", title: "Online payment", text: "Use an online payment method when enabled at checkout." }],
     type: "Retail store", registered: "2025", address: "Kairaba Avenue, Serrekunda", phone: "+220 700 0000", languages: "English, Wolof, Mandinka",
     hours: [["Mon – Fri", "9:00 – 18:00"], ["Saturday", "10:00 – 16:00"], ["Sunday", "Closed"]],
     gallery: ["a", "b", "c"],
-    policies: [{ icon: "truck", title: "Delivery", text: "We deliver across Greater Banjul. Delivery fees are shown at checkout and you confirm the handover with a code." }, { icon: "scale", title: "Returns", text: "If an item is not as described, message us within 48 hours and we will arrange a return or refund." }, { icon: "wallet", title: "Payment", text: "Cash on delivery or online payment at checkout. Keep payment on JulaDirect to stay protected." }],
+    policies: [{ icon: "truck", title: "Delivery", text: "We deliver across Greater Banjul. Delivery fees are shown at checkout and you confirm the handover with a code." }, { icon: "scale", title: "Returns", text: "If an item is not as described, message us within 48 hours and we will arrange a return or refund." }, { icon: "wallet", title: "Payment", text: "Use an online payment method enabled at checkout. Keep payment on JulaDirect to stay protected." }],
     reviews: REV,
     products: [P("1", "Solar LED Security Light", 2600, "Solar", { sold: 84, rating: 4.8, badge: "Best seller" }), P("2", "iPhone 13, 128GB", 21500, "Phones", { sold: 31, rating: 4.9 }), P("3", "Samsung Galaxy A14", 7800, "Phones", { sold: 52, rating: 4.6 }), P("4", "Portable Power Bank 20,000mAh", 1450, "Electronics", { sold: 120, rating: 4.7 }), P("5", "Wireless Earbuds Pro", 1900, "Electronics", { sold: 77, rating: 4.5 }), P("6", "12V Solar Panel Kit", 9800, "Solar", { sold: 18, rating: 4.8, badge: "New" }), P("7", "Bluetooth Speaker", 1250, "Electronics", { sold: 64, rating: 4.4 }), P("8", "USB-C Fast Charger", 650, "Electronics", { sold: 210, rating: 4.6 })]
   };
@@ -213,7 +224,7 @@
     gallery: ["a", "b", "c", "d"],
     capabilities: [{ icon: "bag", title: "What we supply", items: ["Phones & accessories", "Solar panels, lights & batteries", "Small kitchen appliances", "Packaging & bulk household goods"] }, { icon: "truck", title: "Logistics", items: ["Dispatch within 2–5 days", "Delivery to all regions", "Pickup from our Banjul warehouse", "Delivery confirmed with a code"] }, { icon: "scale", title: "Ordering", items: ["Minimum order from 20 units", "Tiered pricing on every line", "Samples on request", "Invoices provided"] }],
     certs: ["Registered business", "Tax compliant", "Authorised distributor"],
-    faq: [["What is the minimum order?", "Most lines start at 20 units. Some accessories start at 50. The quantity is shown on every product."], ["Can I get samples?", "Yes. Request a quote and mention samples; we will quote one or two units."], ["How do I pay?", "Pay through JulaDirect at checkout, or agree cash on delivery for larger orders."], ["Do you deliver upcountry?", "Yes, we deliver to all regions. Fees depend on weight and distance."]],
+    faq: [["What is the minimum order?", "Most lines start at 20 units. Some accessories start at 50. The quantity is shown on every product."], ["Can I get samples?", "Yes. Request a quote and mention samples; we will quote one or two units."], ["How do I pay?", "Use an online payment method enabled at JulaDirect checkout."], ["Do you deliver upcountry?", "Yes, we deliver to all regions. Fees depend on weight and distance."]],
     reviews: REV,
     products: [P("1", "Solar LED Security Light (carton of 20)", 2100, "Solar", { priceFrom: true, moq: "20 units", sold: 940, tiers: [{ qty: "20–99", price: 2100 }, { qty: "100–499", price: 1950 }, { qty: "500+", price: 1800 }] }), P("2", "Power Bank 20,000mAh", 1100, "Electronics", { priceFrom: true, moq: "30 units", sold: 1200, tiers: [{ qty: "30–99", price: 1100 }, { qty: "100+", price: 980 }] }), P("3", "USB-C Fast Charger", 480, "Electronics", { priceFrom: true, moq: "50 units", sold: 3100, tiers: [{ qty: "50–199", price: 480 }, { qty: "200+", price: 420 }] }), P("4", "12V Solar Panel Kit", 8600, "Solar", { priceFrom: true, moq: "5 units", sold: 210, tiers: [{ qty: "5–19", price: 8600 }, { qty: "20+", price: 8100 }] }), P("5", "Electric Kettle 1.8L", 690, "Home", { priceFrom: true, moq: "24 units", sold: 540 }), P("6", "Rice Cooker 1.5L", 1250, "Home", { priceFrom: true, moq: "12 units", sold: 380 })]
   };

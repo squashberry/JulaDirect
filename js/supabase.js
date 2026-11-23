@@ -1171,7 +1171,7 @@
 
             const { data, error } = await client
                 .from("cart_items")
-                .select("id, product_id, quantity, product:products(id, title, price, stock, main_image, seller_id, location, status)")
+                .select("id, product_id, quantity, product:products(id, title, price, stock, main_image, seller_id, location, status, delivery_available, fulfillment_type)")
                 .eq("user_id", session.user.id)
                 .order("created_at", { ascending: true });
 
