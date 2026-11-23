@@ -69,7 +69,7 @@ assert.match(checkoutUi, /payment_method: payment/);
 assert.doesNotMatch(checkoutUi, /gambasket_cod_checkout_eligibility|cash_on_delivery/i);
 const checkoutPage = await read("checkout.html");
 assert.doesNotMatch(checkoutPage, /id="cod"/i);
-assert.match(checkoutPage, /48-hour refund request window/i);
+assert.match(checkoutPage, /48-hour refund window/i);
 assert.match(codWalletUi, /seller_get_cod_reserve_summary/);
 assert.match(codWalletUi, /seller_fund_cod_commission_reserve/);
 assert.match(codWalletUi, /seller_set_cod_checkout_enabled/);
