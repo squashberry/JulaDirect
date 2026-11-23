@@ -66,5 +66,5 @@ assert.match(checkoutHtml, /Banjul, The Gambia/i);
 assert.match(checkoutHtml, /subject to JulaDirect review/i);
 
 console.log("PASS: JulaDirect financial foundation schema and security contracts.");
-console.log("PASS: 5% commission, 24-hour seller release window, 48-hour provider refund window and private OTP records.");
+console.log("PASS: 5% commission, 24-hour seller release and refund eligibility windows, pickup station routing and private OTP records.");
 console.log("PASS: New orders require Wave, QMoney or Afrimoney; COD remains historical only.");
