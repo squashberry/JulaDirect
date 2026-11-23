@@ -1,19 +1,16 @@
-/* JulaDirect checkout. A guided, three-part flow (delivery, payment, review) with a live order
-   summary, editable quantities, an order-confirmed screen and links into My orders.
-   Payment, COD eligibility, coupon and order creation use the same trusted calls as before:
-   gambasket_cod_checkout_eligibility (RPC), validate_coupon, create_order and the
-   gambasket-modempay-checkout edge function. Totals are always re-verified server side. */
+/* JulaDirect checkout. A guided, three-part flow (delivery, online payment, review).
+   Payment intents are created by ModemPay; order totals and stock are re-verified server side. */
 (() => {
     "use strict";
 
-    const state = { cart: [], coupon: null, deliveryFee: 0, submitting: false, codEligibility: null, open: 1, done: { 1: false, 2: false }, eligibilityTimer: 0 };
+    const state = { cart: [], coupon: null, deliveryFee: 0, submitting: false, open: 1, done: { 1: false, 2: false } };
     const $ = id => document.getElementById(id);
     const JD = window.JD;
     const money = value => `D ${Number(value || 0).toLocaleString("en-GM")}`;
     const productFor = item => item.product || item.products || item;
     const escapeHTML = value => String(value ?? "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[char]));
     const ADDRESS_KEY = "jd-ck-addr";
-    const PAY_LABEL = { cash_on_delivery: "Cash on delivery", wave: "Wave", qmoney: "QMoney", afrimoney: "Afrimoney" };
+    const PAY_LABEL = { wave: "Wave", qmoney: "QMoney", afrimoney: "Afrimoney" };
     const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     const isDelivery = () => document.querySelector('input[name="fulfillment"]:checked')?.value === "delivery";
@@ -49,83 +46,48 @@
 
     /* ---------- payment configuration ---------- */
     async function loadModemPayConfig() {
+        const note = $("paymentAvailabilityNote");
         const client = window.GamBasketAuth?.getClient?.() || window.supabaseClient;
-        if (!client?.functions) return;
+        if (!client?.functions) {
+            if (note) note.textContent = "Secure online payment is temporarily unavailable. Please try again later.";
+            return;
+        }
         try {
             const { data, error } = await client.functions.invoke("gambasket-modempay-config", { method: "GET" });
-            if (error || !data?.checkout_enabled) return;
+            if (error || !data?.checkout_enabled) {
+                if (note) note.textContent = "Secure online payment is temporarily unavailable. Please try again later.";
+                return;
+            }
+            const available = new Set(
+                Array.isArray(data.payment_methods)
+                    ? data.payment_methods.filter(method => ["wave", "qmoney", "afrimoney"].includes(method))
+                    : []
+            );
             ["wave", "qmoney", "afrimoney"].forEach(method => {
-                const input = document.getElementById(method);
-                if (input) input.disabled = false;
+                const input = $(method);
+                const enabled = available.has(method);
+                if (input) input.disabled = !enabled;
                 const label = document.querySelector('label[for="' + method + '"]');
-                const badge = label?.querySelector(".payment-coming-soon-badge");
-                if (badge) {
+                const badge = label?.querySelector(".payment-coming-soon-badge, .payment-availability-badge");
+                if (badge && enabled) {
                     badge.className = "payment-availability-badge";
-                    badge.textContent = "Pay online";
+                    badge.textContent = "Secure online";
                 }
-                const hint = document.getElementById(method + "ComingSoon");
-                if (hint) hint.textContent = "Continue to secure ModemPay checkout.";
+                const hint = $(method + "ComingSoon");
+                if (hint) hint.textContent = enabled
+                    ? "Pay securely through ModemPay."
+                    : "This payment method is temporarily unavailable.";
             });
-            const note = document.getElementById("paymentAvailabilityNote");
-            if (note) note.textContent = "Online payments are on. You will be taken to ModemPay to pay securely, then brought back to your order.";
+            if (note) {
+                note.textContent = available.size
+                    ? "Choose your mobile money wallet. Payment is completed securely through ModemPay."
+                    : "No online payment methods are available right now. Please try again later.";
+            }
         } catch (error) {
+            if (note) note.textContent = "Secure online payment is temporarily unavailable. Please try again later.";
             console.warn("[JulaDirect ModemPay] configuration could not be loaded:", error);
         }
     }
-
-    async function loadCodEligibility() {
-        const codInput = $("cod");
-        if (!codInput) return;
-        let note = $("codAvailabilityNote");
-        if (!note) {
-            note = document.createElement("small");
-            note.id = "codAvailabilityNote";
-            note.className = "checkout-note";
-            document.querySelector('label[for="cod"] .ck-pay__t')?.appendChild(note);
-        }
-        codInput.disabled = true;
-        syncPlaceOrderAvailability();
-        note.textContent = "Checking this seller's Cash on Delivery eligibility…";
-        try {
-            const sellerIds = [...new Set(state.cart.map(item => productFor(item).seller_id).filter(Boolean))];
-            if (sellerIds.length !== 1) throw new Error("Cash on Delivery is only available for a single seller's basket.");
-            const client = window.GamBasketAuth?.getClient?.() || window.supabaseClient;
-            if (!client) throw new Error("Checkout service is unavailable.");
-            const { data, error } = await client.rpc("gambasket_cod_checkout_eligibility", {
-                p_seller_id: sellerIds[0],
-                p_merchandise_amount: Math.max(0, subtotal() - discount())
-            });
-            if (error) throw error;
-            const eligibility = Array.isArray(data) ? data[0] : data;
-            state.codEligibility = eligibility || null;
-            const eligible = Boolean(eligibility?.eligible);
-            codInput.disabled = !eligible;
-            const badge = document.querySelector('label[for="cod"] .payment-availability-badge, label[for="cod"] .payment-coming-soon-badge');
-            if (badge) {
-                badge.textContent = eligible ? "Available" : "Unavailable";
-                badge.className = eligible ? "payment-availability-badge" : "payment-coming-soon-badge";
-            }
-            note.textContent = eligible
-                ? "This seller can offer cash on delivery for this basket."
-                : "Cash on delivery is unavailable for this basket: the seller must enable it and keep enough reserve for this order.";
-            if (!eligible && codInput.checked) {
-                codInput.checked = false;
-                const next = [...document.querySelectorAll('input[name="payment"]')].find(input => input !== codInput && !input.disabled);
-                if (next) next.checked = true;
-            } else if (eligible && !document.querySelector('input[name="payment"]:checked')) {
-                codInput.checked = true;
-            }
-        } catch (error) {
-            state.codEligibility = null;
-            codInput.disabled = true;
-            codInput.checked = false;
-            note.textContent = "Cash on delivery is unavailable because the seller reserve could not be verified.";
-            console.warn("[JulaDirect COD] eligibility could not be verified:", error);
-        }
-        syncPlaceOrderAvailability();
-        fillSummaries();
-    }
-    function reloadEligibilitySoon() { clearTimeout(state.eligibilityTimer); state.eligibilityTimer = setTimeout(loadCodEligibility, 350); }
 
     /* ---------- init ---------- */
     async function init() {
@@ -169,7 +131,6 @@
             render();
             /* a returning buyer with a saved, complete address starts on payment */
             if (state.cart.length && completeDelivery()) { state.done[1] = true; fillSummaries(); openStep(2, true); }
-            await loadCodEligibility();
         } catch (error) {
             console.error("[JulaDirect Checkout]", error);
             showError("We couldn't load checkout. Please try again.");
@@ -228,7 +189,7 @@
         ["region", "area", "address"].forEach(id => { if ($(id)) $(id).required = isDelivery(); });
         render();
         fillSummaries();
-        reloadEligibilitySoon();
+        
     }
 
     function completeDelivery() {
@@ -244,7 +205,7 @@
             : "Who is receiving this order and where it goes.";
         const pay = selectedPayment();
         $("ck-s2-sum").textContent = state.done[2] && pay
-            ? (pay.value === "cash_on_delivery" ? `Cash on delivery · pay ${money(total())} when it arrives` : `Pay online with ${PAY_LABEL[pay.value] || pay.value}`)
+            ? `Pay online with ${PAY_LABEL[pay.value] || pay.value}`
             : "Choose how you want to pay.";
         [1, 2].forEach(n => { const el = $("ck-n" + n); el.innerHTML = state.done[n] ? JD.icon("check", 16) : String(n); $("ck-s" + n).classList.toggle("is-done", state.done[n]); });
     }
@@ -258,7 +219,7 @@
         else if (!state.done[2]) label = "Choose payment";
         else {
             const pay = selectedPayment();
-            label = pay && pay.value !== "cash_on_delivery" ? `Pay ${money(total())} online` : `Place order · ${money(total())}`;
+            label = pay ? `Pay ${money(total())} online` : "Choose payment";
         }
         $("placeOrderBtn").textContent = label;
         $("ck-dock-btn").textContent = label;
@@ -337,13 +298,11 @@
             state.coupon = coupon;
             $("couponMessage").textContent = coupon ? `Coupon ${coupon.code} applied.` : "This coupon is invalid or unavailable.";
             render(); fillSummaries();
-            await loadCodEligibility();
         } catch (error) {
             console.error("[JulaDirect Coupon]", error);
             state.coupon = null;
             $("couponMessage").textContent = "Unable to validate this coupon.";
             render();
-            await loadCodEligibility();
         }
     }
 
@@ -356,7 +315,7 @@
         if (next === Number(item.quantity)) return;
         const prev = item.quantity;
         item.quantity = next; state.coupon = null; $("couponMessage").textContent = ""; render();
-        try { await window.GamBasketAuth.updateCartItem(pid, next); fillSummaries(); reloadEligibilitySoon(); }
+        try { await window.GamBasketAuth.updateCartItem(pid, next); fillSummaries();  }
         catch (error) { item.quantity = prev; render(); showError("We couldn't update that quantity."); }
     }
     async function removeItem(pid) {
@@ -366,7 +325,7 @@
             await window.GamBasketAuth.removeCartItem(pid);
             state.cart = state.cart.filter(i => i !== item); state.coupon = null;
             if (!state.cart.length) { window.location.replace("cart.html"); return; }
-            render(); fillSummaries(); reloadEligibilitySoon();
+            render(); fillSummaries(); 
         } catch (error) { showError("We couldn't remove that item."); }
     }
 
@@ -374,19 +333,20 @@
     async function submitOrder() {
         if (state.submitting) return;
         const pay = selectedPayment();
-        const permittedMethods = ["cash_on_delivery", "wave", "qmoney", "afrimoney"];
+        const permittedMethods = ["wave", "qmoney", "afrimoney"];
         if (!validateDelivery()) { openStep(1); return; }
-        if (!pay || pay.disabled || !permittedMethods.includes(pay.value)) { openStep(2); showError("Choose an available payment method."); return; }
+        if (!pay || pay.disabled || !permittedMethods.includes(pay.value)) {
+            openStep(2);
+            showError("Choose an available online payment method.");
+            return;
+        }
         clearError();
 
         state.submitting = true;
         syncPlaceOrderAvailability();
-        const snapshot = { items: state.cart.map(i => ({ title: productFor(i).title, image: productFor(i).main_image, qty: Number(i.quantity || 1) })), total: total(), delivery: isDelivery(), area: $("area").value.trim(), address: $("address").value.trim(), phone: $("phone").value.trim() };
         try {
             const fulfillment = document.querySelector('input[name="fulfillment"]:checked').value;
             const payment = pay.value;
-            // Persist the buyer's actual choice. The trusted database wrapper checks
-            // COD reserve eligibility or starts online orders as pending_online.
             const result = await window.GamBasketAuth.createOrder({
                 fulfillment_type: fulfillment,
                 payment_method: payment,
@@ -400,9 +360,6 @@
             const order = result.order || result;
             rememberAddress();
 
-            // Create a pending commission record only when an affiliate attribution
-            // exists. The database independently verifies order ownership and keeps
-            // commissions pending until a paid order is approved by an affiliate admin.
             if (order?.id) {
                 try {
                     await window.GamBasketAffiliate?.attachAttribution();
@@ -412,72 +369,34 @@
                 }
             }
 
-            if (payment !== "cash_on_delivery") {
-                const client = window.GamBasketAuth?.getClient?.() || window.supabaseClient;
-                if (!client?.functions || !window.crypto?.randomUUID) {
-                    throw new Error("Secure online checkout is not available in this browser.");
+            const client = window.GamBasketAuth?.getClient?.() || window.supabaseClient;
+            if (!client?.functions || !window.crypto?.randomUUID) {
+                throw new Error("Secure online checkout is not available in this browser.");
+            }
+            $("placeOrderBtn").textContent = "Opening secure payment…";
+            $("ck-dock-btn").textContent = "Opening secure payment…";
+            const { data: paymentIntent, error: paymentError } = await client.functions.invoke("gambasket-modempay-checkout", {
+                body: {
+                    order_id: order.id,
+                    payment_method: payment,
+                    idempotency_key: window.crypto.randomUUID()
                 }
-                $("placeOrderBtn").textContent = "Opening secure payment…";
-                $("ck-dock-btn").textContent = "Opening secure payment…";
-                const { data: paymentIntent, error: paymentError } = await client.functions.invoke("gambasket-modempay-checkout", {
-                    body: {
-                        order_id: order.id,
-                        payment_method: payment,
-                        idempotency_key: window.crypto.randomUUID()
-                    }
-                });
-                if (paymentError || !paymentIntent?.payment_url) {
-                    /* the order exists, so send the buyer to it: Orders has a "Complete payment" button */
-                    showError((paymentIntent?.error || paymentError?.message || "ModemPay could not open checkout.") + " Your order is saved in My orders, where you can retry the payment.");
-                    state.submitting = false; syncPlaceOrderAvailability();
-                    setTimeout(() => window.location.assign(`orders.html?order=${encodeURIComponent(order.id)}&placed=1`), 2600);
-                    return;
-                }
-                window.GamBasketAffiliate?.clearReferral();
-                window.location.assign(paymentIntent.payment_url);
+            });
+            if (paymentError || !paymentIntent?.payment_url) {
+                showError((paymentIntent?.error || paymentError?.message || "ModemPay could not open checkout.") + " Your order is saved in My orders. You can retry the payment from there.");
+                state.submitting = false;
+                syncPlaceOrderAvailability();
+                setTimeout(() => window.location.assign(`orders.html?order=${encodeURIComponent(order.id)}&placed=1`), 2600);
                 return;
             }
-
             window.GamBasketAffiliate?.clearReferral();
-            showConfirmation(order, snapshot, payment);
+            window.location.assign(paymentIntent.payment_url);
         } catch (error) {
             console.error("[JulaDirect Create Order]", error);
             showError(window.getAuthErrorMessage ? window.getAuthErrorMessage(error) : "We couldn't place the order. Please try again.");
             state.submitting = false;
             syncPlaceOrderAvailability();
         }
-    }
-
-    function rememberAddress() {
-        try {
-            if ($("rememberAddress").checked) localStorage.setItem(ADDRESS_KEY, JSON.stringify({ phone: $("phone").value.trim(), region: $("region").value, area: $("area").value.trim(), address: $("address").value.trim(), landmark: $("landmark").value.trim(), instructions: $("instructions").value.trim() }));
-            else localStorage.removeItem(ADDRESS_KEY);
-        } catch { /* storage blocked */ }
-    }
-
-    function showConfirmation(order, snap, payment) {
-        const key = order.id || order.order_number || "";
-        $("successOrderNumber").textContent = "#" + (order.order_number || order.id || "");
-        $("viewOrderBtn").href = `orders.html?order=${encodeURIComponent(key)}&placed=1`;
-        $("ck-flow").innerHTML = JD.flowSteps(3);
-        const cod = payment === "cash_on_delivery";
-        $("ck-done-lead").textContent = cod
-            ? `The seller has been notified. Keep ${money(snap.total)} in cash ready: you pay the courier when it arrives.`
-            : "The seller has been notified and will confirm your order shortly.";
-        $("ck-done-thumbs").innerHTML = snap.items.slice(0, 4).map(i => `<span><img src="${escapeHTML((JD.safeUrl && JD.safeUrl(i.image)) || JD.placeholder || "")}" alt=""><b>${i.qty}×</b></span>`).join("") + (snap.items.length > 4 ? `<span class="more">+${snap.items.length - 4}</span>` : "");
-        const facts = [["Total", money(snap.total)], ["Payment", cod ? "Cash on delivery" : (PAY_LABEL[payment] || payment)], [snap.delivery ? "Delivery to" : "Pickup", snap.delivery ? [snap.address, snap.area].filter(Boolean).join(", ") : "Seller location confirmed after they accept"], ["Contact", snap.phone]];
-        $("ck-done-facts").innerHTML = facts.map(f => `<div><dt>${escapeHTML(f[0])}</dt><dd>${escapeHTML(f[1])}</dd></div>`).join("");
-        $("ck-layout").hidden = true;
-        $("ck-dock").hidden = true;
-        document.body.classList.add("is-done");
-        $("checkoutError").hidden = true;
-        $("orderSuccess").hidden = false;
-        $("orderSuccess").classList.add("show");
-        history.replaceState(null, "", "checkout.html?placed=" + encodeURIComponent(key));
-        window.scrollTo({ top: 0, behavior: "auto" });
-        $("orderSuccess").querySelector("h1").setAttribute("tabindex", "-1");
-        $("orderSuccess").querySelector("h1").focus({ preventScroll: true });
-        window.dispatchEvent(new CustomEvent("gambasket:cart:change"));
     }
 
     function showError(message) {
