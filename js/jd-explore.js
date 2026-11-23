@@ -125,13 +125,32 @@
       (cats.length ? '<div class="ex-sugg__cats">' + cats.map(c => '<button type="button" class="ex-pill" data-cat="' + JD.esc(c.id) + '">' + JD.esc(c.id) + "</button>").join("") + "</div>" : "") +
       '<div class="ex-sugg__btns"><button type="button" class="jd-btn jd-btn--primary" data-clear-all>Clear filters</button><button type="button" class="jd-btn jd-btn--secondary" data-save-open>Save this search</button></div></div>';
   }
+  function recommendationCard(product, source) {
+    let card = JD.productCard(product).replace('<article class="jd-pcard">', '<article class="jd-pcard jd-pcard--recommended">');
+    const label = source === "popular" ? "Popular pick" : "Picked for you";
+    return card.replace('<div class="jd-pcard__price">', '<span class="jd-rec-label">' + label + '</span><div class="jd-pcard__price">');
+  }
+  function mixedGrid(rows, recommendations) {
+    if (!recommendations || !recommendations.rows.length) return rows.map(JD.productCard).join("");
+    const recs = recommendations.rows.slice(), output = [];
+    const slots = rows.length > 17 ? [5, 12, 19] : rows.length > 10 ? [5, 10] : [Math.max(2, rows.length - 2)];
+    rows.forEach((product, index) => {
+      output.push(JD.productCard(product));
+      if (slots.includes(index) && recs.length) output.push(recommendationCard(recs.shift(), recommendations.source));
+    });
+    while (recs.length) output.push(recommendationCard(recs.shift(), recommendations.source));
+    return output.join("");
+  }
+
   async function load() {
     const my = ++reqId; heading();
-    $("ex-sort").value = state.sort; $("jd-count").textContent = "Searching\u2026";
+    $("ex-sort").value = state.sort; $("jd-count").textContent = "Searching\\u2026";
     setGrid(JD.skeletonCards(8), true); $("jd-pagination").innerHTML = "";
     const snap = Object.assign({}, state);
+    let painted = null;
     const paint = (res, meta) => {
       if (my !== reqId) return;
+      painted = res;
       if (!res.rows.length && res.total > 0 && snap.page > res.pages && !(meta && meta.stale)) { state.page = res.pages; if (isActive()) history.replaceState(null, "", urlFor(state)); load(); return; }
       $("jd-count").innerHTML = res.total === 0 ? "No products found" : "<strong>" + res.total.toLocaleString("en-GB") + "</strong> " + (res.total === 1 ? "product" : "products") + (res.pages > 1 ? ' <span class="jd-muted">&middot; page ' + res.page + " of " + res.pages + "</span>" : "");
       chips(res.rows);
@@ -139,8 +158,28 @@
       setGrid(res.rows.map(JD.productCard).join(""), true);
       pagination(res); JD.syncWishlist($("productGrid")); JD.syncCompare();
     };
-    try { await JD.swr("explore:" + toQuery(snap), () => JD.data.search(snap), paint); }
-    catch (err) {
+    try {
+      const result = await JD.swr("explore:" + toQuery(snap), () => JD.data.search(snap), paint);
+      const base = result || painted;
+      // Keep explicit text searches and seller pages strict; all other filters are honoured.
+      if (my === reqId && base && base.rows.length && snap.page === 1 && !snap.q && !snap.seller) {
+        try {
+          const suggestions = await JD.data.recommendations({
+            recentIds: JD.recent.ids(),
+            recentQueries: recents(),
+            excludeIds: base.rows.map(row => row.id),
+            filters: snap,
+            limit: 3
+          });
+          if (my === reqId && suggestions.rows.length) {
+            setGrid(mixedGrid(base.rows, suggestions), true);
+            JD.syncWishlist($("productGrid")); JD.syncCompare();
+          }
+        } catch (recommendationError) {
+          console.warn("[JulaDirect] recommendations unavailable:", recommendationError && recommendationError.message);
+        }
+      }
+    } catch (err) {
       if (my !== reqId) return;
       if (err && err.code === "PGRST103" && state.page > 1) { state.page = 1; if (isActive()) history.replaceState(null, "", urlFor(state)); return load(); }
       console.warn("[JulaDirect] explore", err && err.message);

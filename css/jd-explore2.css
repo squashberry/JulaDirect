@@ -157,3 +157,19 @@
   .ex-grid.is-list .jd-pcard__title { font-size: .98rem; }
   .ex-grid.is-list .jd-pcard__buy { min-width: 0; width: auto; }
 }
+
+/* Personalised cards are inserted between ordinary Explore results. */
+.jd-pcard--recommended .jd-rec-label {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 0 2px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: var(--jd-blue-50);
+  color: var(--jd-blue-700);
+  font-size: 10.5px;
+  font-weight: 750;
+  line-height: 1.2;
+}

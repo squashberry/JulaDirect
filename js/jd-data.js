@@ -42,6 +42,7 @@
   }
 
   let statsPromise = null;
+  const recommendationCache = new Map();
   const ICONS = { Phones: "phone", Fashion: "tag", Electronics: "grid", Food: "bag", Home: "home", Beauty: "heart", Solar: "settings", Auto: "truck", Hardware: "package" };
 
   JD.data = {
@@ -209,6 +210,183 @@
       const rows = await attachSellers(data || []);
       const total = typeof count === "number" ? count : rows.length;
       return { rows, total, page, pages: Math.max(1, Math.ceil(total / PAGE_SIZE)) };
+    },
+
+    /* History-driven suggestions for Explore. Signals stay on this device:
+       recently viewed product IDs and recent Explore search terms. */
+    async recommendations(options) {
+      const opts = options || {};
+      const recentIds = [...new Set((opts.recentIds || []).filter(JD.isUuid))].slice(0, 12);
+      const recentQueries = [...new Set((opts.recentQueries || [])
+        .filter(q => typeof q === "string" && q.trim())
+        .map(q => q.trim().slice(0, 100)))].slice(0, 6);
+      const excluded = new Set((opts.excludeIds || []).filter(JD.isUuid));
+      recentIds.forEach(id => excluded.add(id));
+      const filters = opts.filters || {};
+      const cacheKey = JSON.stringify({ recentIds, recentQueries, excluded: [...excluded].sort(), filters });
+      const cached = recommendationCache.get(cacheKey);
+      if (cached && Date.now() - cached.at < 90000) return cached.value;
+
+      const c = await JD.client();
+      if (!c) return { rows: [], source: "none" };
+
+      let viewed = [];
+      if (recentIds.length) {
+        try {
+          const { data, error } = await c.from("products")
+            .select("id,category_id,title,attributes")
+            .in("id", recentIds.slice(0, 8))
+            .eq("status", "approved");
+          if (!error) viewed = data || [];
+        } catch (e) { viewed = []; }
+      }
+
+      const categoryWeights = new Map();
+      viewed.forEach((p, index) => {
+        const category = String(p.category_id || "").trim();
+        if (category) categoryWeights.set(category, Math.max(categoryWeights.get(category) || 0, 12 - index));
+      });
+      if (filters.category && filters.category !== "All") {
+        categoryWeights.clear();
+        categoryWeights.set(filters.category, 16);
+      }
+
+      const attributeWeights = new Map();
+      const termWeights = new Map();
+      const stopWords = new Set(["the","and","for","with","from","under","over","near","new","used","buy","get","best","all","item","items","product","products"]);
+      const addTerms = (value, weight) => {
+        String(value || "").toLowerCase().match(/[a-z0-9]{2,}/g)?.forEach(token => {
+          if (stopWords.has(token) || token.length > 32) return;
+          termWeights.set(token, Math.max(termWeights.get(token) || 0, weight));
+        });
+      };
+      const addAttributes = (attributes, recency) => {
+        Object.entries(attributes || {}).forEach(([key, value]) => {
+          if (value === null || value === undefined || typeof value === "object") return;
+          const normal = String(value).trim().toLowerCase();
+          if (normal.length < 2 || normal.length > 60) return;
+          const keyName = key.toLowerCase();
+          const isStrongTag = /brand|model|subcategory|style|material|type/.test(keyName);
+          const weight = /brand|model/.test(keyName) ? 10 : isStrongTag ? 7 : 4;
+          const tag = keyName + "|" + normal;
+          attributeWeights.set(tag, Math.max(attributeWeights.get(tag) || 0, weight + recency));
+          if (isStrongTag) addTerms(value, recency + 3);
+        });
+      };
+
+      viewed.forEach((p, index) => {
+        const recency = Math.max(1, 7 - index);
+        addAttributes(p.attributes, recency);
+        addTerms(p.title, recency + 2);
+        addTerms(p.category_id, recency);
+      });
+      recentQueries.forEach((query, index) => addTerms(query, Math.max(2, 9 - index)));
+
+      const searchTerms = [...termWeights.keys()].slice(0, 10);
+      const applyFilters = (query, includeBrand) => {
+        if (filters.category && filters.category !== "All") query = query.eq("category_id", filters.category);
+        if (filters.location && filters.location !== "all") query = query.ilike("location", "%" + clean(filters.location) + "%");
+        if (filters.condition) query = query.eq("condition", filters.condition);
+        if (isNum(filters.min)) query = query.gte("price", Number(filters.min));
+        if (isNum(filters.max)) query = query.lte("price", Number(filters.max));
+        if (filters.stock) query = query.gt("stock", 0);
+        if (filters.delivery) query = query.eq("delivery_available", true);
+        const brand = includeBrand ? clean(filters.brandModel) : "";
+        if (brand) {
+          const term = "%" + brand + "%";
+          query = query.or([
+            "title.ilike." + term,
+            "description.ilike." + term,
+            "attributes->>brand.ilike." + term,
+            "attributes->>model.ilike." + term,
+            "attributes->>storage.ilike." + term
+          ].join(","));
+        }
+        return query;
+      };
+
+      const requests = [];
+      const categories = [...categoryWeights.keys()].slice(0, 4);
+      if (categories.length) {
+        let query = c.from("products").select("*")
+          .eq("status", "approved").gt("stock", 0)
+          .in("category_id", categories);
+        query = applyFilters(query, true).order("sales_count", { ascending: false }).limit(64);
+        requests.push(query);
+      }
+
+      if (searchTerms.length && !filters.brandModel) {
+        const fields = ["title","description","category_id","attributes->>brand","attributes->>model","attributes->>storage"];
+        const clauses = searchTerms.flatMap(term => {
+          const safe = clean(term).replace(/[^a-z0-9-]/gi, "").slice(0, 32);
+          return safe ? fields.map(field => field + ".ilike.%" + safe + "%") : [];
+        });
+        if (clauses.length) {
+          let query = c.from("products").select("*")
+            .eq("status", "approved").gt("stock", 0)
+            .or(clauses.join(","));
+          query = applyFilters(query, false).order("sales_count", { ascending: false }).limit(48);
+          requests.push(query);
+        }
+      }
+
+      if (!requests.length) {
+        let query = c.from("products").select("*")
+          .eq("status", "approved").gt("stock", 0);
+        query = applyFilters(query, true).order("sales_count", { ascending: false }).limit(48);
+        requests.push(query);
+      }
+
+      const results = await Promise.all(requests.map(query => query));
+      const candidateMap = new Map();
+      results.forEach(result => {
+        if (result.error) throw result.error;
+        (result.data || []).forEach(row => {
+          if (JD.isUuid(row.id) && !excluded.has(row.id)) candidateMap.set(row.id, row);
+        });
+      });
+
+      const ranked = [...candidateMap.values()].map(product => {
+        let score = categoryWeights.get(String(product.category_id || "")) || 0;
+        const attributes = product.attributes && typeof product.attributes === "object" ? product.attributes : {};
+        Object.entries(attributes).forEach(([key, value]) => {
+          if (value === null || value === undefined || typeof value === "object") return;
+          score += attributeWeights.get(key.toLowerCase() + "|" + String(value).trim().toLowerCase()) || 0;
+        });
+        const haystack = [
+          product.title, product.description, product.category_id,
+          ...Object.values(attributes).filter(value => value !== null && value !== undefined)
+        ].join(" ").toLowerCase();
+        termWeights.forEach((weight, term) => { if (haystack.includes(term)) score += weight; });
+        score += Math.min(3, Math.log2(Number(product.sales_count || 0) + 1) * 0.35);
+        return { product, score };
+      }).sort((a, b) => b.score - a.score ||
+        new Date(b.product.created_at || 0).getTime() - new Date(a.product.created_at || 0).getTime());
+
+      const picked = [], categoryCounts = new Map(), sellerCounts = new Map();
+      const pick = (entry, enforceVariety) => {
+        const p = entry.product, category = String(p.category_id || ""), seller = String(p.seller_id || "");
+        if (enforceVariety && ((category && (categoryCounts.get(category) || 0) >= 2) ||
+            (seller && (sellerCounts.get(seller) || 0) >= 2))) return false;
+        picked.push(p);
+        if (category) categoryCounts.set(category, (categoryCounts.get(category) || 0) + 1);
+        if (seller) sellerCounts.set(seller, (sellerCounts.get(seller) || 0) + 1);
+        return true;
+      };
+      for (const entry of ranked) { if (picked.length >= (opts.limit || 3)) break; pick(entry, true); }
+      if (picked.length < (opts.limit || 3)) {
+        for (const entry of ranked) {
+          if (picked.length >= (opts.limit || 3)) break;
+          if (!picked.some(p => p.id === entry.product.id)) pick(entry, false);
+        }
+      }
+
+      const rows = await attachSellers(picked);
+      const source = viewed.length ? "views" : recentQueries.length ? "searches" : "popular";
+      const value = { rows, source };
+      recommendationCache.set(cacheKey, { at: Date.now(), value });
+      if (recommendationCache.size > 24) recommendationCache.delete(recommendationCache.keys().next().value);
+      return value;
     },
 
     /* Everything the product page needs. product is null when not found. */
