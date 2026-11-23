@@ -3,7 +3,7 @@
 (() => {
     "use strict";
 
-    const state = { cart: [], coupon: null, deliveryFee: 0, submitting: false, open: 1, done: { 1: false, 2: false } };
+    const state = { cart: [], coupon: null, deliveryFee: 0, submitting: false, open: 1, done: { 1: false, 2: false }, pickupStations: [] };
     const $ = id => document.getElementById(id);
     const JD = window.JD;
     const money = value => `D ${Number(value || 0).toLocaleString("en-GM")}`;
@@ -90,30 +90,96 @@
         }
     }
 
+    function selectedPickupStation() {
+        const id = $("pickupStationSelect")?.value || "";
+        return state.pickupStations.find(station => String(station.id) === id) || null;
+    }
+
+    function renderPickupStationsForArea() {
+        const areaSelect = $("pickupStationArea");
+        const stationSelect = $("pickupStationSelect");
+        const details = $("pickupStationDetails");
+        if (!areaSelect || !stationSelect) return;
+
+        const [region, area] = String(areaSelect.value || "").split("|||");
+        const matches = state.pickupStations.filter(station =>
+            station.region === region && station.area === area
+        );
+
+        stationSelect.innerHTML = '<option value="">Choose a pickup station</option>' +
+            matches.map(station => '<option value="' + escapeHTML(station.id) + '">' +
+                escapeHTML(station.station_name) + '</option>').join("");
+        stationSelect.disabled = matches.length === 0;
+        if (details) {
+            details.textContent = matches.length
+                ? "Select a station to view its collection location."
+                : "No active pickup stations are listed for this area.";
+        }
+        syncPlaceOrderAvailability();
+    }
+
+    function renderPickupStationDetails() {
+        const station = selectedPickupStation();
+        const details = $("pickupStationDetails");
+        if (!details) return;
+        if (!station) {
+            details.textContent = "Choose a station to view its collection location.";
+            return;
+        }
+        details.textContent = [station.address, station.region].filter(Boolean).join(" · ");
+        fillSummaries();
+        syncPlaceOrderAvailability();
+    }
+
     async function loadPickupStationConfig() {
         const input = $("pickup");
         const badge = $("pickupStationAvailability");
-        if (!input) return;
+        const areaSelect = $("pickupStationArea");
+        const stationSelect = $("pickupStationSelect");
+        if (!input || !areaSelect || !stationSelect) return;
         input.disabled = true;
+        areaSelect.disabled = true;
+        stationSelect.disabled = true;
+
         try {
             const client = window.GamBasketAuth?.getClient?.() || window.supabaseClient;
             if (!client) throw new Error("Pickup station configuration is unavailable.");
             const { data, error } = await client.rpc("gambasket_get_pickup_station_config");
-            const available = !error && data?.available === true && String(data?.city || "").toLowerCase() === "banjul";
+            if (error) throw error;
+
+            const stations = Array.isArray(data?.stations) ? data.stations.filter(station =>
+                station?.id && station?.station_name && station?.region && station?.area && station?.is_active !== false
+            ) : [];
+            state.pickupStations = stations;
+            const areaKeys = [...new Set(stations.map(station => station.region + "|||" + station.area))];
+
+            areaSelect.innerHTML = '<option value="">Choose an area</option>' +
+                areaKeys.map(key => {
+                    const [region, area] = key.split("|||");
+                    return '<option value="' + escapeHTML(key) + '">' +
+                        escapeHTML(area) + ' — ' + escapeHTML(region) + '</option>';
+                }).join("");
+
+            const available = data?.available === true && stations.length > 0;
             input.disabled = !available;
+            areaSelect.disabled = !available;
             if (badge) {
-                badge.textContent = available ? "Banjul only" : "Temporarily unavailable";
+                badge.textContent = available
+                    ? stations.length + (stations.length === 1 ? " station" : " stations")
+                    : "Temporarily unavailable";
                 badge.className = available ? "payment-availability-badge" : "payment-coming-soon-badge";
             }
-            const note = $("pickupStationFields");
-            if (note && !available) note.hidden = true;
+            stationSelect.innerHTML = '<option value="">Choose an area first</option>';
+            if (!available) $("pickupStationDetails").textContent = "No pickup stations are currently available.";
         } catch (error) {
             input.disabled = true;
+            areaSelect.disabled = true;
+            stationSelect.disabled = true;
             if (badge) {
                 badge.textContent = "Temporarily unavailable";
                 badge.className = "payment-coming-soon-badge";
             }
-            console.warn("[JulaDirect Pickup Station] configuration is not deployed yet:", error);
+            console.warn("[JulaDirect Pickup Station] configuration is not available:", error);
         }
     }
 
@@ -215,17 +281,28 @@
     }
 
     function calculateDelivery() {
-        state.deliveryFee = isDelivery() ? 100 : 0;
-        ["region", "area", "address"].forEach(id => { if ($(id)) $(id).required = isDelivery(); });
+        const delivery = isDelivery();
+        const stationPickup = isPickupStation();
+        state.deliveryFee = delivery ? 100 : 0;
+        $("deliveryFields").hidden = !delivery;
+        $("pickupStationFields").hidden = !stationPickup;
+        ["region", "area", "address"].forEach(id => {
+            if ($(id)) $(id).required = delivery;
+        });
+        if ($("pickupStationArea")) $("pickupStationArea").required = stationPickup;
+        if ($("pickupStationSelect")) $("pickupStationSelect").required = stationPickup;
         render();
         fillSummaries();
-        
     }
 
     function completeDelivery() {
         const base = ["fullName", "phone", "email"].every(id => $(id).value.trim());
-        const addr = !isDelivery() || ["region", "area", "address"].every(id => $(id).value.trim());
-        return base && addr && $("phone").value.replace(/\D/g, "").length >= 7;
+        const destination = isDelivery()
+            ? ["region", "area", "address"].every(id => $(id).value.trim())
+            : isPickupStation()
+                ? Boolean(selectedPickupStation())
+                : true;
+        return base && destination && $("phone").value.replace(/\D/g, "").length >= 7;
     }
 
     function fillSummaries() {
@@ -234,7 +311,12 @@
             ? (isDelivery()
                 ? `${name} · ${phone} · ${[$("address").value.trim(), $("area").value.trim()].filter(Boolean).join(", ")}`
                 : isPickupStation()
-                    ? `Pickup station · Banjul · ${name} · ${phone}`
+                    ? (() => {
+                        const station = selectedPickupStation();
+                        return station
+                            ? `Pickup station · ${station.station_name} · ${station.area} · ${name} · ${phone}`
+                            : "Choose a pickup station";
+                    })()
                     : `Pickup · ${name} · ${phone}`)
             : "Who is receiving this order and where it goes.";
         const pay = selectedPayment();
@@ -299,7 +381,12 @@
     }
 
     function validateDelivery() {
-        const ids = ["fullName", "phone", "email"].concat(isDelivery() ? ["region", "area", "address"] : []);
+        const destinationIds = isDelivery()
+            ? ["region", "area", "address"]
+            : isPickupStation()
+                ? ["pickupStationArea", "pickupStationSelect"]
+                : [];
+        const ids = ["fullName", "phone", "email"].concat(destinationIds);
         for (const id of ids) {
             const el = $(id);
             if (!el.checkValidity()) { el.reportValidity(); el.focus(); return false; }
@@ -396,12 +483,17 @@
         try {
             const fulfillment = document.querySelector('input[name="fulfillment"]:checked').value;
             const payment = pay.value;
+            const station = fulfillment === "pickup_station" ? selectedPickupStation() : null;
+            if (fulfillment === "pickup_station" && !station) {
+                throw new Error("Choose an available pickup station.");
+            }
             const result = await window.GamBasketAuth.createOrder({
                 fulfillment_type: fulfillment,
+                pickup_station_id: station?.id || null,
                 payment_method: payment,
                 delivery_address: fulfillment === "delivery" ? `${$("address").value.trim()}${$("landmark").value.trim() ? `, ${$("landmark").value.trim()}` : ""}` : null,
-                delivery_region: fulfillment === "pickup_station" ? "Banjul" : (fulfillment === "delivery" ? $("region").value : null),
-                delivery_area: fulfillment === "pickup_station" ? "Banjul" : (fulfillment === "delivery" ? $("area").value.trim() : null),
+                delivery_region: station ? station.region : (fulfillment === "delivery" ? $("region").value : null),
+                delivery_area: station ? station.area : (fulfillment === "delivery" ? $("area").value.trim() : null),
                 delivery_phone: $("phone").value.trim(),
                 delivery_instructions: fulfillment === "delivery" ? $("instructions").value.trim() : null,
                 coupon_code: state.coupon?.code || null
@@ -462,6 +554,15 @@
             if (document.referrer && history.length > 1) history.back(); else window.location.href = "cart.html";
         });
         document.querySelectorAll('input[name="fulfillment"]').forEach(input => input.addEventListener("change", () => { state.done[1] = false; calculateDelivery(); }));
+        $("pickupStationArea")?.addEventListener("change", () => {
+            state.done[1] = false;
+            renderPickupStationsForArea();
+            fillSummaries();
+        });
+        $("pickupStationSelect")?.addEventListener("change", () => {
+            state.done[1] = false;
+            renderPickupStationDetails();
+        });
         document.querySelectorAll('input[name="payment"]').forEach(input => input.addEventListener("change", () => { state.done[2] = false; clearError(); fillSummaries(); syncPlaceOrderAvailability(); }));
         $("checkoutForm").addEventListener("input", e => { if (e.target.closest("#ck-s1") && state.done[1]) { state.done[1] = false; fillSummaries(); } });
         document.querySelectorAll(".ck-step__head").forEach(h => h.addEventListener("click", () => {
