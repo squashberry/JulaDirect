@@ -25,6 +25,14 @@
         bag: S('<path d="M6 8h12l-1 12H7L6 8Z"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8"/>'),
         clip: S('<path d="m20 11.5-7.7 7.7a5 5 0 0 1-7-7l8.4-8.4a3.3 3.3 0 0 1 4.7 4.7l-8.4 8.4a1.7 1.7 0 0 1-2.4-2.4l7.6-7.6"/>'),
         smile: S('<circle cx="12" cy="12" r="9"/><path d="M8.2 14.2a4.5 4.5 0 0 0 7.6 0"/><circle cx="9" cy="9.6" r=".9" fill="currentColor"/><circle cx="15" cy="9.6" r=".9" fill="currentColor"/>'),
+        mic: S('<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3"/>'),
+        trash: S('<path d="M4 7h16M9 7V4.5h6V7M6.5 7l1 13h9l1-13M10 11v6M14 11v6"/>'),
+        play: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5-11-6.5Z"/></svg>',
+        pause: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6.5" y="5" width="4" height="14" rx="1.2"/><rect x="13.5" y="5" width="4" height="14" rx="1.2"/></svg>',
+        photo: S('<rect x="3.5" y="5" width="17" height="14" rx="3"/><circle cx="9" cy="10" r="1.6"/><path d="m4 17 5-4.5 3.5 3L15 13l5 4.500"/>'),
+        camera: S('<path d="M4 8.5A2.500 2.500 0 0 1 6.500 6H8l1.200-1.800h5.600L16 6h1.500A2.500 2.500 0 0 1 20 8.500v8A2.500 2.500 0 0 1 17.500 19h-11A2.500 2.500 0 0 1 4 16.500v-8Z"/><circle cx="12" cy="12.500" r="3.300"/>'),
+        plus: S('<path d="M12 5v14M5 12h14"/>'),
+        close: S('<path d="m6 6 12 12M18 6 6 18"/>'),
         send: S('<path d="M21 3 3 10.5l7 2.5 2.5 7L21 3Z" fill="currentColor" stroke="none"/>'),
         user: S('<circle cx="12" cy="8.5" r="4" fill="currentColor" stroke="none"/><path d="M4.5 21c.6-4 3.5-6 7.5-6s6.9 2 7.5 6Z" fill="currentColor" stroke="none"/>'),
         verified: '<svg viewBox="0 0 24 24" width="19" height="19" aria-label="Verified"><path fill="currentColor" d="M12 1.8l2.4 1.8 3-.2 1 2.8 2.6 1.5-.7 2.9 1.4 2.7-2 2.2-.2 3-2.9.8-1.7 2.5-2.8-1.1-2.8 1.1-1.7-2.5-2.9-.8-.2-3-2-2.2 1.4-2.7-.7-2.9 2.6-1.5 1-2.8 3 .2z"/><path d="m8.2 12.2 2.6 2.6 5-5.2" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
@@ -104,11 +112,14 @@
     function decorateIcons(root) { (root || document).querySelectorAll("[data-ms-ico]").forEach(el => { el.innerHTML = IC[el.getAttribute("data-ms-ico")] || ""; }); }
     function fillStaticIcons() {
         $("mobileChatBack").innerHTML = IC.back; $("chatOrderIcon").innerHTML = IC.bag; $("chatMore").innerHTML = IC.more;
-        $("msAttach").innerHTML = IC.clip; $("msEmojiBtn").innerHTML = IC.smile; $("sendMessageBtn").innerHTML = IC.send;
+        $("msAttach").innerHTML = IC.plus; $("msEmojiBtn").innerHTML = IC.smile; $("msRecCancel").innerHTML = IC.trash;
+        $("sendMessageBtn").innerHTML = `<span class="ms-ic ms-ic--mic">${IC.mic}</span><span class="ms-ic ms-ic--send">${IC.send}</span>`;
         decorateIcons();
     }
     function parseMessage(text) {
         const raw = String(text || "");
+        const vn = raw.match(/^\[voice\](https:\/\/\S+)\s+(\d{1,4})\s*$/);
+        if (vn) return { voice: JD.safeUrl(vn[1]), secs: Number(vn[2]), img: "", html: "", emoji: false, empty: false };
         const m = raw.match(/^\[img\](https:\/\/\S+)\s*([\s\S]*)$/);
         const body = m ? m[2] : raw, img = m ? JD.safeUrl(m[1]) : "";
         const emoji = !img && /^(?:\p{Extended_Pictographic}️?\s*){1,3}$/u.test(body.trim());
@@ -116,6 +127,7 @@
         html = html.replace(/(https:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
         return { img, html, emoji, empty: !body.trim() };
     }
+    const previewOf = raw => { const t = String(raw || ""); return /^\[voice\]/.test(t) ? "🎤 Voice message" : /^\[img\]/.test(t) ? "📷 Photo" + (t.replace(/^\[img\]\S+\s*/, "") ? " · " + t.replace(/^\[img\]\S+\s*/, "") : "") : t; };
     function showToast(title, message) { window.GamBasketNotifications?.add({ type: "message", title, message, showToast: true }); }
     function formatDate(value) { const d = new Date(value), t = new Date(); if (d.toDateString() === t.toDateString()) return "Today"; t.setDate(t.getDate() - 1); if (d.toDateString() === t.toDateString()) return "Yesterday"; return d.toLocaleDateString("en-GM", { day: "numeric", month: "short", year: "numeric" }); }
 
@@ -167,7 +179,7 @@
         const items = state.conversations.filter(i => !query || `${i.other_user_name} ${i.product?.title || ""} ${i.last_message}`.toLowerCase().includes(query));
         const unread = state.conversations.reduce((s, i) => s + Number(i.unread_count || 0), 0);
         const badge = $("unreadTotalBadge"); badge.textContent = unread > 99 ? "99+" : unread; badge.dataset.zero = unread ? "false" : "true";
-        $("conversationList").innerHTML = items.length ? items.map(i => `<button class="ms-row${state.active?.id === i.id ? " is-active" : ""}${i.unread_count ? " is-unread" : ""}" data-conversation-id="${esc(i.id)}" type="button">${avatar(i.other_user_name, i.other_user_avatar)}<span class="ms-row__main"><span class="ms-row__n"><span>${esc(i.other_user_name)}</span>${verifiedBadge(i.other_user_verified)}</span>${i.product?.title ? `<span class="ms-row__p">${esc(i.product.title)}</span>` : ""}<span class="ms-row__m">${esc(i.last_message)}</span></span><span class="ms-row__meta"><time>${esc(time(i.last_message_at))}</time>${i.unread_count ? `<b class="ms-unread">${i.unread_count > 99 ? "99+" : i.unread_count}</b>` : ""}</span></button>`).join("")
+        $("conversationList").innerHTML = items.length ? items.map(i => `<button class="ms-row${state.active?.id === i.id ? " is-active" : ""}${i.unread_count ? " is-unread" : ""}" data-conversation-id="${esc(i.id)}" type="button">${avatar(i.other_user_name, i.other_user_avatar)}<span class="ms-row__main"><span class="ms-row__n"><span>${esc(i.other_user_name)}</span>${verifiedBadge(i.other_user_verified)}</span>${i.product?.title ? `<span class="ms-row__p">${esc(i.product.title)}</span>` : ""}<span class="ms-row__m">${esc(previewOf(i.last_message))}</span></span><span class="ms-row__meta"><time>${esc(time(i.last_message_at))}</time>${i.unread_count ? `<b class="ms-unread">${i.unread_count > 99 ? "99+" : i.unread_count}</b>` : ""}</span></button>`).join("")
             : `<div class="ms-none"><div class="ms-empty__logo" style="width:64px;height:64px;border-radius:22px">${IC.chat}</div><strong>${query ? "No matches" : "No conversations yet"}</strong><span>${query ? "Try another name or product." : "Tap \"Message seller\" on any product to start chatting."}</span><a class="ms-btn" style="display:grid;place-items:center" href="explore.html">Browse products</a></div>`;
         if (animate) [...$("conversationList").children].slice(0, 9).forEach((el, i) => Spring.run(el, { y: 26, sx: .94, sy: .9, o: 0 }, {}, 170, 10, i * 55));
     }
@@ -207,6 +219,7 @@
         Spring.run($("chatProductContext"), { y: -30, sx: .9, sy: .6, o: 0 }, {}, 190, 9, 120);
     }
     async function closeChat() {
+        if (state.rec) stopRecording(false); if (player) player.pause();
         state.openToken++; await cleanupChannel();
         const act = $("chatActive");
         const finish = () => { document.body.classList.remove("ms-open"); $("chatEmpty").hidden = false; act.hidden = true; state.active = null; renderConversations(); history.replaceState({}, "", "messages.html"); };
@@ -246,7 +259,7 @@
     function tickFor(m) { return m.failed ? '<span class="fail">Not sent</span>' : m.pending ? IC.clock : m.is_read ? IC.ticks : IC.tick; }
     function renderMessages() {
         const flow = $("msFlow"), list = state.messages;
-        if (!list.length) { flow.innerHTML = `<div class="ms-start"><div class="ms-empty__logo">${IC.chat}</div><strong>Say hello</strong><span>Ask about availability, delivery, pickup or the price.</span></div>`; Spring.run(flow.firstChild, { y: 20, sx: .8, sy: .8, o: 0 }, {}, 160, 8); return; }
+        if (!list.length) { flow.innerHTML = `<div class="ms-start"><div class="ms-empty__logo">${IC.chat}</div><strong>Say hello</strong><span>Ask about availability, delivery, pickup or the price.</span><div class="ms-quick">${QUICK.map(q => `<button type="button" data-q="${esc(q)}">${esc(q)}</button>`).join("")}</div></div>`; Spring.run(flow.firstChild, { y: 20, sx: .8, sy: .8, o: 0 }, {}, 160, 8); [...flow.querySelectorAll(".ms-quick button")].forEach((b, i) => Spring.run(b, { y: 24, sx: .7, sy: .7, o: 0 }, {}, 220, 10, 120 + i * 60)); return; }
         const meName = state.user?.user_metadata?.first_name || "";
         let last = "", html = "";
         list.forEach((m, i) => {
@@ -272,6 +285,7 @@
         });
         state.firstPaint = true;
         if (typeof renderMessages.afterFirst === "function") { renderMessages.afterFirst(); renderMessages.afterFirst = null; }
+        restorePlayback();
     }
     state.firstPaint = false;
 
@@ -365,11 +379,130 @@
         try { state.live.send({ type: "broadcast", event: "typing", payload: { user: String(state.user.id) } }); } catch (e) { /* optional */ }
     }
 
+    /* ---------- voice notes, photos, mic <-> send morph ---------- */
+    state.media = []; state.rec = null;
+    const MAX_MEDIA = 6, MAX_VOICE = 120;
+    const modeOf = () => ($("messageInput").value.trim() || state.media.length) ? "send" : "mic";
+    function syncMode() {
+        const b = $("sendMessageBtn"), m = state.rec ? "send" : modeOf();
+        if (b.dataset.mode !== m) { b.dataset.mode = m; b.setAttribute("aria-label", m === "send" ? "Send" : "Record voice message"); if (!reduce) Spring.run(b, { sx: .72, sy: .72, r: m === "send" ? -25 : 25 }, {}, 330, 8); }
+    }
+    const fmtSecs = n => Math.floor(n / 60) + ":" + String(Math.floor(n % 60)).padStart(2, "0");
+
+    function addMedia(files) {
+        const okT = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+        files.forEach(f => {
+            if (state.media.length >= MAX_MEDIA) return showToast("Limit reached", `You can send up to ${MAX_MEDIA} photos at once.`);
+            if (!okT.includes(String(f.type).toLowerCase())) return showToast("Not supported", "Please choose a JPG, PNG, WEBP or GIF photo.");
+            if (f.size > 8 * 1024 * 1024) return showToast("Photo too large", "Please choose a photo under 8MB.");
+            state.media.push({ file: f, url: URL.createObjectURL(f) });
+        });
+        renderTray(true);
+    }
+    function removeMedia(i) { const m = state.media[i]; if (!m) return; URL.revokeObjectURL(m.url); state.media.splice(i, 1); renderTray(); }
+    function renderTray(animate) {
+        const t = $("msTray"); t.hidden = !state.media.length;
+        t.innerHTML = state.media.map((m, i) => `<div class="ms-tray__i"><img src="${esc(m.url)}" alt="Photo ${i + 1}"><button type="button" class="ms-tray__x" data-rm="${i}" aria-label="Remove photo">${IC.close}</button></div>`).join("") + (state.media.length < MAX_MEDIA ? `<button type="button" class="ms-tray__add" data-add aria-label="Add another photo">${IC.plus}</button>` : "");
+        if (animate && !reduce) { const last = t.querySelectorAll(".ms-tray__i"); Spring.run(last[last.length - 1], { sx: .3, sy: .3, o: 0, y: 20 }, {}, 240, 9); }
+        syncMode();
+        const a = $("messagesArea"); if (a && nearBottom()) scrollBottom(true);
+    }
+
+    async function sendComposer() {
+        const input = $("messageInput"), caption = input.value.trim(), items = state.media.splice(0);
+        if (!items.length) return sendMessage();
+        input.value = ""; input.style.height = "auto"; renderTray(); autosizeState();
+        for (let i = 0; i < items.length; i++) await sendRich("img", items[i].file, i === 0 ? caption : "", 0, items[i].url);
+    }
+    async function sendRich(kind, blob, caption, secs, localUrl) {
+        if (!state.active) return;
+        const convId = state.active.id;
+        const tmp = { id: "tmp-" + Date.now() + Math.random().toString(36).slice(2, 5), sender_id: state.user.id, content: kind === "img" ? caption : "", created_at: new Date().toISOString(), is_read: false, pending: true };
+        if (kind === "img") tmp.localImg = localUrl; else { tmp.localVoice = localUrl; tmp.localSecs = secs; }
+        state.messages.push(tmp); renderMessages(); scrollBottom();
+        try {
+            const url = await window.GamBasketAuth.uploadChatMedia(blob, kind === "img" ? "image" : "voice");
+            const content = kind === "img" ? `[img]${url}${caption ? " " + caption : ""}` : `[voice]${url} ${Math.max(1, Math.round(secs))}`;
+            await window.GamBasketAuth.sendMessage(convId, content);
+            if (state.active?.id !== convId) return;
+            const real = (await window.GamBasketAuth.getConversationMessages(convId)).messages || [];
+            state.messages = real; state.seen.add("sync");
+            real.forEach(m => { if (!state.seen.has(m.id) && String(m.sender_id) === String(state.user.id) && Math.abs(new Date(m.created_at) - new Date(tmp.created_at)) < 20000) state.seen.add(m.id); });
+            renderMessages();
+            const listed = state.conversations.find(i => i.id === convId); if (listed) { listed.last_message = content; listed.last_message_at = new Date().toISOString(); state.conversations.sort((a, b) => new Date(b.last_message_at) - new Date(a.last_message_at)); renderConversations(); }
+        } catch (error) {
+            console.error("[JulaDirect Send Media]", error);
+            state.messages = state.messages.filter(m => m !== tmp); renderMessages();
+            showToast(kind === "img" ? "Photo not sent" : "Voice note not sent", error?.message || "Please try again.");
+        }
+    }
+
+    /* ----- recording ----- */
+    function pickMime() { const c = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg;codecs=opus"]; return (window.MediaRecorder && c.find(t => MediaRecorder.isTypeSupported(t))) || ""; }
+    async function startRecording() {
+        if (!state.active) return;
+        if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) return showToast("Voice not supported", "Your browser can't record voice notes.");
+        let stream;
+        try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); } catch (e) { return showToast("Microphone blocked", "Allow microphone access to send voice notes."); }
+        const mime = pickMime(), rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined), chunks = [];
+        const r = state.rec = { rec, stream, chunks, t0: Date.now(), send: false, raf: 0, timer: 0, ctx: null };
+        rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+        rec.onstop = () => {
+            stream.getTracks().forEach(t => t.stop()); cancelAnimationFrame(r.raf); clearInterval(r.timer); try { r.ctx && r.ctx.close(); } catch (e) {}
+            const secs = (Date.now() - r.t0) / 1000;
+            if (state.rec === r) state.rec = null;
+            setRecUI(false);
+            if (!r.send) return;
+            if (secs < 1) return showToast("Too short", "Hold on a little longer to record.");
+            const type = (rec.mimeType || mime || "audio/webm").split(";")[0], blob = new Blob(chunks, { type });
+            sendRich("voice", blob, "", secs, URL.createObjectURL(blob));
+        };
+        try { const AC = window.AudioContext || window.webkitAudioContext, ctx = r.ctx = new AC(), an = ctx.createAnalyser(); an.fftSize = 64; ctx.createMediaStreamSource(stream).connect(an); r.an = an; r.data = new Uint8Array(an.frequencyBinCount); } catch (e) {}
+        rec.start(250);
+        setRecUI(true);
+        const bars = [...$("msRecBars").children];
+        const tick = () => { if (state.rec !== r) return; if (r.an) { r.an.getByteFrequencyData(r.data); bars.forEach((b, i) => { const v = r.data[Math.min(r.data.length - 1, 1 + i)] / 255; b.style.transform = `scaleY(${(.18 + v * .95).toFixed(2)})`; }); } r.raf = requestAnimationFrame(tick); };
+        tick();
+        r.timer = setInterval(() => { const s = (Date.now() - r.t0) / 1000; $("msRecTime").textContent = fmtSecs(s); if (s >= MAX_VOICE) stopRecording(true); }, 250);
+    }
+    function stopRecording(send) { const r = state.rec; if (!r) return; r.send = !!send; try { r.rec.state !== "inactive" && r.rec.stop(); } catch (e) { setRecUI(false); state.rec = null; } }
+    function setRecUI(on) {
+        const f = $("messageComposer"); f.classList.toggle("is-rec", on);
+        $("msRec").hidden = !on; $("msField").hidden = on; $("msAttach").hidden = on;
+        if (on) { const w = $("msRecBars"); if (!w.children.length) w.innerHTML = "<i></i>".repeat(22); $("msRecTime").textContent = "0:00"; if (!reduce) Spring.run($("msRec"), { sx: .6, sy: .8, o: 0 }, {}, 240, 11); }
+        syncMode();
+        if (!on) $("sendMessageBtn").dataset.mode = modeOf();
+    }
+
+    /* ----- playback ----- */
+    const WAVE = 30;
+    function waveBars(seed) { let h = 7, out = ""; for (let i = 0; i < WAVE; i++) { h = (h * 31 + seed.charCodeAt(i % seed.length) + i * 17) % 97; out += `<i style="height:${28 + (h % 72)}%"></i>`; } return out; }
+    function voiceBubble(src, secs, pending) { return `<div class="ms-b ms-vn${pending ? " is-up" : ""}" data-src="${esc(src)}" data-secs="${secs || 0}"><button class="ms-vn__p" type="button" aria-label="Play voice message">${IC.play}</button><span class="ms-vn__w">${waveBars(String(secs) + src.slice(-12))}</span><time class="ms-vn__d">${fmtSecs(secs || 0)}</time></div>`; }
+    let player = null;
+    function paintPlay(el, frac, playing) {
+        if (!el) return; const bars = [...el.querySelectorAll(".ms-vn__w i")], n = Math.round(frac * bars.length);
+        bars.forEach((b, i) => b.classList.toggle("on", i < n));
+        el.querySelector(".ms-vn__p").innerHTML = playing ? IC.pause : IC.play; el.classList.toggle("is-playing", playing);
+    }
+    function togglePlay(el) {
+        if (!el) return; const src = el.dataset.src;
+        if (player && player.src === src) { if (player.paused) player.play(); else player.pause(); return; }
+        if (player) { player.pause(); }
+        const a = player = new Audio(src); a.preload = "auto";
+        const cur = () => document.querySelector(`.ms-vn[data-src="${CSS.escape(src)}"]`);
+        a.addEventListener("timeupdate", () => { const d = isFinite(a.duration) && a.duration ? a.duration : Number(el.dataset.secs) || 1; paintPlay(cur(), a.currentTime / d, !a.paused); const t = cur()?.querySelector(".ms-vn__d"); if (t) t.textContent = fmtSecs(a.currentTime); });
+        a.addEventListener("play", () => paintPlay(cur(), a.currentTime / (a.duration || Number(el.dataset.secs) || 1), true));
+        a.addEventListener("pause", () => paintPlay(cur(), a.currentTime / (a.duration || Number(el.dataset.secs) || 1), false));
+        a.addEventListener("ended", () => { const c = cur(); paintPlay(c, 0, false); const t = c?.querySelector(".ms-vn__d"); if (t) t.textContent = fmtSecs(Number(c.dataset.secs) || 0); player = null; });
+        a.play().catch(() => showToast("Can't play", "This voice note could not be played."));
+    }
+    function restorePlayback() { if (!player) return; const el = document.querySelector(`.ms-vn[data-src="${CSS.escape(player.src)}"]`); if (el) paintPlay(el, player.currentTime / (player.duration || Number(el.dataset.secs) || 1), !player.paused); }
+
     /* ---------- popovers ---------- */
     const QUICK = ["Is this still available?", "Is the price final?", "Can you deliver to my area?", "Can you send a real photo?", "Can I pick it up today?"];
     const EMOJI = ["😀", "😂", "😍", "🙏", "👍", "🔥", "🎉", "❤️", "😊", "🤝", "👋", "✅", "😅", "🤔", "😢", "🙌", "💯", "📦", "🚚", "💰", "⭐", "😎", "🥳", "👏"];
     function buildPopovers() {
-        $("msQuick").innerHTML = `<h3>Quick questions</h3>${QUICK.map(q => `<button type="button" data-q="${esc(q)}">${esc(q)}</button>`).join("")}`;
+        $("msQuick").innerHTML = `<h3>Send a photo</h3><button type="button" data-attach="photo">${IC.photo}Photo library</button><button type="button" data-attach="camera">${IC.camera}Take a photo</button>`;
         $("msEmoji").innerHTML = EMOJI.map(e => `<button type="button" data-e="${e}" aria-label="${e}">${e}</button>`).join("");
     }
     function menuHtml() {
@@ -399,12 +532,12 @@
     }
 
     /* ---------- UI ---------- */
-    function autosizeState() { const i = $("messageInput"); i.style.height = "auto"; i.style.height = "52px"; i.style.height = `${Math.min(Math.max(i.scrollHeight, 52), 100)}px`; $("sendMessageBtn").disabled = !i.value.trim(); }
+    function autosizeState() { const i = $("messageInput"); i.style.height = "auto"; i.style.height = "52px"; i.style.height = `${Math.min(Math.max(i.scrollHeight, 52), 100)}px`; syncMode(); }
     function bindUI() {
         bindJelly(document);
         $("conversationSearch").addEventListener("input", e => { state.search = e.target.value; renderConversations(); });
         $("conversationList").addEventListener("click", e => { const row = e.target.closest("[data-conversation-id]"); if (!row) return; Spring.pop(row, .06, 320, 9); openConversation(row.dataset.conversationId); });
-        $("messageComposer").addEventListener("submit", e => { e.preventDefault(); sendMessage(); });
+        $("messageComposer").addEventListener("submit", e => { e.preventDefault(); if (state.rec) stopRecording(true); else if (modeOf() === "mic") startRecording(); else sendComposer(); });
         const input = $("messageInput");
         input.addEventListener("input", () => { autosizeState(); sendTyping(); });
         input.addEventListener("focus", () => { setTimeout(() => scrollBottom(true), 280); });
@@ -415,7 +548,12 @@
         $("msAttach").addEventListener("click", e => { e.stopPropagation(); togglePop("msQuick", $("msAttach")); });
         $("msEmojiBtn").addEventListener("click", e => { e.stopPropagation(); togglePop("msEmoji", $("msEmojiBtn")); });
         $("chatOrderIcon").addEventListener("click", orderNow);
-        $("msQuick").addEventListener("click", e => { const b = e.target.closest("[data-q]"); if (!b) return; closePops(); sendMessage(b.getAttribute("data-q")); });
+        $("msQuick").addEventListener("click", e => { const b = e.target.closest("[data-attach]"); if (!b) return; closePops(); $(b.dataset.attach === "camera" ? "msFileCamera" : "msFilePhoto").click(); });
+        $("msFlow").addEventListener("click", e => { const q = e.target.closest("[data-q]"); if (q) { Spring.pop(q, .08, 300, 9); sendMessage(q.getAttribute("data-q")); return; } const pb = e.target.closest(".ms-vn__p"); if (pb) togglePlay(pb.closest(".ms-vn")); });
+        ["msFilePhoto", "msFileCamera"].forEach(id => $(id).addEventListener("change", e => { addMedia([...e.target.files]); e.target.value = ""; }));
+        $("msTray").addEventListener("click", e => { const x = e.target.closest("[data-rm]"); if (x) removeMedia(Number(x.dataset.rm)); else if (e.target.closest("[data-add]")) $("msFilePhoto").click(); });
+        input.addEventListener("paste", e => { const files = [...(e.clipboardData?.files || [])].filter(f => f.type.startsWith("image/")); if (files.length) { e.preventDefault(); addMedia(files); } });
+        $("msRecCancel").addEventListener("click", () => stopRecording(false));
         $("msEmoji").addEventListener("click", e => { const b = e.target.closest("[data-e]"); if (!b) return; const s = input.selectionStart ?? input.value.length; input.value = input.value.slice(0, s) + b.dataset.e + input.value.slice(input.selectionEnd ?? s); autosizeState(); input.focus({ preventScroll: true }); Spring.pop(b, .3, 400, 8); });
         $("msMenu").addEventListener("click", e => {
             const b = e.target.closest("[data-act]"); if (!b) return; closePops();

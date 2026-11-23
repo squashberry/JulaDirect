@@ -1494,6 +1494,26 @@
             const { data: publicData } = client.storage.from("product-images").getPublicUrl(data.path);
             if (!publicData?.publicUrl) throw new Error("Image uploaded, but its public URL could not be created.");
             return publicData.publicUrl;
+        },
+
+        /* Chat photos and voice notes -> public bucket `chat-media` (see migration 20261123060000). */
+        uploadChatMedia: async function (blob, kind) {
+            await this.ready();
+            const session = await this.getSession(), client = this.getClient();
+            if (!session?.user || !client) throw new Error("Sign in to send media.");
+            const type = String(blob.type || "").toLowerCase().split(";")[0];
+            const isVoice = kind === "voice";
+            const ok = isVoice ? ["audio/webm", "audio/mp4", "audio/ogg", "audio/mpeg", "audio/aac", "audio/x-m4a"] : ["image/jpeg", "image/png", "image/webp", "image/gif"];
+            if (!ok.includes(type)) throw new Error(isVoice ? "Unsupported audio format." : "Please choose a JPG, PNG, WEBP or GIF image.");
+            if (blob.size > (isVoice ? 6 : 8) * 1024 * 1024) throw new Error(isVoice ? "Voice note is too long." : "Image is too large (8MB max).");
+            const ext = { "audio/webm": "webm", "audio/mp4": "m4a", "audio/x-m4a": "m4a", "audio/aac": "aac", "audio/ogg": "ogg", "audio/mpeg": "mp3", "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif" }[type];
+            const rand = (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)).replace(/[^a-z0-9-]/gi, "");
+            const path = `${session.user.id}/${isVoice ? "voice" : "img"}-${Date.now()}-${rand}.${ext}`;
+            const { data, error } = await client.storage.from("chat-media").upload(path, blob, { cacheControl: "31536000", contentType: type, upsert: false });
+            if (error) throw new Error(error.message || "Upload failed.");
+            const { data: pub } = client.storage.from("chat-media").getPublicUrl(data.path);
+            if (!pub?.publicUrl) throw new Error("Upload finished but no link was created.");
+            return pub.publicUrl;
         }
     };
 
