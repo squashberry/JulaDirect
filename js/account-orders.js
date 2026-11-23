@@ -40,7 +40,7 @@
     var isStation = Boolean(o.pickup_station_name);
     var locationLabel = isStation ? "Pickup station" : (o.fulfillment_type === "pickup" ? "Pickup at" : "Delivery to");
     var locationText = isStation
-      ? [o.pickup_station_name, o.pickup_station_city, o.pickup_station_address].filter(Boolean).join(", ")
+      ? (o.pickup_station_address || [o.pickup_station_name, o.pickup_station_city].filter(Boolean).join(", "))
       : [o.area || "Greater Banjul", o.address].filter(Boolean).join(" ");
     var locationNote = isStation ? '<small class="od__pickup-note">The seller brings your order here. No courier is assigned.</small>' : "";
     var track = cancelled ? '<div class="od__cancelled">This order was cancelled.</div>' :
