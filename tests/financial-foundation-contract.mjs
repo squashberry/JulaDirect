@@ -66,10 +66,17 @@ assert.match(allSql, /pickup_station_id uuid/i);
 assert.match(allSql, /p_pickup_station_id uuid/i);
 assert.match(allSql, /gambasket_get_pickup_station_config/);
 assert.match(allSql, /gambasket_notify_pickup_station_ready/);
+assert.match(allSql, /gambasket_guard_delivery_area/);
+assert.match(allSql, /orders_enforce_homepage_delivery_areas/);
+for (const area of ["Banjul", "Serrekunda", "Bakau", "Kololi", "Fajara", "Brikama"]) {
+  assert.match(allSql, new RegExp(area, "i"));
+}
 assert.match(checkoutHtml, /24-hour refund eligibility/i);
 assert.match(checkoutHtml, /id="pickup" value="pickup_station"/i);
 assert.match(checkoutHtml, /id="pickupStationArea"/i);
 assert.match(checkoutHtml, /id="pickupStationSelect"/i);
+assert.match(checkoutHtml, /<select id="area"/i);
+assert.doesNotMatch(checkoutHtml, /<input id="area"/i);
 assert.doesNotMatch(checkoutHtml, /Collect from our Banjul station/i);
 assert.match(checkoutHtml, /All requests are reviewed by JulaDirect/i);
 
