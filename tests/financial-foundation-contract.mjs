@@ -60,6 +60,8 @@ assert.match(allSql, /SET refund_provider_window_hours = 24/i);
 assert.match(allSql, /make_interval\(hours => v_window_hours\)/i);
 assert.match(allSql, /pickup_station_name text/i);
 assert.match(allSql, /JulaDirect Pickup Station/i);
+assert.match(allSql, /gambasket_get_pickup_station_config/);
+assert.match(allSql, /gambasket_notify_pickup_station_ready/);
 assert.match(checkoutHtml, /24-hour refund eligibility/i);
 assert.match(checkoutHtml, /id="pickup" value="pickup_station"/i);
 assert.match(checkoutHtml, /Banjul, The Gambia/i);
