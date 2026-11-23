@@ -227,6 +227,7 @@ jobs:
               "online-only checkout enforced by the trusted database wrapper": all(token in all_sql for token in ["ONLINE_PAYMENT_REQUIRED", "v_method NOT IN ('wave','qmoney','afrimoney')", "gambasket_guard_order_payment_method", "DROP TRIGGER IF EXISTS orders_available_payment_methods_only ON public.orders"]),
               "24-hour refund eligibility enforced at request and provider processing": all(token in all_sql for token in ["ALTER COLUMN refund_provider_window_hours SET DEFAULT 24", "refund_provider_window_hours = 24", "gambasket_request_order_refund", "gambasket_validate_refund_case", "make_interval(hours => v_window_hours)"]),
               "Area-based pickup stations use pickup fulfilment without courier dispatch": all(token in all_sql for token in ["CREATE TABLE IF NOT EXISTS public.pickup_stations", "pickup_station_id uuid", "p_pickup_station_id uuid", "'SRN'", "v_internal_fulfillment := 'pickup'", "No courier is assigned", "gambasket_get_pickup_station_config", "gambasket_notify_pickup_station_ready"]),
+              "Delivery orders are limited to homepage service areas at database level": all(token in all_sql for token in ["gambasket_guard_delivery_area", "orders_enforce_homepage_delivery_areas", "serrekunda", "bakau", "kololi", "fajara", "brikama"]),
           }
           for label, passed in checks.items():
               print(("PASS" if passed else "FAIL") + ": " + label)
@@ -252,6 +253,9 @@ jobs:
           assert 'id="pickup" value="pickup_station"' in checkout, "Checkout must offer Pickup station."
           assert 'id="pickupStationArea"' in checkout and 'id="pickupStationSelect"' in checkout, "Pickup station must be chosen by area and station."
           assert "Greater Banjul Area" in checkout and "West Coast Region" in checkout, "Delivery must be limited to Greater Banjul and West Coast."
+          assert '<select id="area"' in checkout, "Delivery area must be selected from approved service locations."
+          checkout_js = Path("js/checkout.js").read_text(encoding="utf-8")
+          assert all(area in checkout_js for area in ["Banjul", "Serrekunda", "Bakau", "Kololi", "Fajara", "Brikama"]), "Checkout area choices must match the homepage service areas."
           assert "North Bank Region" not in checkout and "Store pickup" not in checkout, "Unsupported delivery regions and old Store pickup must be removed."
           assert "Collect from our Banjul station" not in checkout, "Pickup station must not hard-code Banjul into the option card."
           print("Validated checkout payment availability: online-only; providers fail closed until ModemPay enables them.");
