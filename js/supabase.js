@@ -1317,7 +1317,7 @@
                 if (client) {
                     const { data, error } = await client
                         .from("orders")
-                        .select("id, order_number, fulfillment_type, delivery_address, delivery_area, delivery_phone, subtotal, delivery_fee, total, currency, payment_status, payment_method, order_status, created_at, order_items(id, product_id, title, price, quantity, subtotal)")
+                        .select("id, order_number, fulfillment_type, delivery_address, delivery_area, delivery_phone, pickup_station_name, pickup_station_city, pickup_station_address, pickup_location, subtotal, delivery_fee, total, currency, payment_status, payment_method, order_status, created_at, order_items(id, product_id, title, price, quantity, subtotal)")
                         .eq("buyer_id", userId)
                         .order("created_at", { ascending: false });
 
@@ -1329,7 +1329,11 @@
                             created_at: order.created_at,
                             fulfillment_type: order.fulfillment_type || "delivery",
                             address: order.delivery_address || "",
-                            area: order.delivery_area || "Greater Banjul",
+                            area: order.delivery_area || order.pickup_station_city || "Greater Banjul",
+                            pickup_station_name: order.pickup_station_name || "",
+                            pickup_station_city: order.pickup_station_city || "",
+                            pickup_station_address: order.pickup_station_address || "",
+                            pickup_location: order.pickup_location || "",
                             payment_method: order.payment_method || "cash_on_delivery",
                             payment_status: order.payment_status || "pending",
                             total_amount: order.total || order.subtotal || 0,
