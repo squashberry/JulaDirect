@@ -2,10 +2,11 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 const read = (path) => readFile(new URL("../" + path, import.meta.url), "utf8");
-const [migration, codMigration, checkoutFn, webhookFn, payoutFn, deliveryFn, refundFn, configFn, checkoutUi, deliveryUi, ordersUi, walletUi, codWalletUi, codAdminUi, supplierEarnings] =
+const [migration, codMigration, onlineOnlyMigration, checkoutFn, webhookFn, payoutFn, deliveryFn, refundFn, configFn, checkoutUi, deliveryUi, ordersUi, walletUi, codWalletUi, codAdminUi, supplierEarnings] =
   await Promise.all([
     read("supabase/migrations/20261114160000_gambasket_modempay_finance_lifecycle.sql"),
     read("supabase/migrations/20261114170000_gambasket_cod_commission_reserve.sql"),
+    read("supabase/migrations/20261123001500_online_payment_only_checkout.sql"),
     read("supabase/functions/gambasket-modempay-checkout/index.ts"),
     read("supabase/functions/gambasket-modempay-webhook/index.ts"),
     read("supabase/functions/gambasket-modempay-payouts/index.ts"),
@@ -62,7 +63,10 @@ for (const source of [checkoutFn, webhookFn, payoutFn, deliveryFn, refundFn, con
 }
 
 assert.match(checkoutUi, /payment_method: payment/);
-assert.match(checkoutUi, /gambasket_cod_checkout_eligibility/);
+assert.doesNotMatch(checkoutUi, /gambasket_cod_checkout_eligibility|cash_on_delivery/i);
+const checkoutPage = await read("checkout.html");
+assert.doesNotMatch(checkoutPage, /id="cod"/i);
+assert.match(checkoutPage, /48-hour refund request window/i);
 assert.match(codWalletUi, /seller_get_cod_reserve_summary/);
 assert.match(codWalletUi, /seller_fund_cod_commission_reserve/);
 assert.match(codWalletUi, /seller_set_cod_checkout_enabled/);
