@@ -23,6 +23,17 @@
         "West Coast Region": ["Brikama"]
     });
 
+    function normalizeDeliveryRegion(value) {
+        const region = String(value || "").trim().toLowerCase();
+        if (["greater banjul area", "greater banjul", "banjul", "kanifing"].includes(region)) {
+            return "Greater Banjul Area";
+        }
+        if (["west coast region", "west coast", "western region"].includes(region)) {
+            return "West Coast Region";
+        }
+        return "";
+    }
+
     function populateDeliveryAreas(preferredArea = "") {
         const region = $("region")?.value || "";
         const areaSelect = $("area");
@@ -225,10 +236,9 @@
                 $("fullName").value = `${profile.first_name || ""} ${profile.last_name || ""}`.trim();
                 $("email").value = profile.email || session.user.email || "";
                 $("phone").value = profile.phone || saved.phone || "";
-                $("region").value = profile.region || saved.region || "";
             }
             if (!$("email").value) $("email").value = session.user.email || "";
-            if (!$("region").value && saved.region) $("region").value = saved.region;
+            $("region").value = normalizeDeliveryRegion(profile?.region) || normalizeDeliveryRegion(saved.region);
             populateDeliveryAreas(profile?.area || saved.area || "");
             if (saved.address) $("address").value = saved.address;
             if (saved.landmark) $("landmark").value = saved.landmark;
