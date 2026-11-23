@@ -561,6 +561,45 @@ test("Checkout creates an online-only order and opens ModemPay", async ({ page }
   expect(paymentCall.body.payment_method).toBe("wave");
 });
 
+test("Pickup station checkout sends Banjul destination without delivery address", async ({ page }) => {
+  const writes = [];
+  const cartRows = [{
+    id: "66666666-6666-4666-8666-666666666666",
+    user_id: USER_ID,
+    product_id: IPHONE_ID,
+    quantity: 1,
+    product: iphone
+  }];
+  await mockBackend(page, { products: [iphone], cartRows, authenticated: true, writes });
+  await page.route("https://checkout.modempay.com/**", route => route.fulfill({
+    status: 200, contentType: "text/html", body: "<title>ModemPay test checkout</title>"
+  }));
+  await page.goto("/checkout.html");
+  await page.locator("#fullName").fill("Test Buyer");
+  await page.locator("#email").fill("gambasket-e2e@example.test");
+  await page.locator("#phone").fill("+2207000000");
+  await page.locator("#pickup").check();
+  await expect(page.locator("#deliveryFields")).toBeHidden();
+  await expect(page.locator("#pickupStationFields")).toBeVisible();
+  await expect(page.locator("#summaryDeliveryLabel")).toContainText("Pickup station");
+  await page.locator("#placeOrderBtn").click();
+  await page.locator("#wave").check();
+  await page.locator("#placeOrderBtn").click();
+  await page.locator("#placeOrderBtn").click();
+  await expect(page).toHaveURL(/checkout\.modempay\.com\/test-payment/);
+
+  const orderCall = writes.find(row => row.table === "rpc/create_order");
+  expect(orderCall).toBeTruthy();
+  expect(orderCall.body.p_fulfillment_type).toBe("pickup_station");
+  expect(orderCall.body.p_delivery_region).toBe("Banjul");
+  expect(orderCall.body.p_delivery_area).toBe("Banjul");
+  expect(orderCall.body.p_delivery_address).toBeNull();
+  expect(orderCall.body.p_delivery_instructions).toBeNull();
+
+  const paymentCall = writes.find(row => row.table === "functions/gambasket-modempay-checkout");
+  expect(paymentCall.body.payment_method).toBe("wave");
+});
+
 test("Image upload falls back to Supabase Storage when Cloudinary is unset", async ({ page }) => {
   await mockBackend(page, { authenticated: true });
   await page.goto("/explore.html");
@@ -621,9 +660,11 @@ test("Checkout offers online payment only and explains the refund request window
   }));
   await page.goto("/checkout.html");
   await expect(page.locator("#cod")).toHaveCount(0);
+  await expect(page.locator("#pickup")).toHaveValue("pickup_station");
+  await expect(page.locator("#pickupStationFields")).toContainText("Banjul");
   await expect(page.locator("#paymentAvailabilityNote")).toContainText("pay securely online");
-  await expect(page.locator("#refundWindowNote")).toContainText("48-hour refund eligibility");
-  await expect(page.locator("#refundWindowNote")).toContainText("subject to JulaDirect review");
+  await expect(page.locator("#refundWindowNote")).toContainText("24-hour refund eligibility");
+  await expect(page.locator("#refundWindowNote")).toContainText("All requests are reviewed by JulaDirect");
   for (const id of ["wave", "qmoney", "afrimoney"]) {
     await expect(page.locator(`#${id}`)).toBeDisabled();
     await expect(page.locator(`label[for="${id}"]`)).toContainText("Coming soon");
