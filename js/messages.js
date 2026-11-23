@@ -128,9 +128,14 @@
         const session = await window.GamBasketAuth.getSession();
         if (!session?.user) { location.href = `login.html?redirect=${encodeURIComponent(location.href)}`; return; }
         state.user = session.user;
-        await loadConversations();
-        state.loaded = true;
-        await routeFromUrl(location.href);
+        /* Direct-to-chat links (?conversation / ?product) open the chat immediately; the list loads alongside, not before. */
+        const direct = /[?&](conversation|product)=/.test(location.search);
+        if (direct) document.body.classList.add("ms-open");
+        const listP = loadConversations();
+        const routeP = direct ? routeFromUrl(location.href) : null;
+        await listP; state.loaded = true;
+        if (routeP) { await routeP; if (!state.active) document.body.classList.remove("ms-open"); }
+        else await routeFromUrl(location.href);
     }
     async function routeFromUrl(href) {
         const u = new URL(href, location.href);

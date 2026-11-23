@@ -1031,52 +1031,45 @@
                 .select("id, product_id, order_id, created_at, updated_at, product:products(id, title, price, stock, status, main_image)")
                 .order("updated_at", { ascending: false });
             if (error) throw error;
-            const conversations = [];
-            for (const conversation of data || []) {
-                const { data: members, error: memberError } = await client
-                    .from("conversation_participants")
-                    .select("user_id, last_read_at")
-                    .eq("conversation_id", conversation.id);
-                if (memberError) throw memberError;
-                const other = (members || []).find(member => member.user_id !== session.user.id);
-                let otherProfile = null;
-                if (other?.user_id) {
-                    const { data: safeProfile, error: profileError } = await client
-                        .from("public_profiles")
-                        .select("id, first_name, last_name, business_name, avatar_url, is_seller_verified")
-                        .eq("id", other.user_id)
-                        .maybeSingle();
-                    if (profileError) throw profileError;
-                    otherProfile = safeProfile;
-                }
-                const { data: lastMessages, error: messageError } = await client
-                    .from("messages")
-                    .select("message_text, created_at, sender_id, is_read")
-                    .eq("conversation_id", conversation.id)
-                    .order("created_at", { ascending: false })
-                    .limit(1);
-                if (messageError) throw messageError;
-                const lastMessage = lastMessages?.[0] || null;
-                const { count, error: unreadError } = await client
-                    .from("messages")
-                    .select("id", { count: "exact", head: true })
-                    .eq("conversation_id", conversation.id)
-                    .neq("sender_id", session.user.id)
-                    .eq("is_read", false);
-                if (unreadError) throw unreadError;
-                conversations.push({
+            /* Batched + parallel: was 4 sequential queries per conversation. */
+            const rows = (data || []).slice(0, 60);
+            if (!rows.length) return { items: [] };
+            const ids = rows.map(c => c.id);
+            const { data: allMembers, error: memberError } = await client.from("conversation_participants").select("conversation_id, user_id, last_read_at").in("conversation_id", ids);
+            if (memberError) throw memberError;
+            const otherOf = {};
+            (allMembers || []).forEach(m => { if (m.user_id !== session.user.id) otherOf[m.conversation_id] = m.user_id; });
+            const otherIds = [...new Set(Object.values(otherOf))];
+            const [profRes, extras] = await Promise.all([
+                otherIds.length ? client.from("public_profiles").select("id, first_name, last_name, business_name, avatar_url, is_seller_verified").in("id", otherIds) : Promise.resolve({ data: [] }),
+                Promise.all(rows.map(async c => {
+                    const [last, unread] = await Promise.all([
+                        client.from("messages").select("message_text, created_at, sender_id, is_read").eq("conversation_id", c.id).order("created_at", { ascending: false }).limit(1),
+                        client.from("messages").select("id", { count: "exact", head: true }).eq("conversation_id", c.id).neq("sender_id", session.user.id).eq("is_read", false)
+                    ]);
+                    if (last.error) throw last.error;
+                    if (unread.error) throw unread.error;
+                    return { last: last.data?.[0] || null, count: unread.count || 0 };
+                }))
+            ]);
+            if (profRes.error) throw profRes.error;
+            const profiles = {};
+            (profRes.data || []).forEach(p => { profiles[p.id] = p; });
+            const conversations = rows.map((conversation, i) => {
+                const otherId = otherOf[conversation.id] || null, otherProfile = otherId ? profiles[otherId] : null, lastMessage = extras[i].last;
+                return {
                     id: conversation.id,
                     product_id: conversation.product_id,
                     product: conversation.product,
                     other_user_name: otherProfile?.business_name || `${otherProfile?.first_name || "JulaDirect"} ${otherProfile?.last_name || "Member"}`.trim(),
-                    other_user_id: other?.user_id || null,
+                    other_user_id: otherId,
                     other_user_avatar: otherProfile?.avatar_url || null,
                     other_user_verified: !!otherProfile?.is_seller_verified,
                     last_message: lastMessage?.message_text || "Start the conversation",
                     last_message_at: lastMessage?.created_at || conversation.updated_at || conversation.created_at,
-                    unread_count: count || 0
-                });
-            }
+                    unread_count: extras[i].count
+                };
+            });
             return { items: conversations };
         },
 
