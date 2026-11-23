@@ -5,7 +5,7 @@
    - Never touches cross-origin requests (Supabase, payments, image CDNs),
      non-GET requests, or anything under /api. Bump VERSION to invalidate.
    To remove it, deploy a sw.js that calls self.registration.unregister(). */
-const VERSION = "jd-v2-9";
+const VERSION = "jd-v2-10";
 const PAGES = VERSION + "-pages";
 const STATIC = VERSION + "-static";
 const OFFLINE = "/offline.html";
