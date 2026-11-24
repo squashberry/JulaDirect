@@ -1,5 +1,5 @@
 {
   "version": 1,
-  "include": ["/product", "/seller", "/supplier-profile", "/restaurant.html", "/sitemap.xml", "/robots.txt"],
+  "include": ["/food", "/product", "/seller", "/supplier-profile", "/restaurant.html", "/sitemap.xml", "/robots.txt"],
   "exclude": []
 }

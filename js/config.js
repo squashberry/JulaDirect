@@ -18,9 +18,9 @@
         CLOUDINARY_CLOUD_NAME: "jx9bpjdb",
         CLOUDINARY_UPLOAD_PRESET: "juladirect_product_images",
 
-        // The storefront popup runner stays off until the site_popups SQL
-        // migration has been applied to the production Supabase project.
-        SITE_POPUPS_ENABLED: false,
+        // The site_popups migration is live; the storefront runner checks
+        // the active popup list and displays nothing until an admin publishes one.
+        SITE_POPUPS_ENABLED: true,
 
         isCloudinaryConfigured: function () {
             return Boolean(
