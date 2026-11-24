@@ -40,7 +40,7 @@ export async function onRequestGet({ request, env, next }) {
     const name=s.business_name||"JulaDirect supplier";
     const description=String(s.description||(name+" supplies products through JulaDirect in The Gambia. Explore its wholesale catalogue and contact the supplier.")).replace(/\s+/g," ").trim().slice(0,155);
     const canonical=url.origin+"/supplier-profile?id="+s.id;
-    const image=httpsUrl(s.banner_url)||httpsUrl(s.logo_url)||httpsUrl(prof[0]?.avatar_url)||(url.origin+"/assets/juladirect-og.jpg");
+    const image=httpsUrl(s.banner_url)||httpsUrl(s.logo_url)||httpsUrl(prof[0]?.avatar_url)||(url.origin+"/assets/juladirect-og.svg");
     const jsonld={"@context":"https://schema.org","@type":"ProfilePage","name":name+" — JulaDirect Supplier","url":canonical,"description":description,"mainEntity":{"@type":"Organization","name":name,"description":description,"url":canonical,"image":image}};
     const head='<meta name="robots" content="index, follow, max-image-preview:large"><link rel="canonical" href="'+esc(canonical)+'">'+
       '<meta property="og:type" content="profile"><meta property="og:site_name" content="JulaDirect"><meta property="og:title" content="'+esc(name+" — Supplier on JulaDirect")+'">'+

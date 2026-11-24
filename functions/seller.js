@@ -43,7 +43,7 @@ export async function onRequestGet({ request, env, next }) {
     const description = String(store.description || (name + " offers products on JulaDirect, The Gambia's online marketplace. Browse listings, compare details and contact the seller."))
       .replace(/\s+/g, " ").trim().slice(0, 155);
     const canonical = url.origin + "/seller?id=" + id;
-    const image = httpsUrl(store.banner_url) || httpsUrl(store.logo_url) || httpsUrl(p.avatar_url) || (url.origin + "/assets/juladirect-og.jpg");
+    const image = httpsUrl(store.banner_url) || httpsUrl(store.logo_url) || httpsUrl(p.avatar_url) || (url.origin + "/assets/juladirect-og.svg");
     const entity = { "@type": (store.name || p.seller_type === "business") ? "Organization" : "Person", "@id":canonical+"#profile", "name":name, "description":description, "url":canonical, "image":image,
       "address": (store.location || p.region || p.area) ? {"@type":"PostalAddress","addressLocality":store.location || [p.area,p.region].filter(Boolean).join(", "),"addressCountry":"GM"} : undefined };
     const jsonld = {"@context":"https://schema.org","@type":"ProfilePage","name":name+" — JulaDirect","url":canonical,"description":description,"mainEntity":entity};

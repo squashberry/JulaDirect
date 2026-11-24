@@ -130,7 +130,7 @@
     const canonical = target.href;
     const description = String(d.about || d.tagline || (d.name + " on JulaDirect."))
       .replace(/\\s+/g, " ").trim().slice(0, 155);
-    const image = url(d.cover) || url(d.avatar) || "https://juladirect.pages.dev/assets/juladirect-og.jpg";
+    const image = url(d.cover) || url(d.avatar) || "https://juladirect.pages.dev/assets/juladirect-og.svg";
     const title = d.name + (kind === "supplier" ? " — Supplier on JulaDirect" : " — Seller on JulaDirect");
     const setMeta = (type, key, value) => {
       const selector = "meta[" + type + "='" + key + "']";

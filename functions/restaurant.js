@@ -53,7 +53,7 @@ export async function onRequestGet({ request, env, next }) {
     const description = (clean || (r.name + " menu, meals, delivery and pickup in " + (r.location || "The Gambia") + " on JulaDirect."))
       .slice(0, 155);
     const canonical = url.origin + "/restaurant?slug=" + encodeURIComponent(r.slug);
-    const image = httpsUrl(r.cover_url) || httpsUrl(r.logo_url) || (url.origin + "/assets/juladirect-og.jpg");
+    const image = httpsUrl(r.cover_url) || httpsUrl(r.logo_url) || (url.origin + "/assets/juladirect-og.svg");
     const categories = [...new Set(menu.map(item => item.category || "Menu"))];
     const menuSections = categories.map(category => ({
       "@type":"MenuSection", name:category,

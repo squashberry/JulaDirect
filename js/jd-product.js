@@ -99,7 +99,7 @@
     const seoDescription = (String(p.description || "").replace(/\s+/g, " ").trim().slice(0, 155)) ||
       p.title + " on JulaDirect, The Gambia's online marketplace.";
     const canonicalUrl = new URL("/product?id=" + encodeURIComponent(p.id), location.origin).href;
-    const socialImage = JD.safeUrl(imgs[0]) || new URL("/assets/juladirect-og.jpg", location.origin).href;
+    const socialImage = JD.safeUrl(imgs[0]) || new URL("/assets/juladirect-og.svg", location.origin).href;
     const setSeoMeta = (selector, attr, key, value) => {
       let node = document.querySelector(selector);
       if (!node) { node = document.createElement("meta"); node.setAttribute(attr, key); document.head.appendChild(node); }
