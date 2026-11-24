@@ -199,7 +199,7 @@
     }
     if (step === 1 || step === "all") {
       if (!(d.location || "").trim()) return "Add your location.";
-      const phoneDigits = String(d.phone || "").replace(/\\D/g, "");
+      const phoneDigits = String(d.phone || "").replace(/\D/g, "");
       if (phoneDigits.length < 6) return "Enter a valid phone number with at least 6 digits.";
     }
     if (step === 2 || step === "all") {
