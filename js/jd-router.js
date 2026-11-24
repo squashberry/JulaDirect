@@ -512,12 +512,25 @@
     if (pane.route === "product") pane.flags.add("jd-pdp-page");
     setFlags(pane);
     applyRouteStyles(pane.route);
-    // Make the destination visible only after its route styles and body flags
-    // are active. This prevents a one-frame flash of raw HTML during a switch.
+    // Activate destination styles while the pane is still visually suppressed.
+    // WebKit can paint one frame after a stylesheet media change, even when its
+    // load event has fired. Keep the pane hidden until that style change commits.
+    if (changed) pane.el.style.visibility = "hidden";
     pane.el.hidden = false;
     /* Flush route-scoped stylesheet and body-class changes before page scripts
        measure or position fixed/sticky controls in the newly visible pane. */
     if (pane.main) void pane.main.offsetHeight;
+    if (changed) {
+      const raf = window.requestAnimationFrame || (fn => window.setTimeout(fn, 16));
+      raf(() => {
+        if (current !== pane || pane.el.hidden) return;
+        // Reading computed style forces WebKit to commit the active stylesheet set.
+        void window.getComputedStyle(pane.el).visibility;
+        raf(() => {
+          if (current === pane && !pane.el.hidden) pane.el.style.removeProperty("visibility");
+        });
+      });
+    }
     if (pane.route === "index") {
       if (JD.takeover && JD.takeover.apply) JD.takeover.apply();
     } else {

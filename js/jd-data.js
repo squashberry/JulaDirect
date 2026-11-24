@@ -397,26 +397,48 @@
     async product(id) {
       const c = await JD.client();
       if (!c) throw unavailable();
-      const { data: product, error } = await c.from("products").select("*").eq("id", id).eq("status", "approved").maybeSingle();
-      if (error) throw error;
+      const readProduct = async () => {
+        const { data, error } = await c.from("products").select("*").eq("id", id).eq("status", "approved").maybeSingle();
+        if (error) throw error;
+        return data;
+      };
+      let product;
+      try {
+        product = await readProduct();
+      } catch (error) {
+        // Firefox/Safari can briefly abort a fetch while restoring a suspended tab.
+        // Retry only transport failures; authorization and database errors stay visible.
+        const message = String(error && error.message || error);
+        if (!/network|fetch|abort|load failed|timed? out|connection/i.test(message)) throw error;
+        await new Promise(resolve => setTimeout(resolve, 300));
+        product = await readProduct();
+      }
       if (!product) return { product: null };
       // Legacy/demo listings can exist without a seller_id. Never send eq.null to PostgREST:
       // it is invalid for UUID filters and used to break quick view / wishlist loading.
       const sellerId = JD.isUuid(product.seller_id) ? product.seller_id : null;
-      const emptyRows = Promise.resolve({ data: [], error: null });
-      const noSeller = Promise.resolve({ data: null, error: null });
+      const optional = async (request, fallback) => {
+        try {
+          const result = await request;
+          if (!result || result.error) return { data: fallback, error: result && result.error || null };
+          return result;
+        } catch (error) {
+          console.warn("[JulaDirect] optional product detail data", error && error.message);
+          return { data: fallback, error };
+        }
+      };
       const [imgs, seller, reviews, related, more] = await Promise.all([
-        c.from("product_images").select("image_url,sort_order").eq("product_id", id).order("sort_order", { ascending: true }),
+        optional(c.from("product_images").select("image_url,sort_order").eq("product_id", id).order("sort_order", { ascending: true }), []),
         sellerId
-          ? c.from("public_profiles").select("id,business_name,first_name,last_name,avatar_url,region,seller_type,is_seller_verified").eq("id", sellerId).maybeSingle()
-          : noSeller,
-        c.from("marketplace_reviews").select("rating,title,body,created_at,seller_reply").eq("product_id", id).eq("status", "published").order("created_at", { ascending: false }).limit(50),
+          ? optional(c.from("public_profiles").select("id,business_name,first_name,last_name,avatar_url,region,seller_type,is_seller_verified").eq("id", sellerId).maybeSingle(), null)
+          : Promise.resolve({ data: null, error: null }),
+        optional(c.from("marketplace_reviews").select("rating,title,body,created_at,seller_reply").eq("product_id", id).eq("status", "published").order("created_at", { ascending: false }).limit(50), []),
         product.category_id && product.category_id !== "All"
-          ? c.from("products").select("*").eq("status", "approved").eq("category_id", product.category_id).neq("id", id).gt("stock", 0).order("created_at", { ascending: false }).limit(6)
-          : emptyRows,
+          ? optional(c.from("products").select("*").eq("status", "approved").eq("category_id", product.category_id).neq("id", id).gt("stock", 0).order("created_at", { ascending: false }).limit(6), [])
+          : Promise.resolve({ data: [], error: null }),
         sellerId
-          ? c.from("products").select("*").eq("status", "approved").eq("seller_id", sellerId).neq("id", id).gt("stock", 0).order("created_at", { ascending: false }).limit(6)
-          : emptyRows
+          ? optional(c.from("products").select("*").eq("status", "approved").eq("seller_id", sellerId).neq("id", id).gt("stock", 0).order("created_at", { ascending: false }).limit(6), [])
+          : Promise.resolve({ data: [], error: null })
       ]);
       const gallery = [product.main_image, ...((imgs.data || []).map(r => r.image_url))].map(JD.safeUrl).filter(Boolean);
       const relatedRows = await attachSellers(related.data || []);

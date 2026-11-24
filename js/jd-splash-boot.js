@@ -1,20 +1,36 @@
 /* JulaDirect app-launch splash.
-   Runs once for a real document load on any primary app route.
-   Pane HTML is fetched by jd-router after this script has already loaded,
-   so switching to Home or another tab never replays the intro. */
+   Show once per tab session, not once per document load. Safari and Firefox may
+   discard a background tab and restore it with a fresh document; sessionStorage
+   survives that restore so the app intro is not replayed on every return. */
 (function () {
   "use strict";
   var root = document.documentElement;
   var params = new URLSearchParams(location.search);
-  var force = params.get("splash") === "1";
-  if (params.get("splash") === "0" || window.__jdSplashBootStarted) return;
+  var splashParam = params.get("splash");
+  var force = splashParam === "1";
+  var seenKey = "jd_app_splash_seen_v1";
+  if (splashParam === "0" || window.__jdSplashBootStarted) return;
+
+  function hasSeenSplash() {
+    try { return window.sessionStorage.getItem(seenKey) === "1"; }
+    catch (_) {
+      try { return document.cookie.split(";").some(function (part) { return part.trim() === seenKey + "=1"; }); } catch (_) { return false; }
+    }
+  }
+  function markSplashSeen() {
+    try { window.sessionStorage.setItem(seenKey, "1"); }
+    catch (_) { try { document.cookie = seenKey + "=1; path=/; SameSite=Lax; Secure"; } catch (_) {} }
+  }
+
+  if (!force && hasSeenSplash()) return;
   if (navigator.webdriver && !force) return;
 
-  // The router executes page scripts inside the current document for pane
-  // navigation. The intro belongs to the app launch, not a tab activation.
+  // The router executes pane scripts inside the current document. The intro
+  // belongs to the app launch, not a tab activation or a restored page load.
   if (window.JD && window.JD.router) return;
 
   window.__jdSplashBootStarted = true;
+  markSplashSeen();
   root.classList.add("jd-splash-on");
 
   var style = document.createElement("style");
