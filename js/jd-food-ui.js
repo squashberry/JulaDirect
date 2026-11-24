@@ -26,7 +26,7 @@
   function mount(root) {
     app = root || document.body;
     app.insertAdjacentHTML("beforeend", `<button class="fa-cartbar" id="fa-bar" type="button" aria-label="View cart"></button><div class="fa-scrim" id="fa-scrim"></div><section class="fa-sheet" id="fa-sheet" role="dialog" aria-modal="true" aria-label="Your order"></section><section class="fa-meal" id="fa-meal" role="dialog" aria-modal="true" aria-label="Meal"></section><section class="fa-done" id="fa-done" role="dialog" aria-modal="true"></section>`);
-    $("#fa-bar").addEventListener("click", openCart); $("#fa-scrim").addEventListener("click", closeCart);
+    $("#fa-bar").addEventListener("click", openCart); $("#fa-scrim").addEventListener("click", () => { closeCart(); closeMeal(); });
     addEventListener("keydown", e => { if (e.key === "Escape") { closeCart(); closeMeal(); } });
     paintBar();
   }
@@ -49,11 +49,11 @@
     ${m.description ? `<p class="fa-quote">${esc(m.description)}</p>` : ""}
     <div class="fa-buy"><div><small>Total price</small><b id="fa-mt">${money(m.price * cur.q)}</b></div><div class="fa-step"><button type="button" data-d="-1" aria-label="Less">−</button><b id="fa-mq">${cur.q}</b><button class="plus" type="button" data-d="1" aria-label="More">+</button></div></div>
     <button class="fa-btn" type="button" data-addm ${m.is_available === false || r.is_open === false ? "disabled" : ""}>${m.is_available === false ? "Sold out" : r.is_open === false ? "Restaurant is closed" : qtyOf(m.id) ? "Update cart" : "Add to cart"}</button></div>`;
-    el.classList.add("is-on"); document.body.style.overflow = "hidden";
+    el.classList.add("is-on"); document.body.style.overflow = "hidden"; $("#fa-scrim").classList.add("is-on");
     const hero = $(".fa-hero-e,.fa-hero-img", el);
     if (hero && !reduce) hero.animate([{ transform: "scale(.3) rotate(-90deg)", opacity: 0 }, { transform: "scale(1.12) rotate(8deg)", opacity: 1, offset: .65 }, { transform: "none" }], { duration: 900, easing: "cubic-bezier(.3,1.3,.4,1)" });
   }
-  function closeMeal() { const el = $("#fa-meal"); if (!el || !el.classList.contains("is-on")) return; el.classList.remove("is-on"); document.body.style.overflow = ""; }
+  function closeMeal() { const el = $("#fa-meal"); if (!el || !el.classList.contains("is-on")) return; el.classList.remove("is-on"); document.body.style.overflow = ""; if (!$("#fa-sheet").classList.contains("is-on")) $("#fa-scrim").classList.remove("is-on"); }
   document.addEventListener("click", e => {
     const el = e.target.closest("#fa-meal"); if (!el) return;
     if (e.target.closest("[data-close]")) return closeMeal();
@@ -62,36 +62,55 @@
     if (e.target.closest("[data-addm]")) { if (setQty(cur.r, cur.m, cur.q)) { closeMeal(); } }
   });
 
-  /* ----- cart sheet ----- */
+  /* ----- cart sheet / checkout ----- */
+  const prof = () => jget("jd_food_profile", { name: "", phone: "", address: "", mode: "delivery" });
+  function mode() { const r = cart.r || {}, p = prof(); return p.mode === "pickup" && r.offers_pickup !== false ? "pickup" : r.offers_delivery === false ? "pickup" : "delivery"; }
   function paintCart() {
     const sh = $("#fa-sheet"), ls = lines(); if (!ls.length) { closeCart(); return; }
-    const sub = total(), f = fee(), min = Number(cart.r.min_order || 0), low = min && sub < min;
-    sh.innerHTML = `<span class="fa-grab"></span><h2>Your order · ${esc(cart.r.name)}</h2>${ls.map(l => `<div class="fa-line"><span class="th">${thumb(l.m)}</span><div class="n"><b>${esc(l.m.name)}</b><small>${money(l.m.price)}</small></div><div class="fa-step"><button type="button" data-l="${esc(l.m.id)}" data-d="-1" aria-label="Less">−</button><b>${l.q}</b><button class="plus" type="button" data-l="${esc(l.m.id)}" data-d="1" aria-label="More">+</button></div></div>`).join("")}
-    <label class="fa-note"><span>Note for the kitchen</span><textarea id="fa-note" rows="2" maxlength="300" placeholder="No onions, extra sauce, delivery directions…">${esc(cart.note || "")}</textarea></label><div class="fa-sum"><span>Subtotal</span><span>${money(sub)}</span></div>${cart.r.offers_delivery ? `<div class="fa-sum"><span>Delivery</span><span>${f ? money(f) : "Free"}</span></div>` : ""}<div class="fa-sum t"><span>Total</span><span>${money(sub + f)}</span></div>
-    ${low ? `<p style="color:#b4233a;font-weight:700;margin:0 0 10px">Minimum order is ${money(min)}.</p>` : ""}
-    <button class="fa-btn fa-btn--dark" type="button" data-place ${low ? "disabled" : ""}>${cart.r.whatsapp ? "Send order on WhatsApp" : cart.r.phone ? "Place order & call" : "Place order"}</button><button class="fa-btn fa-btn--ghost" type="button" data-clear>Clear order</button>`;
+    const r = cart.r, p = prof(), md = mode(), sub = total(), f = md === "delivery" ? Number(r.delivery_fee || 0) : 0, min = Number(r.min_order || 0), low = min && sub < min;
+    const seg = (r.offers_delivery !== false && r.offers_pickup !== false) ? `<div class="fa-seg" role="tablist"><button type="button" data-md="delivery" aria-pressed="${md === "delivery"}">${FI("scooter", 18)}Delivery</button><button type="button" data-md="pickup" aria-pressed="${md === "pickup"}">${FI("bag", 18)}Pickup</button></div>` : "";
+    sh.innerHTML = `<span class="fa-grab"></span><h2>Your order · ${esc(r.name)}</h2>${ls.map(l => `<div class="fa-line"><span class="th">${thumb(l.m)}</span><div class="n"><b>${esc(l.m.name)}</b><small>${money(l.m.price)}</small></div><div class="fa-step"><button type="button" data-l="${esc(l.m.id)}" data-d="-1" aria-label="Less">−</button><b>${l.q}</b><button class="plus" type="button" data-l="${esc(l.m.id)}" data-d="1" aria-label="More">+</button></div></div>`).join("")}
+    ${seg}<div class="fa-fields"><label>Your name<input id="fa-n" autocomplete="name" value="${esc(p.name)}" placeholder="Full name"></label><label>Phone<input id="fa-p" type="tel" autocomplete="tel" value="${esc(p.phone)}" placeholder="+220 700 0000"></label>${md === "delivery" ? `<label class="wide">Delivery address<input id="fa-a" autocomplete="street-address" value="${esc(p.address)}" placeholder="Area, street, landmark"></label>` : ""}<label class="wide">Note for the kitchen<textarea id="fa-note" rows="2" maxlength="300" placeholder="No onions, extra sauce…">${esc(cart.note || "")}</textarea></label></div>
+    <div class="fa-sum"><span>Subtotal</span><span>${money(sub)}</span></div>${md === "delivery" ? `<div class="fa-sum"><span>Delivery</span><span>${f ? money(f) : "Free"}</span></div>` : ""}<div class="fa-sum t"><span>Total</span><span>${money(sub + f)}</span></div>
+    ${low ? `<p class="fa-err">Minimum order is ${money(min)}.</p>` : ""}<p class="fa-err" id="fa-err" hidden></p>
+    <button class="fa-btn fa-btn--dark" type="button" data-place ${low || r.is_open === false ? "disabled" : ""}>Place order · ${money(sub + f)}</button><button class="fa-btn fa-btn--ghost" type="button" data-clear>Clear order</button>`;
   }
   function openCart() { paintCart(); $("#fa-sheet").classList.add("is-on"); $("#fa-scrim").classList.add("is-on"); }
   function closeCart() { const s = $("#fa-sheet"); if (s) { s.classList.remove("is-on"); $("#fa-scrim").classList.remove("is-on"); } }
-  document.addEventListener("input", e => { if (e.target.id === "fa-note") { cart.note = e.target.value; jset("jd_food_cart", cart); } });
+  const saveProf = () => { const g = id => ($("#" + id) || {}).value, p = prof(); const n = g("fa-n"), ph = g("fa-p"), a = g("fa-a"); jset("jd_food_profile", Object.assign(p, n != null ? { name: n } : {}, ph != null ? { phone: ph } : {}, a != null ? { address: a } : {})); };
+  document.addEventListener("input", e => { if (e.target.id === "fa-note") { cart.note = e.target.value; jset("jd_food_cart", cart); } else if (/^fa-[npa]$/.test(e.target.id)) saveProf(); });
   document.addEventListener("click", e => {
     if (!e.target.closest("#fa-sheet")) return;
-    const l = e.target.closest("[data-l]"); if (l) { const it = cart.items[l.dataset.l]; if (it) setQty({ id: cart.r.id }, it.m, it.q + Number(l.dataset.d)); paintCart(); return; }
+    const l = e.target.closest("[data-l]"); if (l) { saveProf(); const it = cart.items[l.dataset.l]; if (it) setQty({ id: cart.r.id }, it.m, it.q + Number(l.dataset.d)); paintCart(); return; }
+    const md = e.target.closest("[data-md]"); if (md) { saveProf(); const p = prof(); p.mode = md.dataset.md; jset("jd_food_profile", p); paintCart(); return; }
     if (e.target.closest("[data-clear]")) { cart = { r: null, items: {}, note: "" }; save(); closeCart(); return; }
-    if (e.target.closest("[data-place]")) place();
+    if (e.target.closest("[data-place]")) place(e.target.closest("[data-place]"));
   });
-  function place() {
-    const ls = lines(), r = cart.r, sub = total(), f = fee();
-    const order = { note: cart.note || "", id: "o" + Date.now(), restaurant: r, items: ls.map(l => ({ id: l.m.id, name: l.m.name, emoji: l.m.emoji, price: l.m.price, quantity: l.q })), subtotal: sub, delivery_fee: f, total: sub + f, at: new Date().toISOString() };
-    document.dispatchEvent(new CustomEvent("jdfood:order", { detail: order }));   /* wire real checkout / payment here */
+  async function place(btn) {
+    saveProf(); const ls = lines(), r = cart.r, p = prof(), md = mode(), sub = total(), f = md === "delivery" ? Number(r.delivery_fee || 0) : 0, err = $("#fa-err");
+    const fail = m => { err.textContent = m; err.hidden = false; };
+    if (String(p.name).trim().length < 2) return fail("Please enter your name.");
+    if (String(p.phone).trim().length < 6) return fail("Please enter a phone number we can reach you on.");
+    if (md === "delivery" && String(p.address).trim().length < 4) return fail("Please enter your delivery address.");
+    err.hidden = true; btn.disabled = true; btn.textContent = "Sending…";
+    const order = { id: "o" + Date.now(), restaurant: r, restaurant_id: r.id, items: ls.map(l => ({ id: l.m.id, name: l.m.name, price: l.m.price, quantity: l.q })), subtotal: sub, delivery_fee: f, total: sub + f, at: new Date().toISOString(), fulfilment: md, name: p.name, phone: p.phone, address: p.address, note: cart.note || "" };
+    document.dispatchEvent(new CustomEvent("jdfood:order", { detail: order }));
+    let saved_ = null;
+    try {
+      if (!JDFood.isDemo()) { await GamBasketAuth.ready(); const s = await GamBasketAuth.getSession(); if (!s?.user) { location.href = "login.html?redirect=" + encodeURIComponent(location.pathname + location.search); return; } saved_ = await JDFood.placeOrder(order); order.code = saved_.code; order.id = saved_.id; order.total = Number(saved_.total); order.status = saved_.status; }
+    } catch (e) {
+      if (!e.notReady) { btn.disabled = false; btn.textContent = "Place order · " + money(sub + f); return fail(e.message || "Could not place your order. Please try again."); }
+      /* Backend not migrated yet: fall back to a WhatsApp / call hand-off so the order is never lost. */
+      const text = `Hi ${r.name}, I'd like to order via JulaDirect:\n` + ls.map(l => `• ${l.q} × ${l.m.name} (${money(l.m.price * l.q)})`).join("\n") + `\nTotal: ${money(sub + f)}\nName: ${p.name}\nPhone: ${p.phone}${md === "delivery" ? "\nAddress: " + p.address : "\nPickup"}${cart.note ? "\nNote: " + cart.note : ""}`;
+      const wa = (r.whatsapp || "").replace(/\D/g, ""), tel = (r.phone || "").replace(/[^\d+]/g, "");
+      if (wa) window.open("https://wa.me/" + wa + "?text=" + encodeURIComponent(text), "_blank", "noopener"); else if (tel) window.open("tel:" + tel);
+    }
     const hist = jget("jd_food_orders", []); hist.unshift(order); jset("jd_food_orders", hist.slice(0, 30));
-    const text = `Hi ${r.name}, I'd like to order via JulaDirect:\n` + ls.map(l => `• ${l.q} × ${l.m.name} (${money(l.m.price * l.q)})`).join("\n") + `\nTotal: ${money(sub + f)}` + (cart.note ? `\nNote: ${cart.note}` : "");
-    const wa = (r.whatsapp || "").replace(/\D/g, ""), tel = (r.phone || "").replace(/[^\d+]/g, "");
-    if (wa) window.open("https://wa.me/" + wa + "?text=" + encodeURIComponent(text), "_blank", "noopener"); else if (tel) window.open("tel:" + tel);
-    cart = { r: null, items: {} }; save(); closeCart(); showDone(order);
+    cart = { r: null, items: {}, note: "" }; save(); closeCart(); showDone(order);
   }
   function showDone(o) {
-    const d = $("#fa-done"); d.innerHTML = `<div class="fa-done__i">${FI("bag", 54)}</div><h2>Order sent</h2><p>Your order was sent to <b>${esc(o.restaurant.name)}</b>. Confirm the details with them${o.restaurant.whatsapp ? " on WhatsApp" : ""} — they'll prepare it in about ${o.restaurant.prep_minutes || 25} minutes.</p><div class="fa-done__c"><span>${esc(o.restaurant.name)}</span><span>${money(o.total)}</span></div><button class="fa-btn fa-btn--dark" type="button" data-orders>Check my orders</button><button class="fa-btn fa-btn--ghost" type="button" data-cont>Continue browsing</button>`;
+    const d = $("#fa-done"), live = !!o.code;
+    d.innerHTML = `<div class="fa-done__i">${FI("check", 54)}</div><h2>${live ? "Order placed" : "Order sent"}</h2><p>${live ? `<b>${esc(o.restaurant.name)}</b> has your order <b>#${esc(o.code)}</b>. You can follow its progress in Orders.` : `Your order was sent to <b>${esc(o.restaurant.name)}</b>. Confirm the details with them${o.restaurant.whatsapp ? " on WhatsApp" : ""}.`} Estimated ${o.restaurant.prep_minutes || 25} min${o.fulfilment === "delivery" ? " plus delivery" : " until ready"}.</p><div class="fa-done__c"><span>${esc(o.restaurant.name)}</span><span>${money(o.total)}</span></div><button class="fa-btn fa-btn--dark" type="button" data-orders>Track my order</button><button class="fa-btn fa-btn--ghost" type="button" data-cont>Continue browsing</button>`;
     d.classList.add("is-on");
   }
   document.addEventListener("click", e => { const d = e.target.closest("#fa-done"); if (!d) return; if (e.target.closest("[data-orders]")) { d.classList.remove("is-on"); if (window.JDFoodApp) JDFoodApp.go("orders"); else location.href = "food.html#orders"; } else if (e.target.closest("[data-cont]")) d.classList.remove("is-on"); });

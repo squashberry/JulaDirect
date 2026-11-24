@@ -100,6 +100,19 @@
     return c.storage.from("food-media").getPublicUrl(data.path).data.publicUrl;
   }
 
+  /* ---- orders ---- */
+  const notReady = e => e && (e.code === "PGRST202" || e.code === "42883" || /place_food_order|food_orders/.test(e.message || ""));
+  async function placeOrder(o) {
+    const c = await client(); if (!c) throw new Error("Offline");
+    const { data, error } = await c.rpc("place_food_order", { p_restaurant: o.restaurant_id, p_items: o.items.map(i => ({ id: i.id, quantity: i.quantity })), p_fulfilment: o.fulfilment, p_name: o.name, p_phone: o.phone, p_address: o.address || "", p_note: o.note || "" });
+    if (error) { const err = new Error(error.message || "Could not place order"); err.notReady = notReady(error); throw err; }
+    return data;
+  }
+  async function myOrders() { const c = await client(); if (!c) return []; const { data, error } = await c.from("food_orders").select("*, restaurant:restaurants(name,slug)").order("created_at", { ascending: false }).limit(40); return error ? [] : data || []; }
+  async function restaurantOrders(rid, limit) { const c = await client(); const { data, error } = await c.from("food_orders").select("*").eq("restaurant_id", rid).order("created_at", { ascending: false }).limit(limit || 120); if (error) throw error; return data || []; }
+  async function setOrderStatus(id, status) { const c = await client(); const { error } = await c.from("food_orders").update({ status }).eq("id", id); if (error) throw error; }
+  async function subscribeOrders(rid, cb) { const c = await client(); if (!c || !c.channel) return () => {}; const ch = c.channel("food-orders-" + rid).on("postgres_changes", { event: "*", schema: "public", table: "food_orders", filter: "restaurant_id=eq." + rid }, cb).subscribe(); return () => { try { c.removeChannel(ch); } catch (e) {} }; }
+
   /* ---- admin ---- */
   async function setEnabled(v) { const c = await client(), s = await GamBasketAuth.getSession(); const { error } = await c.from("platform_features").upsert({ key: "restaurants", enabled: !!v, updated_at: new Date().toISOString(), updated_by: s?.user?.id || null }); if (error) throw error; try { sessionStorage.removeItem(KEY); } catch (e) {} }
   async function adminList() { const c = await client(); const { data, error } = await c.from("restaurants").select("*").order("created_at", { ascending: false }).limit(200); if (error) throw error; return data || []; }
@@ -112,5 +125,5 @@
   const safeUrl = u => { if (!u) return ""; try { const x = new URL(u, location.href); return /^https?:$/.test(x.protocol) ? x.href : ""; } catch (e) { return ""; } };
   const hueOf = r => { if (r && r.hue != null) return r.hue; let h = 0; String((r && (r.slug || r.name)) || "").split("").forEach(c => { h = (h * 31 + c.charCodeAt(0)) % 360; }); return h; };
 
-  window.JDFood = { enabled, guardPage, restaurants, restaurant, menu, featured, mine, saveRestaurant, saveMeal, deleteMeal, upload, slugify, setEnabled, adminList, adminSetStatus, adminFlag, esc, money, safeUrl, hueOf, isDemo: demo };
+  window.JDFood = { placeOrder, myOrders, restaurantOrders, setOrderStatus, subscribeOrders, client, enabled, guardPage, restaurants, restaurant, menu, featured, mine, saveRestaurant, saveMeal, deleteMeal, upload, slugify, setEnabled, adminList, adminSetStatus, adminFlag, esc, money, safeUrl, hueOf, isDemo: demo };
 })();

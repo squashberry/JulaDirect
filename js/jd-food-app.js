@@ -72,16 +72,20 @@
 
   /* ----- other tabs ----- */
   const ago = iso => { const s = (Date.now() - new Date(iso)) / 1000; return s < 3600 ? Math.max(1, Math.round(s / 60)) + " min ago" : s < 86400 ? Math.round(s / 3600) + " h ago" : new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short" }); };
-  function paintOrders() {
-    const os = JDFoodUI.orders();
-    $("#p-orders").innerHTML = `<h1 class="fa-h1" style="margin-top:8px">Your <em>orders</em></h1>` + (os.length ? os.map((o, i) => `<a class="fa-rest" style="--h:${o.restaurant.hue || 20};--i:${i}" href="restaurant.html?slug=${encodeURIComponent(o.restaurant.slug)}"><span class="fa-rest__img">${FI("bag", 36)}</span><span style="flex:1;min-width:0"><b>${esc(o.restaurant.name)}</b><small>${o.items.map(x => x.quantity + "× " + esc(x.name)).join(", ")}</small><span class="fa-rest__m"><span class="fa-tag">${money(o.total)}</span><span class="fa-tag">${ago(o.at)}</span><span class="fa-tag fa-tag--on">Sent</span></span></span></a>`).join("") + '<p class="fa-empty" style="padding:10px">Orders sent from this device. Confirm status with the restaurant.</p>' : '<p class="fa-empty"><b>${FI("receipt", 44)}</b>No orders yet.<br>Your sent orders will show up here.</p>');
+  const ST = { new: ["Sent", "fa-tag--on"], accepted: ["Accepted", "fa-tag--on"], preparing: ["Preparing", "fa-tag--on"], ready: ["Ready", "fa-tag--on"], completed: ["Completed", ""], cancelled: ["Cancelled", "fa-tag--off"] };
+  let ordersTimer = 0;
+  async function paintOrders() {
+    let os = JDFoodUI.orders().map(o => ({ code: o.code, restaurant: o.restaurant, items: o.items, total: o.total, created_at: o.at, status: o.status || "new", local: !o.code }));
+    if (!JDFood.isDemo()) { try { const live = await JDFood.myOrders(); if (live.length) os = live.map(o => ({ code: o.code, restaurant: Object.assign({ hue: 20 }, o.restaurant || {}), items: o.items, total: o.total, created_at: o.created_at, status: o.status })).concat(os.filter(x => x.local)); } catch (e) {} }
+    $("#p-orders").innerHTML = `<h1 class="fa-h1" style="margin-top:8px">Your <em>orders</em></h1>` + (os.length ? os.map((o, i) => { const st = ST[o.status] || ST.new; return `<a class="fa-rest" style="--h:${o.restaurant.hue || 20};--i:${i}" href="restaurant.html?slug=${encodeURIComponent(o.restaurant.slug || "")}"><span class="fa-rest__img">${FI("bag", 36)}</span><span style="flex:1;min-width:0"><b>${esc(o.restaurant.name)}</b><small>${o.items.map(x => x.quantity + "× " + esc(x.name)).join(", ")}</small><span class="fa-rest__m"><span class="fa-tag">${money(o.total)}</span><span class="fa-tag">${ago(o.created_at)}</span><span class="fa-tag ${st[1]}">${o.local ? "Sent" : st[0]}</span>${o.code ? `<span class="fa-tag">#${esc(o.code)}</span>` : ""}</span></span></a>`; }).join("") : `<p class="fa-empty"><b>${FI("receipt", 44)}</b>No orders yet.<br>Your orders will show up here.</p>`);
+    clearTimeout(ordersTimer); if (tab === "orders" && !JDFood.isDemo()) ordersTimer = setTimeout(paintOrders, 25000);
   }
   function paintSaved() {
     const s = Object.values(JDFoodUI.saved());
     $("#p-saved").innerHTML = `<h1 class="fa-h1" style="margin-top:8px">Saved <em>meals</em></h1>` + (s.length ? s.map((x, i) => `<div class="fa-row" style="--h:${x.r.hue};--i:${i}" data-sv="${esc(x.m.id)}"><span class="th">${JDFoodUI.thumb(x.m)}</span><span class="n"><b>${esc(x.m.name)}</b><p>${esc(x.r.name)}</p><span class="pr"><strong>${money(x.m.price)}</strong></span></span></div>`).join("") : '<p class="fa-empty"><b>${FI("heart", 44)}</b>Tap the heart on a meal to save it here.</p>');
   }
   function paintAccount() {
-    $("#p-account").innerHTML = `<div class="fa-bar"><span class="fa-av">${esc(initial)}</span><div class="fa-hi"><small>Signed in as</small>${esc(name)}</div></div><h1 class="fa-h1">Your <em>account</em></h1><div class="fa-set"><a href="me.html">${FI("user", 22)}JulaDirect account</a><a href="restaurant-studio.html">${FI("chef", 22)}Restaurant dashboard</a><a href="index.html">${FI("bag", 22)}Back to JulaDirect</a></div>`;
+    $("#p-account").innerHTML = `<div class="fa-bar"><span class="fa-av">${esc(initial)}</span><div class="fa-hi"><small>Signed in as</small>${esc(name)}</div></div><h1 class="fa-h1">Your <em>account</em></h1><div class="fa-set"><a href="me.html">${FI("user", 22)}JulaDirect account</a><a href="restaurant/index.html">${FI("chef", 22)}Restaurant dashboard / open a restaurant</a><a href="index.html">${FI("bag", 22)}Back to JulaDirect</a></div>`;
   }
   $("#p-saved").addEventListener("click", e => { const r = e.target.closest("[data-sv]"); if (!r) return; const x = JDFoodUI.saved()[r.dataset.sv]; if (x) location.href = "restaurant.html?slug=" + encodeURIComponent(x.r.slug) + "#" + encodeURIComponent(x.m.id); });
 
