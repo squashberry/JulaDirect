@@ -183,17 +183,37 @@
       catch (err) { toast(err.message || "Upload failed."); } tile.style.opacity = "";
     });
   }
-  const fText = (k, label, d, ph, extra) => `<label class="${extra === "wide" ? "wide" : ""}">${label}<input data-k="${k}" value="${esc(d[k] ?? "")}" placeholder="${esc(ph || "")}" maxlength="120"></label>`;
-  const fNum = (k, label, d) => `<label>${label}<input data-k="${k}" data-num type="number" inputmode="decimal" min="0" value="${d[k] ?? ""}"></label>`;
+  const fText = (k, label, d, ph, extra) => `<label class="${extra === "wide" ? "wide" : ""}">${label}<input data-k="${k}" value="${esc(d[k] ?? "")}" placeholder="${esc(ph || "")}" maxlength="${k === "name" ? 80 : 120}"></label>`;
+  const fNum = (k, label, d) => `<label>${label}<input data-k="${k}" data-num type="number" inputmode="decimal" min="${k === "prep_minutes" ? 1 : 0}" step="${k === "prep_minutes" ? 1 : "any"}" value="${d[k] ?? ""}"></label>`;
   const gBasics = d => `<div class="rx-f rx-f--2">${fText("name", "Restaurant name", d, "e.g. Kairaba Grill", "wide")}${fText("tagline", "Tagline", d, "One line customers will love", "wide")}<label class="wide">Cuisines<div class="rx-chips">${CUIS.concat((d.cuisines || []).filter(c => !CUIS.includes(c))).map(c => `<button type="button" class="rx-chip" data-cu="${esc(c)}" aria-pressed="${(d.cuisines || []).includes(c)}">${esc(c)}</button>`).join("")}</div></label><label class="wide">About<textarea data-k="description" rows="4" maxlength="600" placeholder="Tell customers your story">${esc(d.description || "")}</textarea></label></div>`;
   const gContact = d => `<div class="rx-f rx-f--2">${fText("location", "Location", d, "Street, area", "wide")}${fText("phone", "Phone", d, "+220…")}${fText("whatsapp", "WhatsApp", d, "+220…")}${fText("opening_hours", "Opening hours", d, "Daily 10:00 – 22:00", "wide")}</div>`;
   const gService = d => `<div class="rx-f rx-f--2">${sw("offers_delivery", "Delivery", d.offers_delivery)}${sw("offers_pickup", "Pickup", d.offers_pickup)}${fNum("delivery_fee", "Delivery fee (D)", d)}${fNum("min_order", "Minimum order (D)", d)}${fNum("prep_minutes", "Prep time (minutes)", d)}</div>`;
   const gMedia = d => `<div class="rx-f rx-f--2"><div><b style="font-size:13px">Logo</b>${upTile("logo_url", "Add logo", d.logo_url, 130)}</div><div><b style="font-size:13px">Cover photo</b>${upTile("cover_url", "Add cover", d.cover_url, 130)}</div></div>`;
   function preview(el, d) { const p = $("[data-prev]", el); if (!p) return; p.style.backgroundImage = d.cover_url ? `url('${d.cover_url}')` : ""; p.innerHTML = `<b>${esc(d.name || "Your restaurant")}</b><span>${esc((d.cuisines || []).join(" · ") || "Cuisines")}${d.location ? " · " + esc(d.location) : ""}</span>`; }
   function validate(d, step) {
-    if (step === 0 || step === "all") { if ((d.name || "").trim().length < 2) return "Enter your restaurant name."; if (!(d.cuisines || []).length) return "Pick at least one cuisine."; }
-    if (step === 1 || step === "all") { if (!(d.location || "").trim()) return "Add your location."; if (!(d.phone || "").trim()) return "Add a phone number customers can call."; }
-    if (step === 2 || step === "all") { if (!d.offers_delivery && !d.offers_pickup) return "Offer delivery, pickup or both."; }
+    if (step === 0 || step === "all") {
+      const name = String(d.name || "").trim();
+      if (name.length < 2) return "Enter your restaurant name.";
+      if (name.length > 80) return "Restaurant names must be 80 characters or fewer.";
+      if (!(d.cuisines || []).length) return "Pick at least one cuisine.";
+    }
+    if (step === 1 || step === "all") {
+      if (!(d.location || "").trim()) return "Add your location.";
+      const phoneDigits = String(d.phone || "").replace(/\\D/g, "");
+      if (phoneDigits.length < 6) return "Enter a valid phone number with at least 6 digits.";
+    }
+    if (step === 2 || step === "all") {
+      if (!d.offers_delivery && !d.offers_pickup) return "Offer delivery, pickup or both.";
+      for (const [key, label] of [["delivery_fee", "Delivery fee"], ["min_order", "Minimum order"], ["prep_minutes", "Prep time"]]) {
+        const raw = d[key];
+        if (raw === null || raw === "") continue;
+        const value = Number(raw);
+        if (!Number.isFinite(value) || value < 0) return label + " must be zero or greater.";
+      }
+      if (d.prep_minutes !== null && d.prep_minutes !== "" && (!Number.isInteger(Number(d.prep_minutes)) || Number(d.prep_minutes) < 1)) {
+        return "Prep time must be a whole number of at least 1 minute.";
+      }
+    }
     return "";
   }
   function clean(d) { const r = Object.assign({}, d); ["delivery_fee", "min_order", "prep_minutes"].forEach(k => r[k] = Number(r[k]) || 0); if (!r.prep_minutes) r.prep_minutes = 25; r.name = r.name.trim(); ["tagline", "description", "location", "phone", "whatsapp", "opening_hours"].forEach(k => r[k] = (r[k] || "").trim() || null); return r; }
