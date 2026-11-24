@@ -40,7 +40,7 @@ export async function onRequestGet({ request, env, next }) {
     const name=s.business_name||"JulaDirect supplier";
     const description=String(s.description||(name+" supplies products through JulaDirect in The Gambia. Explore its wholesale catalogue and contact the supplier.")).replace(/\s+/g," ").trim().slice(0,155);
     const canonical=url.origin+"/supplier-profile?id="+s.id;
-    const image=httpsUrl(s.banner_url)||httpsUrl(s.logo_url)||httpsUrl(prof[0]?.avatar_url)||(url.origin+"/assets/juladirect-og.svg");
+    const image=httpsUrl(s.banner_url)||httpsUrl(s.logo_url)||httpsUrl(prof[0]?.avatar_url)||("https://res.cloudinary.com/jx9bpjdb/image/upload/c_fill,w_1200,h_630,g_auto/e_brightness:-25/l_text:Arial_72_bold:JulaDirect,co_rgb:FFFFFF/fl_layer_apply,g_north_west,x_90,y_105/l_text:Arial_40_bold:Trade%20Shop%20Connect,co_rgb:FFFFFF/fl_layer_apply,g_north_west,x_92,y_210/l_text:Arial_28:Your%20marketplace%20in%20The%20Gambia,co_rgb:E6EFFF/fl_layer_apply,g_north_west,x_92,y_285/q_auto,f_jpg/v1795559140/juladirect/juladirect-og-photo.jpg");
     const jsonld={"@context":"https://schema.org","@type":"ProfilePage","name":name+" — JulaDirect Supplier","url":canonical,"description":description,"mainEntity":{"@type":"Organization","name":name,"description":description,"url":canonical,"image":image}};
     const head='<meta name="robots" content="index, follow, max-image-preview:large"><link rel="canonical" href="'+esc(canonical)+'">'+
       '<meta property="og:type" content="profile"><meta property="og:site_name" content="JulaDirect"><meta property="og:title" content="'+esc(name+" — Supplier on JulaDirect")+'">'+

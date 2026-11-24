@@ -43,7 +43,7 @@ export async function onRequestGet({ request, env, next }) {
     const description = String(store.description || (name + " offers products on JulaDirect, The Gambia's online marketplace. Browse listings, compare details and contact the seller."))
       .replace(/\s+/g, " ").trim().slice(0, 155);
     const canonical = url.origin + "/seller?id=" + id;
-    const image = httpsUrl(store.banner_url) || httpsUrl(store.logo_url) || httpsUrl(p.avatar_url) || (url.origin + "/assets/juladirect-og.svg");
+    const image = httpsUrl(store.banner_url) || httpsUrl(store.logo_url) || httpsUrl(p.avatar_url) || ("https://res.cloudinary.com/jx9bpjdb/image/upload/c_fill,w_1200,h_630,g_auto/e_brightness:-25/l_text:Arial_72_bold:JulaDirect,co_rgb:FFFFFF/fl_layer_apply,g_north_west,x_90,y_105/l_text:Arial_40_bold:Trade%20Shop%20Connect,co_rgb:FFFFFF/fl_layer_apply,g_north_west,x_92,y_210/l_text:Arial_28:Your%20marketplace%20in%20The%20Gambia,co_rgb:E6EFFF/fl_layer_apply,g_north_west,x_92,y_285/q_auto,f_jpg/v1795559140/juladirect/juladirect-og-photo.jpg");
     const entity = { "@type": (store.name || p.seller_type === "business") ? "Organization" : "Person", "@id":canonical+"#profile", "name":name, "description":description, "url":canonical, "image":image,
       "address": (store.location || p.region || p.area) ? {"@type":"PostalAddress","addressLocality":store.location || [p.area,p.region].filter(Boolean).join(", "),"addressCountry":"GM"} : undefined };
     const jsonld = {"@context":"https://schema.org","@type":"ProfilePage","name":name+" — JulaDirect","url":canonical,"description":description,"mainEntity":entity};

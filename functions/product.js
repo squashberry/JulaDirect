@@ -66,7 +66,7 @@ export async function onRequestGet({ request, env, next }) {
     const canonical = url.origin + "/product?id=" + id;
     const gallery = [p.main_image].concat((images || []).map(i => i.image_url)).map(httpsUrl).filter(Boolean);
     const image = gallery[0] || "";
-    const socialImage = image || (url.origin + "/assets/juladirect-og.svg");
+    const socialImage = image || ("https://res.cloudinary.com/jx9bpjdb/image/upload/c_fill,w_1200,h_630,g_auto/e_brightness:-25/l_text:Arial_72_bold:JulaDirect,co_rgb:FFFFFF/fl_layer_apply,g_north_west,x_90,y_105/l_text:Arial_40_bold:Trade%20Shop%20Connect,co_rgb:FFFFFF/fl_layer_apply,g_north_west,x_92,y_210/l_text:Arial_28:Your%20marketplace%20in%20The%20Gambia,co_rgb:E6EFFF/fl_layer_apply,g_north_west,x_92,y_285/q_auto,f_jpg/v1795559140/juladirect/juladirect-og-photo.jpg");
     const sellerName = seller && seller.business_name ? seller.business_name : "";
 
     const ld = {
