@@ -11,7 +11,7 @@
   const seoDescription = String(r.description || (r.name + " menu, meals, delivery and pickup in The Gambia on JulaDirect."))
     .replace(/\s+/g, " ").trim().slice(0, 155);
   const canonicalUrl = new URL("/restaurant?slug=" + encodeURIComponent(r.slug), location.origin).href;
-  const socialImage = safeUrl(r.cover_url) || safeUrl(r.logo_url) || "https://res.cloudinary.com/jx9bpjdb/image/upload/c_fill,w_1200,h_630,g_auto/e_brightness:-25/l_text:Arial_72_bold:JulaDirect,co_rgb:FFFFFF/fl_layer_apply,g_north_west,x_90,y_105/l_text:Arial_40_bold:Trade%20Shop%20Connect,co_rgb:FFFFFF/fl_layer_apply,g_north_west,x_92,y_210/l_text:Arial_28:Your%20marketplace%20in%20The%20Gambia,co_rgb:E6EFFF/fl_layer_apply,g_north_west,x_92,y_285/q_auto,f_jpg/v1795559140/juladirect/juladirect-og-photo.jpg";
+  const socialImage = safeUrl(r.cover_url) || safeUrl(r.logo_url) || "https://res.cloudinary.com/jx9bpjdb/image/upload/v1795560311/juladirect-og-fashion.jpg";
   document.title = pageTitle;
   const setSeoMeta = (selector, attr, key, value) => {
     let node = document.querySelector(selector);
