@@ -41,7 +41,7 @@
   }
   function heroIcons() {
     const set = (id, name, size, text) => { const el = $(id); if (el) el.innerHTML = (name ? "<i>" + JD.icon(name, size) + "</i>" : "") + (text || ""); };
-    const chip = $("hm-ico-cod"); if (chip) chip.innerHTML = JD.icon("wallet", 16) + "Cash on delivery";
+    const chip = $("hm-ico-cod"); if (chip) chip.innerHTML = JD.icon("wallet", 16) + "Delivery available";
     set("hm-fl-a", "shield", 16, "Verified sellers"); set("hm-fl-b", "message", 16, "Message sellers first");
     set("hm-sf-a", "tag", 16, "Free to list"); set("hm-sf-b", "shield", 16, "Verified badge"); set("hm-sf-c", "truck", 16, "Delivery handled");
     const shop = $("hm-ico-shop"); if (shop) shop.innerHTML = JD.icon("store", 34);

@@ -394,7 +394,7 @@
   /* ---------- shell ---------- */
   function headerHtml() {
     return '<a class="jd-skip" href="#jd-main">Skip to content</a>' +
-      '<div class="jd-top"><div class="jd-container jd-top__in"><span>' + JD.icon("truck", 15) + 'Delivery across Greater Banjul &middot; Pay on delivery</span>' +
+      '<div class="jd-top"><div class="jd-container jd-top__in"><span>' + JD.icon("truck", 15) + 'Delivery available across Greater Banjul</span>' +
       '<nav class="jd-top__links" aria-label="Quick links"><a href="supplier/index.html">Sell on JulaDirect</a><a href="help.html">Help</a><a href="customer-care.html">Customer care</a></nav></div></div>' +
       '<header class="jd-header">' +
       /* takeover bar: shown only while a full-screen homepage banner is live */

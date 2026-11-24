@@ -96,8 +96,31 @@
     const avatar = JD.safeUrl(s && s.avatar_url), delivery = true;
     qty = 1;
     document.title = p.title + " — JulaDirect";
-    const meta = document.querySelector('meta[name="description"]');
-    if (meta) meta.setAttribute("content", (String(p.description || "").replace(/\s+/g, " ").slice(0, 150)) || p.title + " on JulaDirect");
+    const seoDescription = (String(p.description || "").replace(/\s+/g, " ").trim().slice(0, 155)) ||
+      p.title + " on JulaDirect, The Gambia's online marketplace.";
+    const canonicalUrl = new URL("/product?id=" + encodeURIComponent(p.id), location.origin).href;
+    const socialImage = JD.safeUrl(imgs[0]) || new URL("/assets/juladirect-og.jpg", location.origin).href;
+    const setSeoMeta = (selector, attr, key, value) => {
+      let node = document.querySelector(selector);
+      if (!node) { node = document.createElement("meta"); node.setAttribute(attr, key); document.head.appendChild(node); }
+      node.setAttribute("content", value);
+    };
+    const descriptionMeta = document.querySelector('meta[name="description"]');
+    if (descriptionMeta) descriptionMeta.setAttribute("content", seoDescription);
+    setSeoMeta('meta[property="og:type"]', "property", "og:type", "product");
+    setSeoMeta('meta[property="og:site_name"]', "property", "og:site_name", "JulaDirect");
+    setSeoMeta('meta[property="og:title"]', "property", "og:title", p.title + " — JulaDirect");
+    setSeoMeta('meta[property="og:description"]', "property", "og:description", seoDescription);
+    setSeoMeta('meta[property="og:url"]', "property", "og:url", canonicalUrl);
+    setSeoMeta('meta[property="og:image"]', "property", "og:image", socialImage);
+    setSeoMeta('meta[property="og:image:alt"]', "property", "og:image:alt", p.title + " on JulaDirect");
+    setSeoMeta('meta[name="twitter:card"]', "name", "twitter:card", "summary_large_image");
+    setSeoMeta('meta[name="twitter:title"]', "name", "twitter:title", p.title + " — JulaDirect");
+    setSeoMeta('meta[name="twitter:description"]', "name", "twitter:description", seoDescription);
+    setSeoMeta('meta[name="twitter:image"]', "name", "twitter:image", socialImage);
+    let canonical = document.querySelector('link[rel="canonical"]');
+    if (!canonical) { canonical = document.createElement("link"); canonical.rel = "canonical"; document.head.appendChild(canonical); }
+    canonical.href = canonicalUrl;
     jsonLd(p, imgs, avg, reviews.length, s);
     JD.recent.add(p.id);
 

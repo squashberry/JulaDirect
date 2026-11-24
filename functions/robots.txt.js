@@ -5,7 +5,7 @@ export async function onRequestGet({ request }) {
   const origin = new URL(request.url).origin;
   const lines = [
     "User-agent: *", "Allow: /",
-    "Disallow: /admin/", "Disallow: /supplier/", "Disallow: /delivery/", "Disallow: /worker/", "Disallow: /affiliate/",
+    "Disallow: /admin/", "Disallow: /supplier/", "Disallow: /delivery/", "Disallow: /worker/", "Disallow: /affiliate/", "Disallow: /restaurant/",
     "Disallow: /cart", "Disallow: /checkout", "Disallow: /me", "Disallow: /orders", "Disallow: /wishlist", "Disallow: /compare", "Disallow: /saved-searches",
     "Disallow: /login", "Disallow: /signup", "Disallow: /forgot-password", "Disallow: /reset-password", "Disallow: /verify-email",
     "Disallow: /*?*q=", "Disallow: /*?*min=", "Disallow: /*?*max=", "Disallow: /*?*sort=", "Disallow: /*?*condition=", "Disallow: /*?*location=",

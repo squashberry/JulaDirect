@@ -18,7 +18,7 @@ async function credentials(env, request) {
 
 export async function onRequestGet({ request, env }) {
   const origin = new URL(request.url).origin;
-  const entries = [["/", null, "daily", "1.0"], ["/explore", null, "hourly", "0.9"]];
+  const entries = [["/", null, "daily", "1.0"], ["/explore", null, "hourly", "0.9"], ["/food", null, "daily", "0.7"]];
   ["/how-it-works", "/about", "/help", "/customer-care", "/quick-sell", "/dropshipping", "/privacy"].forEach(p => entries.push([p, null, "monthly", "0.4"]));
 
   try {
@@ -36,6 +36,12 @@ export async function onRequestGet({ request, env }) {
         [...new Set(rows.map(r => r.seller_id).filter(Boolean))].forEach(id => entries.push(["/seller?id=" + id, null, "weekly", "0.6"]));
         const suppliers = await fetch(c.url + "/rest/v1/supplier_profiles?is_active=eq.true&select=id&limit=5000", { headers: { apikey: c.key, Authorization: "Bearer " + c.key, Accept: "application/json" }, signal: AbortSignal.timeout(5000) });
         if (suppliers.ok) (await suppliers.json()).forEach(r => entries.push(["/supplier-profile?id=" + r.id, null, "weekly", "0.5"]));
+        const restaurants = await fetch(c.url + "/rest/v1/restaurants?status=eq.approved&select=slug,updated_at&order=updated_at.desc&limit=5000", {
+          headers: { apikey: c.key, Authorization: "Bearer " + c.key, Accept: "application/json" }, signal: AbortSignal.timeout(5000)
+        });
+        if (restaurants.ok) (await restaurants.json()).forEach(r => {
+          if (r.slug) entries.push(["/restaurant.html?slug=" + encodeURIComponent(r.slug), r.updated_at || null, "weekly", "0.6"]);
+        });
       }
     }
   } catch (e) { /* static entries only */ }

@@ -81,7 +81,6 @@
     const name = store.name || profile.business_name || [profile.first_name,profile.last_name].filter(Boolean).join(" ") || "JulaDirect seller";
     const sales = products.reduce((n,p)=>n+Number(p.sales_count||0),0);
     const avg = reviews.summary.average;
-    const deliveryCount = products.filter(p=>p.delivery_available === true).length;
     const data = {
       sellerId,
       name,
@@ -104,7 +103,7 @@
       about: store.description || "Seller information has not been added yet.",
       highlights: [
         {icon:"bag",title:"Published listings",text: products.length + " currently approved listings"},
-        {icon:"truck",title:"Delivery",text: deliveryCount ? deliveryCount + " listings offer delivery" : "Current listings are available for seller-arranged collection only"},
+        {icon:"truck",title:"Delivery",text:"Delivery offered"},
         {icon:"shield",title:"JulaDirect profile",text: profile.is_seller_verified || store.is_verified ? "Seller verification is recorded on JulaDirect" : "Seller verification has not been completed"}
       ],
       type: store.category || profile.seller_type || "Seller",
@@ -115,7 +114,7 @@
       hours: [],
       gallery: [],
       policies: [
-        {icon:"truck",title:"Delivery and collection",text: deliveryCount ? "Delivery is offered on selected listings only. Check each listing before checkout." : "Delivery is not offered on the current listings. Contact the seller to arrange collection."},
+        {icon:"truck",title:"Delivery",text:"Delivery is offered. Choose delivery at checkout."},
         {icon:"wallet",title:"Payment",text:"Only online payment methods actively enabled at checkout can be used. Do not pay outside JulaDirect."},
         {icon:"scale",title:"Returns and disputes",text:"Open the order in My Orders and contact JulaDirect support if an item is not as described."}
       ],

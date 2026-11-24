@@ -7,7 +7,42 @@
   const slug = new URLSearchParams(location.search).get("slug") || "", r = await JDFood.restaurant(slug);
   if (!r) { root.innerHTML = `<p class="fa-empty" style="padding-top:34vh"><b>${FI("utensils", 44)}</b>We couldn't find that restaurant.<br><a href="food.html" style="color:var(--fa-o2);font-weight:800">Browse restaurants</a></p>`; return; }
   const items = await JDFood.menu(r.id), h = hueOf(r), cats = [...new Set(items.map(m => m.category || "Menu"))];
-  document.title = r.name + " — JulaDirect";
+  const pageTitle = r.name + " menu, delivery and pickup — JulaDirect";
+  const seoDescription = String(r.description || (r.name + " menu, meals, delivery and pickup in The Gambia on JulaDirect."))
+    .replace(/\s+/g, " ").trim().slice(0, 155);
+  const canonicalUrl = new URL("/restaurant.html?slug=" + encodeURIComponent(r.slug), location.origin).href;
+  const socialImage = safeUrl(r.cover_url) || safeUrl(r.logo_url) || new URL("/assets/juladirect-og.jpg", location.origin).href;
+  document.title = pageTitle;
+  const setSeoMeta = (selector, attr, key, value) => {
+    let node = document.querySelector(selector);
+    if (!node) { node = document.createElement("meta"); node.setAttribute(attr, key); document.head.appendChild(node); }
+    node.setAttribute("content", value);
+  };
+  setSeoMeta('meta[name="description"]', "name", "description", seoDescription);
+  setSeoMeta('meta[name="robots"]', "name", "robots", "index, follow, max-image-preview:large");
+  setSeoMeta('meta[property="og:type"]', "property", "og:type", "restaurant");
+  setSeoMeta('meta[property="og:site_name"]', "property", "og:site_name", "JulaDirect");
+  setSeoMeta('meta[property="og:title"]', "property", "og:title", pageTitle);
+  setSeoMeta('meta[property="og:description"]', "property", "og:description", seoDescription);
+  setSeoMeta('meta[property="og:url"]', "property", "og:url", canonicalUrl);
+  setSeoMeta('meta[property="og:image"]', "property", "og:image", socialImage);
+  setSeoMeta('meta[property="og:image:alt"]', "property", "og:image:alt", r.name + " on JulaDirect");
+  setSeoMeta('meta[name="twitter:card"]', "name", "twitter:card", "summary_large_image");
+  setSeoMeta('meta[name="twitter:title"]', "name", "twitter:title", pageTitle);
+  setSeoMeta('meta[name="twitter:description"]', "name", "twitter:description", seoDescription);
+  setSeoMeta('meta[name="twitter:image"]', "name", "twitter:image", socialImage);
+  let canonical = document.querySelector('link[rel="canonical"]');
+  if (!canonical) { canonical = document.createElement("link"); canonical.rel = "canonical"; document.head.appendChild(canonical); }
+  canonical.href = canonicalUrl;
+  const restaurantJsonLd = {
+    "@context": "https://schema.org", "@type": "Restaurant", name: r.name, description: seoDescription,
+    url: canonicalUrl, image: socialImage, servesCuisine: r.cuisines || undefined,
+    telephone: r.phone || r.whatsapp || undefined,
+    address: r.location ? { "@type": "PostalAddress", addressLocality: r.location, addressCountry: "GM" } : undefined
+  };
+  let jsonLdTag = document.getElementById("jd-restaurant-ld");
+  if (!jsonLdTag) { jsonLdTag = document.createElement("script"); jsonLdTag.id = "jd-restaurant-ld"; jsonLdTag.type = "application/ld+json"; document.head.appendChild(jsonLdTag); }
+  jsonLdTag.textContent = JSON.stringify(restaurantJsonLd).replace(/</g, "\\u003c");
   const ce = FI("plate", 150);
   const bg = safeUrl(r.cover_url), tel = (r.phone || r.whatsapp || "").replace(/[^\d+]/g, "");
   app.style.setProperty("--h", h);

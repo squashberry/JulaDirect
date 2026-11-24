@@ -66,7 +66,7 @@ export async function onRequestGet({ request, env, next }) {
     const canonical = url.origin + "/product?id=" + id;
     const gallery = [p.main_image].concat((images || []).map(i => i.image_url)).map(httpsUrl).filter(Boolean);
     const image = gallery[0] || "";
-    const socialImage = image || (url.origin + "/assets/juladirect-og.svg");
+    const socialImage = image || (url.origin + "/assets/juladirect-og.jpg");
     const sellerName = seller && seller.business_name ? seller.business_name : "";
 
     const ld = {
