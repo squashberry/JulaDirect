@@ -690,7 +690,14 @@
         const find = e => (e.target && e.target.closest ? e.target.closest("a[href]") : null);
         rawOn(document, "pointerover", e => { const a = find(e); if (!a || e.pointerType === "touch") return; clearTimeout(t); t = setTimeout(() => prefetchLink(a), 70); }, { passive: true });
         ["pointerdown", "touchstart"].forEach(ev => rawOn(document, ev, e => { const a = find(e); if (a) prefetchLink(a); }, { passive: true }));
-        (window.requestIdleCallback || setTimeout)(() => JD.$$(".jd-fnav a").forEach(prefetchLink), 1500);
+        const prefetchTabs = () => JD.$$(".jd-fnav a").forEach(prefetchLink);
+        if (typeof window.requestIdleCallback === "function") {
+          // requestIdleCallback's second argument is an options dictionary,
+          // not the numeric delay accepted by setTimeout. Firefox throws on a number.
+          window.requestIdleCallback(prefetchTabs, { timeout: 1500 });
+        } else {
+          window.setTimeout(prefetchTabs, 1500);
+        }
       }
     }
     /* Restored from the back/forward cache: refresh anything that may have changed. */
