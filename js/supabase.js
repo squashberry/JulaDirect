@@ -11,17 +11,15 @@
 (function () {
     "use strict";
 
-    // Dynamically load network.js if not already present
+    // Dynamically load network.js relative to this adapter, not the current
+    // page route. The adapter is shared by root and nested pages (e.g. /affiliate/).
     if (!window.GamBasketNetwork) {
         const script = document.createElement("script");
-        const path = window.location.pathname;
-        let prefix = "js/";
-        if (path.includes("/supplier/") || path.includes("/delivery/") ||
-            path.includes("/worker/") || path.includes("/admin/")) {
-            prefix = "../js/";
-        }
-        script.src = prefix + "network.js";
+        const adapterUrl = document.currentScript?.src ||
+            new URL("js/supabase.js", window.location.href).href;
+        script.src = new URL("network.js", adapterUrl).href;
         script.async = false;
+        script.dataset.gambasketNetwork = "true";
         document.head.appendChild(script);
     }
 
