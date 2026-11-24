@@ -161,8 +161,10 @@
     try {
       const result = await JD.swr("explore:" + toQuery(snap), () => JD.data.search(snap), paint);
       const base = result || painted;
-      // Keep explicit text searches and seller pages strict; all other filters are honoured.
-      if (my === reqId && base && base.rows.length && snap.page === 1 && !snap.q && !snap.seller) {
+      // Keep explicit text searches, seller pages and non-default sort orders strict.
+      // Recommendations are mixed into the grid only in the default Newest view.
+      if (my === reqId && base && base.rows.length && snap.page === 1 &&
+          !snap.q && !snap.seller && snap.sort === "newest") {
         try {
           const suggestions = await JD.data.recommendations({
             recentIds: JD.recent.ids(),
