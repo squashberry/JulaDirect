@@ -130,7 +130,7 @@
     const canonical = target.href;
     const description = String(d.about || d.tagline || (d.name + " on JulaDirect."))
       .replace(/\\s+/g, " ").trim().slice(0, 155);
-    const image = url(d.cover) || url(d.avatar) || "https://juladirect.pages.dev/assets/juladirect-og.svg";
+    const image = url(d.cover) || url(d.avatar) || "https://res.cloudinary.com/jx9bpjdb/image/upload/c_fill,w_1200,h_630,g_auto/e_brightness:-25/l_text:Arial_72_bold:JulaDirect,co_rgb:FFFFFF/fl_layer_apply,g_north_west,x_90,y_105/l_text:Arial_40_bold:Trade%20Shop%20Connect,co_rgb:FFFFFF/fl_layer_apply,g_north_west,x_92,y_210/l_text:Arial_28:Your%20marketplace%20in%20The%20Gambia,co_rgb:E6EFFF/fl_layer_apply,g_north_west,x_92,y_285/q_auto,f_jpg/v1795559140/juladirect/juladirect-og-photo.jpg";
     const title = d.name + (kind === "supplier" ? " — Supplier on JulaDirect" : " — Seller on JulaDirect");
     const setMeta = (type, key, value) => {
       const selector = "meta[" + type + "='" + key + "']";

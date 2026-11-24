@@ -99,7 +99,7 @@
     const seoDescription = (String(p.description || "").replace(/\s+/g, " ").trim().slice(0, 155)) ||
       p.title + " on JulaDirect, The Gambia's online marketplace.";
     const canonicalUrl = new URL("/product?id=" + encodeURIComponent(p.id), location.origin).href;
-    const socialImage = JD.safeUrl(imgs[0]) || new URL("/assets/juladirect-og.svg", location.origin).href;
+    const socialImage = JD.safeUrl(imgs[0]) || "https://res.cloudinary.com/jx9bpjdb/image/upload/c_fill,w_1200,h_630,g_auto/e_brightness:-25/l_text:Arial_72_bold:JulaDirect,co_rgb:FFFFFF/fl_layer_apply,g_north_west,x_90,y_105/l_text:Arial_40_bold:Trade%20Shop%20Connect,co_rgb:FFFFFF/fl_layer_apply,g_north_west,x_92,y_210/l_text:Arial_28:Your%20marketplace%20in%20The%20Gambia,co_rgb:E6EFFF/fl_layer_apply,g_north_west,x_92,y_285/q_auto,f_jpg/v1795559140/juladirect/juladirect-og-photo.jpg";
     const setSeoMeta = (selector, attr, key, value) => {
       let node = document.querySelector(selector);
       if (!node) { node = document.createElement("meta"); node.setAttribute(attr, key); document.head.appendChild(node); }
