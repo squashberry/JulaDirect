@@ -40,7 +40,7 @@ export async function onRequestGet({ request, env }) {
           headers: { apikey: c.key, Authorization: "Bearer " + c.key, Accept: "application/json" }, signal: AbortSignal.timeout(5000)
         });
         if (restaurants.ok) (await restaurants.json()).forEach(r => {
-          if (r.slug) entries.push(["/restaurant.html?slug=" + encodeURIComponent(r.slug), r.updated_at || null, "weekly", "0.6"]);
+          if (r.slug) entries.push(["/restaurant?slug=" + encodeURIComponent(r.slug), r.updated_at || null, "weekly", "0.6"]);
         });
       }
     }

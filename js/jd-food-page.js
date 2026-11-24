@@ -10,7 +10,7 @@
   const pageTitle = r.name + " menu, delivery and pickup — JulaDirect";
   const seoDescription = String(r.description || (r.name + " menu, meals, delivery and pickup in The Gambia on JulaDirect."))
     .replace(/\s+/g, " ").trim().slice(0, 155);
-  const canonicalUrl = new URL("/restaurant.html?slug=" + encodeURIComponent(r.slug), location.origin).href;
+  const canonicalUrl = new URL("/restaurant?slug=" + encodeURIComponent(r.slug), location.origin).href;
   const socialImage = safeUrl(r.cover_url) || safeUrl(r.logo_url) || new URL("/assets/juladirect-og.jpg", location.origin).href;
   document.title = pageTitle;
   const setSeoMeta = (selector, attr, key, value) => {
