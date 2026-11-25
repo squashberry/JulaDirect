@@ -62,17 +62,41 @@
     return [...score.values()].sort((a, b) => b.n - a.n || a.text.length - b.text.length).slice(0, 5).map(x => x.text);
   }
 
-  /* Match the gift-card shop even though it is not a product listing/category. */
-  function isGiftCardsQuery(q) {
-    const key = String(q || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-    return key.length >= 3 && ["giftcard", "giftcards", "giftvoucher", "giftvouchers"].some(term => term.startsWith(key) || key.startsWith(term));
+  /* Dedicated destinations that are searchable but are not product categories. */
+  function specialSearchFor(q) {
+    const words = String(q || "").toLowerCase().trim().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter(Boolean);
+    const compact = words.join("");
+    if (compact.length >= 3 && ["giftcard", "giftcards", "giftvoucher", "giftvouchers"].some(term => term.startsWith(compact) || compact.startsWith(term))) {
+      return { key: "gift-cards", label: "Gift Cards", href: "/gift-cards.html" };
+    }
+
+    const first = words[0] || "";
+    const foodTerms = ["restaurant", "restaurants", "food", "foods", "meal", "meals", "takeaway", "takeaways", "takeout", "menu", "menus"];
+    const isFoodTerm = first.length >= 3 && foodTerms.some(term => term === first || term.startsWith(first));
+    if (!isFoodTerm) return null;
+
+    const placeModifiers = ["in", "near", "nearby", "around", "at"];
+    const otherModifiers = ["delivery", "order", "orders", "menu", "menus", "takeaway", "takeout", "pickup", "pick", "up", "online", "please", "the", "me", "here", "and", "from", "to"];
+    let placeNameAllowed = false;
+    for (const word of words.slice(1)) {
+      if (placeModifiers.includes(word)) { placeNameAllowed = true; continue; }
+      if (placeNameAllowed || otherModifiers.includes(word)) continue;
+      return null;
+    }
+
+    const restaurantQuery = first.startsWith("rest");
+    return {
+      key: "food",
+      label: restaurantQuery ? "Restaurants & Food" : "Food & Restaurants",
+      href: "/food.html"
+    };
   }
 
   /* An instant guess before the network answers: recents, popular terms and categories. */
   function quickGuess(q) {
     const lq = q.toLowerCase();
-    const key = lq.replace(/[^a-z0-9]/g, "");
-    if (key.length >= 3 && "giftcards".startsWith(key) && key !== "giftcards") return "Gift Cards";
+    const special = specialSearchFor(q);
+    if (special && special.label.toLowerCase().startsWith(lq)) return special.label;
     const pool = recents().concat(POPULAR, cats.map(c => c.id));
     return pool.find(x => x.toLowerCase().startsWith(lq) && x.toLowerCase() !== lq) || "";
   }
@@ -127,15 +151,19 @@
         if (r.length) h += '<div class="sx-sec"><h4>Recent searches<button type="button" data-sx-clear>Clear</button></h4>' + r.map(t => '<div class="sx-row"><button type="button" class="sx-item" data-go="' + esc(t) + '">' + JD.icon("clock", 18) + "<span>" + esc(t) + "</span></button>" + fillBtn(t) + "</div>").join("") + "</div>";
         h += '<div class="sx-sec"><h4>Popular right now</h4><div class="sx-chips">' + POPULAR.map(t => '<button type="button" class="sx-item sx-chip" data-go="' + esc(t) + '">' + JD.icon("trend", 15) + esc(t) + "</button>").join("") + "</div></div>";
         if (cats.length) h += '<div class="sx-sec"><h4>Browse categories</h4><div class="sx-chips">' + cats.slice(0, 8).map(c => '<a class="sx-item sx-chip sx-chip--cat" href="explore.html?category=' + encodeURIComponent(c.id) + '">' + esc(c.id) + "</a>").join("") + "</div></div>";
+        h += '<div class="sx-sec"><h4>Explore more</h4><div class="sx-chips">' +
+          '<a class="sx-item sx-chip" href="/gift-cards.html">Gift Cards</a>' +
+          '<a class="sx-item sx-chip" href="/food.html">Food &amp; Restaurants</a>' +
+          "</div></div>";
       } else {
         const lq = q.toLowerCase();
-        const giftCardsMatch = isGiftCardsQuery(q);
-        const list = state.phrases.length ? state.phrases : (best && best.toLowerCase() !== lq && !giftCardsMatch ? [best] : []);
+        const sectionMatch = specialSearchFor(q);
+        const list = sectionMatch ? [] : (state.phrases.length ? state.phrases : (best && best.toLowerCase() !== lq ? [best] : []));
         const cmatch = cats.filter(c => c.id.toLowerCase().includes(lq) && c.id.toLowerCase() !== lq).slice(0, 2);
         h += '<div class="sx-sec"><h4>Suggestions</h4>' +
           '<div class="sx-row"><button type="button" class="sx-item" data-go="' + esc(q) + '">' + JD.icon("search", 18) + "<span>" + esc(q) + "</span></button></div>" +
           list.map(t => '<div class="sx-row"><button type="button" class="sx-item" data-go="' + esc(t) + '">' + JD.icon("search", 18) + "<span>" + boldTail(t, q) + "</span></button>" + fillBtn(t) + "</div>").join("") +
-          (giftCardsMatch ? '<div class="sx-row"><a class="sx-item" href="/gift-cards.html">' + JD.icon("bag", 18) + "<span>Gift Cards</span>" + JD.icon("arrowRight", 16) + "</a></div>" : "") +
+          (sectionMatch ? '<div class="sx-row"><a class="sx-item" href="' + sectionMatch.href + '">' + JD.icon(sectionMatch.key === "gift-cards" ? "bag" : "search", 18) + "<span>" + esc(sectionMatch.label) + "</span>" + JD.icon("arrowRight", 16) + "</a></div>" : "") +
           cmatch.map(c => '<div class="sx-row"><a class="sx-item" href="explore.html?category=' + encodeURIComponent(c.id) + '&amp;q=' + encodeURIComponent(q) + '">' + JD.icon("grid", 18) + "<span>" + esc(q) + " in <b>" + esc(c.id) + "</b></span></a></div>").join("") + "</div>";
         if (state.loading && !state.rows.length) h += '<div class="sx-sec sx-prod"><h4>Products</h4>' + tray([], true) + "</div>";
         else if (state.rows.length) h += '<div class="sx-sec sx-prod"><h4>Products <small>' + state.total.toLocaleString("en-GB") + " found</small></h4>" + tray(state.rows) + "</div>" +
@@ -287,10 +315,11 @@
     form.addEventListener("submit", e => {
       const q = val();
       remember(q);
-      if (isGiftCardsQuery(q)) {
+      const sectionMatch = specialSearchFor(q);
+      if (sectionMatch) {
         e.preventDefault();
         closeIt(false);
-        window.location.href = "/gift-cards.html";
+        window.location.href = sectionMatch.href;
         return;
       }
       closeIt(false);

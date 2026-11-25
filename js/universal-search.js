@@ -15,6 +15,23 @@
 
     const normalise = value => String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
 
+    const SPECIAL_DESTINATIONS = [
+        {
+            type: "special",
+            key: "gift-cards",
+            label: "Gift Cards",
+            href: "/gift-cards.html",
+            keywords: ["giftcard", "giftcards", "giftvoucher", "giftvouchers"]
+        },
+        {
+            type: "special",
+            key: "food",
+            label: "Food & Restaurants",
+            href: "/food.html",
+            keywords: ["food", "foods", "restaurant", "restaurants", "meal", "meals", "takeaway", "takeaways", "takeout", "menu", "menus"]
+        }
+    ];
+
     function saveRecentSearch(value) {
         const term = String(value || "").trim();
         if (!term) return;
@@ -52,7 +69,7 @@
 
     function collectLiveData() {
         const products = collectRenderedProducts();
-        return { products, categories: collectCategories(products) };
+        return { products, categories: collectCategories(products), specials: SPECIAL_DESTINATIONS };
     }
 
     function scoreMatch(item, query) {
@@ -66,6 +83,27 @@
         if (normalise(item.category).includes(search)) score += 20;
         if (normalise(item.location).includes(search)) score += 10;
 
+        if (item.type === "special") {
+            const words = search.split(" ").filter(Boolean);
+            const compact = words.join("");
+            let matched = false;
+            if (item.key === "gift-cards") {
+                matched = compact.length >= 3 && item.keywords.some(term => term.startsWith(compact) || compact.startsWith(term));
+            } else {
+                const first = words[0] || "";
+                const isFoodTerm = first.length >= 3 && item.keywords.some(term => term === first || term.startsWith(first));
+                const placeModifiers = ["in", "near", "nearby", "around", "at"];
+                const otherModifiers = ["delivery", "order", "orders", "menu", "menus", "takeaway", "takeout", "pickup", "pick", "up", "online", "please", "the", "me", "here", "and", "from", "to"];
+                let placeNameAllowed = false;
+                const suffixAllowed = words.slice(1).every(word => {
+                    if (placeModifiers.includes(word)) { placeNameAllowed = true; return true; }
+                    return placeNameAllowed || otherModifiers.includes(word);
+                });
+                matched = isFoodTerm && suffixAllowed;
+            }
+            if (matched) score += 100;
+        }
+
         return { ...item, score };
     }
 
@@ -73,8 +111,8 @@
         const search = normalise(query);
         if (!search) return [];
 
-        const { products, categories } = collectLiveData();
-        return [...products, ...categories]
+        const { products, categories, specials } = collectLiveData();
+        return [...products, ...categories, ...specials]
             .map(item => scoreMatch(item, search))
             .filter(item => item.score > 0)
             .sort((a, b) => b.score - a.score || a.label.localeCompare(b.label))
@@ -84,6 +122,10 @@
 
     function navigateForMatch(match) {
         saveRecentSearch(match.label);
+        if (match.type === "special") {
+            window.location.href = match.href;
+            return;
+        }
         const parameter = match.type === "category" ? "category" : "q";
         const value = match.type === "category" ? match.category || match.label : match.label;
         window.location.href = `explore.html?${parameter}=${encodeURIComponent(value)}`;
@@ -155,7 +197,4 @@
         SEARCH_INPUT_IDS
             .map(id => document.getElementById(id))
             .filter(input => input && input.value && document.activeElement === input)
-            .forEach(input => input.dispatchEvent(new Event("input")));
-    });
-    observer.observe(document.body, { childList: true, subtree: true });
-})();
+            .forEach(
