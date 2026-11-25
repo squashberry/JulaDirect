@@ -647,6 +647,7 @@ drop policy if exists gmc_read on public.gift_merchant_credits; create policy gm
 
 -- ----------------------------------------------------------- template seed
 insert into public.gift_templates(slug,category,name,premium,sort) values
+ ('jula-blue','JulaDirect Card','JulaDirect Blue',false,1),('jula-gold','JulaDirect Card','JulaDirect Gold',false,2),('jula-emerald','JulaDirect Card','JulaDirect Emerald',false,3),('jula-violet','JulaDirect Card','JulaDirect Violet',false,4),
  ('birthday-confetti','Birthday','Confetti Party',false,10),('birthday-balloons','Birthday','Balloon Sky',false,11),('birthday-gold','Birthday','Golden Birthday',true,12),
  ('love-bloom','Love & Anniversary','Rose Bloom',false,20),('love-hearts','Love & Anniversary','Floating Hearts',false,21),('anniv-noir','Love & Anniversary','Anniversary Noir',true,22),
  ('valentine-ruby','Valentine''s Day','Ruby Valentine',false,30),('valentine-blush','Valentine''s Day','Blush Letter',false,31),

@@ -34,6 +34,7 @@
 
   function route() {
     const h = location.hash.replace(/^#\/?/, "").split("/"), v = h[0] || "home";
+    $$(".gf-cta").forEach(a => a.onclick = () => { st.step = 1; saveDraft(); });
     $$("[data-nav]").forEach(a => a.setAttribute("aria-current", (a.dataset.nav === v || (v === "card" && a.dataset.nav === "mine")) ? "page" : "false"));
     window.scrollTo(0, 0);
     if (!S || !S.enabled) return unavailable();
@@ -43,86 +44,133 @@
   /* ---------------- landing ---------------- */
   function sampleCanvas(slug, w, extra) { const c = document.createElement("canvas"); A.render(c, Object.assign({ slug, recipient: "Awa", sender: "Modou", message: "Treat yourself, you deserve it.", amount: 1000, program: "restaurant", qrUrl: location.origin + "/gift.html?t=sample", width: w }, extra)); return c; }
   function home() {
-    root.innerHTML = `<section class="gf-hero"><div class="gf-wrap"><div><span class="gf-eyebrow">JulaDirect Gifts</span><h1>Give a gift they'll <em>actually use.</em></h1><p>Send a Marketplace or Restaurant gift card in minutes. Pick a beautiful design, add your message, and share it by link, image or print.</p><div class="gf-hero__cta"><a class="gf-btn gf-btn--gold" href="#/new">Create a gift card</a><a class="gf-btn gf-btn--ghost" href="#/mine">My gift cards</a></div></div><div class="gf-fan" id="fan" aria-hidden="true"></div></div></section>
+    root.innerHTML = `<section class="gf-hero"><div class="gf-wrap"><div><span class="gf-eyebrow">JulaDirect Gifts</span><h1>Give a gift they'll <em>actually use.</em></h1><p>Send a Marketplace or Restaurant gift card in minutes. Pick a beautiful design, add your message, and share it by link, image or print.</p><div class="gf-hero__cta"><a class="gf-btn gf-btn--gold" href="#/new" data-fresh>Browse the gift store</a><a class="gf-btn gf-btn--ghost" href="#/mine">My gift cards</a></div></div><div class="gf-fan" id="fan" aria-hidden="true"></div></div></section>
     <section class="gf-sec"><div class="gf-wrap"><h2>Two ways to give</h2><p class="lead">Both come as a shareable digital card or a printed card.</p><div class="gf-prog">
     <button class="gf-pc gf-pc--m" data-go="marketplace">${BG}<h3>Marketplace Gift Card</h3><p>A general JulaDirect gift card for the recipient to keep and manage in their account.</p></button>
     <button class="gf-pc gf-pc--r" data-go="restaurant">${BG}<h3>Restaurant Gift Card</h3><p>One card, any participating restaurant on JulaDirect. Spend it in parts, across several restaurants.</p></button></div></div></section>
-    <section class="gf-sec" style="padding-top:0"><div class="gf-wrap"><h2>How it works</h2><p class="lead">From idea to delivered in a few taps.</p><div class="gf-steps"><div><b>Choose</b><span>Marketplace or Restaurant, digital or physical.</span></div><div><b>Design</b><span>Browse ${Object.keys(A.def).length}+ designs and personalise the card.</span></div><div><b>Pay securely</b><span>Your card is issued only after payment is confirmed.</span></div><div><b>Share</b><span>Download the image, send the link or collect the printed card.</span></div></div></div></section>
+    <section class="gf-sec" style="padding-top:0"><div class="gf-wrap"><h2>How it works</h2><p class="lead">From idea to delivered in a few taps.</p><div class="gf-steps"><div><b>Pick a design</b><span>Browse by category. Every design shows its prices.</span></div><div><b>Choose an amount</b><span>One tap on a price, or type your own.</span></div><div><b>Write a name and message</b><span>See the card update as you type.</span></div><div><b>Pay and share</b><span>Issued only after payment is confirmed. Download, send the link or collect.</span></div></div></div></section>
     <section class="gf-sec" style="padding-top:0"><div class="gf-wrap"><h2>A design for every moment</h2><p class="lead">Birthdays, Eid, weddings, thank-yous, corporate gifts and more.</p></div><div class="gf-marq" id="marq"></div></section>`;
-    const fan = $("#fan"); ["birthday-gold", "eid-lantern", "love-bloom"].forEach(s => fan.appendChild(sampleCanvas(s, 700, { program: "restaurant" })));
+    const fan = $("#fan"); ["jula-gold", "jula-blue", "jula-emerald"].forEach(s => fan.appendChild(sampleCanvas(s, 700, { program: "restaurant" })));
     const mq = $("#marq"), pick = ["birthday-confetti", "xmas-tree", "eid-crescent", "grad-cap", "wedding-ivory", "baby-clouds", "congrats-burst", "lux-obsidian", "justbecause-pop", "festive-kente"]; pick.forEach(s => mq.appendChild(sampleCanvas(s, 520)));
-    $$("[data-go]").forEach(b => b.onclick = () => { st.program = b.dataset.go; saveDraft(); location.hash = "#/new"; });
+    $$("[data-go]").forEach(b => b.onclick = () => { st.program = b.dataset.go; st.step = 1; saveDraft(); location.hash = "#/new"; });
+    $$("[data-fresh]").forEach(a => a.onclick = () => { st.step = 1; saveDraft(); });
   }
 
-  /* ---------------- studio ---------------- */
-  const STEPS = ["Type", "Design", "Amount", "Personalise", "Delivery", "Review"];
-  const cats = () => ["All", ...Array.from(new Set(T.map(t => t.category)))];
+  /* ---------------- studio: store (design + price) -> amount -> personalise -> delivery -> pay ---------------- */
+  const STEPS = ["Design", "Amount", "Personalise", "Delivery", "Pay"], NS = STEPS.length;
+  const cats = () => Array.from(new Set(T.map(t => t.category)));
+  const priceList = () => (S.presets || []).filter(p => p >= S.min_amount && p <= S.max_amount);
   const fees = () => { if (st.format !== "physical" || !S) return 0; const t = T.find(x => x.slug === st.slug); return Number(S.physical_fee) + (t && t.premium ? Number(S.premium_extra_fee) : 0) + (st.envelope ? Number(S.envelope_fee) : 0) + (st.method === "delivery" ? Number(S.delivery_fee) : 0); };
   const total = () => (Number(st.amount) || 0) + fees();
+  let dir = "fwd", lastP = 0, io = null;
   function studio() {
     if (!st.slug) st.slug = (T[0] || {}).slug || "min-paper";
-    root.innerHTML = `<div class="gf-wrap"><div class="gf-studio"><div id="gf-form"></div><aside class="gf-prev" aria-label="Live preview"><div class="gf-prev__box"><canvas id="pv" aria-label="Gift card preview"></canvas><div class="gf-prev__tabs" id="pvt"><button aria-pressed="true" data-s="front">Front</button><button aria-pressed="false" data-s="back">Back</button></div></div><div class="gf-prev__sum" id="sum"></div></aside></div></div>`;
+    if (!st.program || (st.program === "marketplace" && !S.marketplace_enabled) || (st.program === "restaurant" && !S.restaurant_enabled)) st.program = S.restaurant_enabled ? "restaurant" : "marketplace";
+    if (!st.format || (st.format === "physical" && !S.physical_enabled) || (st.format === "virtual" && !S.virtual_enabled)) st.format = S.virtual_enabled ? "virtual" : "physical";
+    st.step = Math.max(1, Math.min(NS, st.step || 1)); lastP = (st.step - 1) / (NS - 1);
+    root.innerHTML = `<div class="gf-studio" id="gf-studio"><div id="gf-form" class="gf-formcol"></div><aside class="gf-prev" aria-label="Live preview"><div class="gf-prev__box"><canvas id="pv" aria-label="Gift card preview"></canvas><div class="gf-prev__tabs" id="pvt"><button aria-pressed="true" data-s="front">Front</button><button aria-pressed="false" data-s="back">Back</button></div></div><div class="gf-prev__sum" id="sum"></div></aside></div>`;
     $$("#pvt button").forEach(b => b.onclick = () => { side = b.dataset.s; $$("#pvt button").forEach(x => x.setAttribute("aria-pressed", x === b)); paintPreview(); });
     paintForm(); paintPreview();
   }
-  let pvRaf = 0;
+  let pvRaf = 0, lastSlug = "";
   function paintPreview() {
     cancelAnimationFrame(pvRaf); pvRaf = requestAnimationFrame(() => {
       const c = $("#pv"); if (!c) return;
-      A.render(c, { slug: st.slug, hue: A.hueOf(st.hue ? "h" + st.hue : ""), recipient: st.recipient.trim(), sender: st.sender.trim(), message: st.message.trim(), amount: st.amount || 1000, program: st.program || "restaurant", qrUrl: location.origin + "/gift.html?t=your-card-link", side, image: st.img, width: 900 });
+      A.render(c, { slug: st.slug, hue: A.hueOf(st.hue ? "h" + st.hue : ""), recipient: st.recipient.trim(), sender: st.sender.trim(), message: st.message.trim(), amount: st.amount || 1000, program: st.program || "restaurant", qrUrl: location.origin + "/gift.html?t=your-card-link", side, image: st.img, width: 900, ph: true });
+      if (lastSlug !== st.slug) { lastSlug = st.slug; c.classList.remove("pop"); void c.offsetWidth; c.classList.add("pop"); }
       const s = $("#sum"); if (!s) return; const f = fees();
-      s.innerHTML = `<div><span>${st.program === "marketplace" ? "Marketplace" : st.program === "restaurant" ? "Restaurant" : "Gift"} card · ${st.format || "format"}</span><span>${st.amount ? money(st.amount) : "–"}</span></div>${f ? `<div><span>Printing & packaging</span><span>${money(f)}</span></div>` : ""}<div><b>Total</b><b class="t">${st.amount ? money(total()) : "–"}</b></div>`;
+      s.innerHTML = `<div><span>${st.program === "marketplace" ? "Marketplace" : "Restaurant"} card · ${st.format}</span><span>${st.amount ? money(st.amount) : "–"}</span></div>${f ? `<div><span>Printing & packaging</span><span>${money(f)}</span></div>` : ""}<div><b>Total</b><b class="t">${st.amount ? money(total()) : "–"}</b></div>`;
     });
   }
-  const bar = () => `<nav class="gf-prog-steps" aria-label="Steps">${STEPS.map((s, i) => `<button data-step="${i + 1}" ${st.step === i + 1 ? 'aria-current="step"' : ""} class="${st.step > i + 1 ? "done" : ""}">${i + 1}. ${s}</button>`).join("")}</nav>`;
-  const nav = (back, next, label) => `<div class="gf-nav2">${back ? `<button class="gf-btn gf-btn--ghost" data-back>Back</button>` : ""}<button class="gf-btn" data-next>${label || "Continue"}</button></div>`;
+  const bar = () => `<nav class="gf-stp" aria-label="Steps" style="--p:${lastP}"><i class="gf-stp__fill"></i>${STEPS.map((s, i) => `<button data-step="${i + 1}" ${st.step === i + 1 ? 'aria-current="step"' : ""} class="${st.step > i + 1 ? "done" : ""}"><b>${st.step > i + 1 ? "✓" : i + 1}</b><span>${s}</span></button>`).join("")}</nav>`;
+  const nav = (back, label) => `<div class="gf-nav2">${back ? `<button class="gf-btn gf-btn--ghost" data-back>Back</button>` : ""}<button class="gf-btn" data-next>${label || "Continue"}</button></div>`;
   function valid(step) {
-    if (step >= 1 && (!st.program || !st.format)) return step > 1 || "Choose a gift card type and format.";
-    if (step === 1) return true;
-    if (step === 2) return !!st.slug && (st.slug !== "photo-custom" || !!st.img) || (st.slug === "photo-custom" ? "Upload your photo for this design." : "Pick a design.");
-    if (step === 3) { const a = Number(st.amount); return (a >= Number(S.min_amount) && a <= Number(S.max_amount) && Math.round(a * 100) === a * 100) || `Enter an amount between ${money(S.min_amount)} and ${money(S.max_amount)}.`; }
-    if (step === 4) return st.message.length <= 280 || "Message is too long.";
-    if (step === 5) {
+    if (step === 1) return (!!st.slug && !!st.program && !!st.format) || "Pick a design to continue.";
+    if (step === 2) { const a = Number(st.amount); return (a >= Number(S.min_amount) && a <= Number(S.max_amount) && Math.round(a * 100) === a * 100) || `Enter an amount between ${money(S.min_amount)} and ${money(S.max_amount)}.`; }
+    if (step === 3) { if (st.slug === "photo-custom" && !st.img) return "Upload your photo for this design."; return st.message.length <= 280 || "Message is too long."; }
+    if (step === 4) {
       if (st.format === "virtual") { if (st.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(st.email)) return "That email doesn't look right."; if (st.phone && !/^\+?[0-9 ]{7,16}$/.test(st.phone)) return "That phone number doesn't look right."; if (st.when === "later" && (!st.deliverAt || new Date(st.deliverAt) < new Date())) return "Pick a future date and time."; return true; }
       if (st.dname.trim().length < 2) return "Enter the recipient's name for collection or delivery."; if (!/^\+?[0-9 ]{7,16}$/.test(st.dphone)) return "Enter a valid contact phone number."; if (st.method === "delivery" && st.daddress.trim().length < 6) return "Enter the delivery address."; return true;
     }
     return true;
   }
-  function go(n) { st.step = Math.max(1, Math.min(6, n)); saveDraft(); paintForm(); paintPreview(); window.scrollTo({ top: 0, behavior: "smooth" }); }
+  function go(n) { n = Math.max(1, Math.min(NS, n)); dir = n >= st.step ? "fwd" : "back"; st.step = n; saveDraft(); paintForm(); paintPreview(); window.scrollTo({ top: 0, behavior: "smooth" }); }
   function wire(f) {
     $$("[data-step]", f).forEach(b => b.onclick = () => { const n = Number(b.dataset.step); if (n <= st.step) return go(n); for (let s = st.step; s < n; s++) { const v = valid(s); if (v !== true) return toast(v); } go(n); });
     const bk = $("[data-back]", f); if (bk) bk.onclick = () => go(st.step - 1);
-    const nx = $("[data-next]", f); if (nx) nx.onclick = () => { const v = valid(st.step); if (v !== true) return toast(v); if (st.step === 6) return pay(nx); go(st.step + 1); };
+    const nx = $("[data-next]", f); if (nx) nx.onclick = () => { const v = valid(st.step); if (v !== true) return toast(v); if (st.step === NS) return pay(nx); go(st.step + 1); };
   }
   function paintForm() {
-    const f = $("#gf-form"); if (!f) return; const fn = [null, s1, s2, s3, s4, s5, s6][st.step]; f.innerHTML = bar() + fn(); wire(f); (fnWire[st.step] || (() => {}))(f);
+    const f = $("#gf-form"); if (!f) return; const fn = [null, s1, s2, s3, s4, s5][st.step], stu = $("#gf-studio"); stu.classList.toggle("gf-studio--store", st.step === 1);
+    f.innerHTML = bar() + `<div class="gf-pane gf-pane--${dir}" id="gf-pane">${fn()}</div>`; wire(f); (fnWire[st.step] || (() => {}))(f);
+    const p = (st.step - 1) / (NS - 1); requestAnimationFrame(() => requestAnimationFrame(() => { const n = $(".gf-stp", f); if (n) n.style.setProperty("--p", p); lastP = p; }));
   }
   const fnWire = {};
   function opt(attr, val, cur, title, sub, dis, tag) { return `<button class="gf-o" ${attr}="${val}" aria-pressed="${cur === val}" ${dis ? "disabled" : ""}>${tag ? `<span class="tag">${tag}</span>` : ""}<b>${title}</b><span>${sub}</span></button>`; }
+  const lockedTag = (ok, t) => ok ? "" : ` <em>${t || "Soon"}</em>`;
+  /* ---- step 1: the gift store ---- */
   function s1() {
-    const mOK = S.marketplace_enabled, rOK = S.restaurant_enabled, pOK = S.physical_enabled;
-    return `<div class="gf-card"><h2>What would you like to give?</h2><p class="sub">Pick the gift card and how it's delivered.</p>
-    <div class="gf-opt">${opt("data-prog", "marketplace", st.program, "Marketplace Gift Card", "Use on JulaDirect. Keep it in the recipient's account.", !mOK, mOK ? "" : "Unavailable")}${opt("data-prog", "restaurant", st.program, "Restaurant Gift Card", "One card for any participating restaurant. Spend it in parts.", !rOK, rOK ? "" : "Unavailable")}</div>
-    <h2 style="margin-top:24px;font-size:18px">Format</h2><div class="gf-opt">${opt("data-fmt", "virtual", st.format, "Virtual", "Instant image + secure link. Download, share on WhatsApp, or schedule.", !S.virtual_enabled)}${opt("data-fmt", "physical", st.format, "Physical", pOK ? "A printed card with premium finishes." : "Printed cards aren't available yet.", !pOK, pOK ? "" : "Coming soon")}</div>
-    ${st.program === "restaurant" ? `<div class="gf-note">Restaurant gift cards work at any participating restaurant. The recipient needs a 6-digit PIN to approve each use.</div>` : ""}
-    ${nav(false, true)}</div>`;
+    const mOK = S.marketplace_enabled, rOK = S.restaurant_enabled, vOK = S.virtual_enabled, pOK = S.physical_enabled, seg = (a, v, cur, label, ok, t) => `<button ${a}="${v}" aria-pressed="${cur === v}" ${ok ? "" : "disabled"}>${label}${lockedTag(ok, t)}</button>`;
+    return `<section class="gf-sh"><div class="gf-sh__t"><span class="gf-eyebrow">JulaDirect Gift Store</span><h1>Pick a card.<br>Pick an amount. <em>Done.</em></h1><p>Every design is ready with prices. Choose one, add a name and a message, and share it in seconds.</p></div>
+      <div class="gf-sh__fan" id="shfan" aria-hidden="true"></div><div class="gf-feat" id="feat" aria-label="Featured JulaDirect cards"></div><div class="gf-dots" id="dots" aria-hidden="true"></div></section>
+    <div class="gf-sbar"><div class="gf-seg" role="group" aria-label="Card type">${seg("data-prog", "restaurant", st.program, "Restaurant", rOK)}${seg("data-prog", "marketplace", st.program, "Marketplace", mOK)}</div>
+      <div class="gf-seg" role="group" aria-label="Format">${seg("data-fmt", "virtual", st.format, "Virtual", vOK)}${seg("data-fmt", "physical", st.format, "Physical", pOK, "Soon")}</div>
+      <label class="gf-srch"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.500-3.500"/></svg><input id="q" type="search" placeholder="Search designs, e.g. birthday" value="${esc(st.q || "")}" aria-label="Search designs" autocomplete="off"></label></div>
+    <p class="gf-hint" id="hint">${st.program === "restaurant" ? "One card for any participating restaurant. Spend it in parts, with a private 6-digit PIN." : "A JulaDirect gift card the recipient keeps in their account."}</p>
+    <div class="gf-sbody"><aside class="gf-filt" aria-label="Filters"><div class="gf-filt__h"><b>Filters</b><button id="clr">Clear all</button></div><div class="gf-filt__g"><h4>Price</h4><div class="gf-fp" id="fp"></div></div><div class="gf-filt__g gf-filt__c"><h4>Category</h4><div id="fc"></div></div></aside>
+    <div class="gf-sright"><div class="gf-scat" id="cats" role="tablist" aria-label="Categories"></div><div class="gf-sgrid" id="sg"></div></div></div>`;
   }
-  fnWire[1] = f => { $$("[data-prog]", f).forEach(b => b.onclick = () => { st.program = b.dataset.prog; touch(); paintForm(); paintPreview(); }); $$("[data-fmt]", f).forEach(b => b.onclick = () => { st.format = b.dataset.fmt; if (st.format === "physical") side = "front"; touch(); paintForm(); paintPreview(); }); };
-  function s2() {
-    return `<div class="gf-card"><h2>Choose a design</h2><p class="sub">Your details stay put while you browse.</p><div class="gf-chips">${cats().map(c => `<button class="gf-chip" data-cat="${esc(c)}" aria-pressed="${st.cat === c}">${esc(c)}</button>`).join("")}</div><div class="gf-gal" id="gal"></div>
-    <div class="gf-sw" id="sw"><span>Colour</span>${[0, 40, 90, 160, 220, 290].map(h => `<button data-hue="${h}" aria-pressed="${st.hue === h}" aria-label="Colour variation ${h}" style="background:conic-gradient(from ${h}deg,#ff5d73,#ffc233,#2ecf8a,#47c2ff,#7c5cff,#ff5d73)"></button>`).join("")}</div>
-    ${st.slug === "photo-custom" ? `<label class="gf-up" style="margin-top:14px"><input type="file" id="ph" accept="image/jpeg,image/png,image/webp">${st.img ? "Photo added. Tap to change." : "Tap to upload your photo (JPG, PNG, WebP up to 8 MB)"}</label>` : ""}
-    ${nav(true, true)}</div>`;
+  function choose(slug, amount, el) {
+    st.slug = slug; st.picked = true; let target = 2;
+    if (amount != null && amount > 0) { st.amount = amount; target = 3; } else if (st.fprice) { st.amount = st.fprice; target = 3; }
+    touch(); if (el) el.classList.add("pick"); setTimeout(() => go(target), el ? 240 : 0);
   }
-  fnWire[2] = f => {
-    const g = $("#gal", f); const list = T.filter(t => st.cat === "All" || t.category === st.cat);
-    list.forEach(t => { const b = document.createElement("button"); b.setAttribute("aria-pressed", t.slug === st.slug); b.setAttribute("aria-label", t.name);
-      const c = document.createElement("canvas"); A.render(c, { slug: t.slug, hue: st.hue, recipient: st.recipient.trim() || "Awa", amount: st.amount || 1000, program: st.program || "restaurant", message: "", width: 340 }); b.appendChild(c); b.insertAdjacentHTML("beforeend", `<i>${esc(t.name)}</i>${t.premium ? '<i class="p">Premium</i>' : ""}`);
-      b.onclick = () => { st.slug = t.slug; touch(); $$("#gal button", f).forEach(x => x.setAttribute("aria-pressed", x === b)); paintPreview(); if (t.slug === "photo-custom" || $("#ph", f)) paintForm(); }; g.appendChild(b); });
-    $$("[data-cat]", f).forEach(b => b.onclick = () => { st.cat = b.dataset.cat; paintForm(); });
-    $$("[data-hue]", f).forEach(b => b.onclick = () => { st.hue = Number(b.dataset.hue); touch(); paintForm(); paintPreview(); });
-    const ph = $("#ph", f); if (ph) ph.onchange = async () => { try { await loadPhoto(ph.files[0]); touch(); paintForm(); paintPreview(); } catch (e) { toast(e.message); } };
+  fnWire[1] = f => {
+    const mm = priceList(); if (!(S.presets || []).length) {}
+    // featured: JulaDirect cards
+    const jl = T.filter(t => /^jula-/.test(t.slug)); const fan = $("#shfan", f), feat = $("#feat", f), dots = $("#dots", f);
+    jl.slice(0, 4).forEach((t, i) => { const c = sampleCanvas(t.slug, 640, { program: st.program, recipient: "", message: "", code: null, sender: "" }); c.className = "fc" + i; fan.appendChild(c); const d = document.createElement("button"); d.className = "gf-feat__i"; d.setAttribute("aria-label", t.name); d.appendChild(sampleCanvas(t.slug, 640, { program: st.program, recipient: "", message: "", sender: "" })); d.onclick = () => choose(t.slug, null, d); feat.appendChild(d); dots.insertAdjacentHTML("beforeend", "<i></i>"); });
+    const syncDots = () => { const w = feat.firstElementChild ? feat.firstElementChild.offsetWidth + 14 : 1, i = Math.round(feat.scrollLeft / w); $$("i", dots).forEach((d, k) => d.classList.toggle("on", k === i)); }; feat.onscroll = syncDots; syncDots();
+    $$("#shfan canvas", f).forEach((c, i) => c.onclick = () => choose(jl[i].slug, null, c));
+    const segs = () => { $$("[data-prog]", f).forEach(b => b.setAttribute("aria-pressed", b.dataset.prog === st.program)); $$("[data-fmt]", f).forEach(b => b.setAttribute("aria-pressed", b.dataset.fmt === st.format)); $("#hint", f).textContent = st.program === "restaurant" ? "One card for any participating restaurant. Spend it in parts, with a private 6-digit PIN." : "A JulaDirect gift card the recipient keeps in their account."; };
+    $$("[data-prog]", f).forEach(b => b.onclick = () => { if (b.disabled) return; st.program = b.dataset.prog; touch(); segs(); paintGrid(f); paintPreview(); });
+    $$("[data-fmt]", f).forEach(b => b.onclick = () => { if (b.disabled) return; st.format = b.dataset.fmt; if (st.format === "physical") side = "front"; touch(); segs(); paintPreview(); });
+    let qt; $("#q", f).oninput = e => { st.q = e.target.value; clearTimeout(qt); qt = setTimeout(() => paintGrid(f), 160); };
+    $("#clr", f).onclick = () => { st.cat = "All"; st.fprice = 0; st.q = ""; $("#q", f).value = ""; paintGrid(f); };
+    paintGrid(f);
   };
+  function paintGrid(f) {
+    const all = cats(), cur = st.cat && all.includes(st.cat) ? st.cat : "All", q = (st.q || "").trim().toLowerCase(), pr = priceList();
+    const list = T.filter(t => (cur === "All" || t.category === cur) && (!q || (t.name + " " + t.category).toLowerCase().includes(q)));
+    const chip = (k, label, n) => `<button role="tab" class="gf-chip" data-cat="${esc(k)}" aria-pressed="${cur === k}">${esc(label)}${n != null ? `<small>${n}</small>` : ""}</button>`;
+    $("#cats", f).innerHTML = chip("All", "All", T.length) + all.map(c => chip(c, c, T.filter(t => t.category === c).length)).join("");
+    $("#fc", f).innerHTML = [["All", T.length]].concat(all.map(c => [c, T.filter(t => t.category === c).length])).map(([c, n]) => `<button data-cat="${esc(c)}" aria-pressed="${cur === c}"><i></i>${esc(c)}<small>${n}</small></button>`).join("");
+    $("#fp", f).innerHTML = `<button data-fp="0" aria-pressed="${!st.fprice}">Any</button>` + pr.map(p => `<button data-fp="${p}" aria-pressed="${st.fprice === p}">${money(p)}</button>`).join("");
+    $$("[data-cat]", f).forEach(b => b.onclick = () => { st.cat = b.dataset.cat; paintGrid(f); const cc = $("#cats", f), a = $("#cats [aria-pressed=true]", f); if (cc && a && cc.scrollTo) cc.scrollTo({ left: Math.max(0, a.offsetLeft - 20), behavior: "smooth" }); });
+    $$("[data-fp]", f).forEach(b => b.onclick = () => { st.fprice = Number(b.dataset.fp); touch(); paintGrid(f); });
+    const g = $("#sg", f); g.innerHTML = ""; if (io) io.disconnect(); io = ("IntersectionObserver" in window) ? new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { io.unobserve(e.target); e.target._draw && e.target._draw(); } }), { rootMargin: "300px" }) : null;
+    if (!list.length) g.innerHTML = `<div class="gf-none"><b>No designs match</b><span>Try another word or clear the filters.</span></div>`;
+    const shown = st.fprice ? pr.filter(p => p === st.fprice) : pr.slice(0, 5);
+    list.forEach((t, i) => {
+      const el = document.createElement("article"); el.className = "gf-tile" + (t.slug === st.slug && st.picked ? " sel" : ""); el.style.setProperty("--i", Math.min(i, 14));
+      el.innerHTML = `<button class="gf-tile__art" aria-label="${esc(t.name)}: choose amount"><span class="ph"></span>${t.premium ? '<i class="p">Premium</i>' : ""}</button><div class="gf-tile__b"><div class="gf-tile__t"><b>${esc(t.name)}</b><small>${esc(t.category)}</small></div><div class="gf-tile__p" role="group" aria-label="Amounts for ${esc(t.name)}">${shown.map(p => `<button data-pa="${p}">${money(p)}</button>`).join("")}${st.fprice ? "" : `<button data-pa="0" class="o">Custom</button>`}</div></div><button class="gf-tile__go" aria-label="${esc(t.name)}: choose amount"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 5 7 7-7 7"/></svg></button>`;
+      const art = $(".gf-tile__art", el), draw = () => { const cv = document.createElement("canvas"); A.render(cv, { slug: t.slug, hue: 0, program: st.program, amount: st.fprice || 1000, recipient: "", message: "", sender: "", width: 460, ph: false }); art.querySelector(".ph").replaceWith(cv); cv.setAttribute("aria-hidden", "true"); };
+      el._draw = draw; if (io) io.observe(el); else draw();
+      const pick = a => choose(t.slug, a === undefined ? null : a, el);
+      art.onclick = () => pick(); $(".gf-tile__go", el).onclick = () => pick();
+      $$("[data-pa]", el).forEach(b => b.onclick = e => { e.stopPropagation(); const a = Number(b.dataset.pa); if (!a) { st.fprice = 0; pick(null); } else pick(a); });
+      g.appendChild(el);
+    });
+  }
+  /* ---- step 2: amount ---- */
+  function s2() {
+    const t = T.find(x => x.slug === st.slug) || {}, pr = priceList();
+    return `<div class="gf-card"><h2>How much?</h2><p class="sub"><b>${esc(t.name || "")}</b> · between ${money(S.min_amount)} and ${money(S.max_amount)}. Not reloadable.</p>
+    <div class="gf-prows">${pr.map(p => `<button class="gf-prow" data-amt="${p}" aria-pressed="${Number(st.amount) === p}"><span><b>${money(p)}</b><small>${p >= 5000 ? "A generous treat" : p >= 1500 ? "A lovely meal for two" : "A little something"}</small></span><i><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg></i></button>`).join("")}</div>
+    <label class="gf-f"><label>Or type your own amount (D)<input id="amt" inputmode="decimal" type="number" min="${S.min_amount}" max="${S.max_amount}" step="1" value="${st.amount && !pr.includes(Number(st.amount)) ? st.amount : ""}" placeholder="e.g. 750"></label></label>
+    <p class="gf-chg"><a href="#/new" id="chg">← Change design</a></p>${nav(true)}</div>`;
+  }
+  fnWire[2] = f => { $("#chg", f).onclick = e => { e.preventDefault(); go(1); }; $$("[data-amt]", f).forEach(b => b.onclick = () => { st.amount = Number(b.dataset.amt); touch(); $("#amt", f).value = ""; $$("[data-amt]", f).forEach(x => x.setAttribute("aria-pressed", x === b)); paintPreview(); }); $("#amt", f).oninput = e => { st.amount = e.target.value === "" ? 0 : Number(e.target.value); touch(); $$("[data-amt]", f).forEach(b => b.setAttribute("aria-pressed", Number(b.dataset.amt) === st.amount)); paintPreview(); }; };
   async function loadPhoto(file) {
     if (!file) return; if (!/^image\/(jpeg|png|webp)$/.test(file.type)) throw new Error("Please choose a JPG, PNG or WebP image."); if (file.size > 8 * 1024 * 1024) throw new Error("That photo is larger than 8 MB.");
     const bmp = await createImageBitmap(file).catch(() => null); if (!bmp) throw new Error("We couldn't read that image."); if (bmp.width < 400 || bmp.height < 250) throw new Error("That photo is too small. Use at least 400 x 250 pixels.");
@@ -130,43 +178,44 @@
     st.blob = await new Promise(r => c.toBlob(r, "image/jpeg", .86)); st.img = await new Promise((ok, no) => { const im = new Image(); im.onload = () => ok(im); im.onerror = no; im.src = URL.createObjectURL(st.blob); });
   }
   function s3() {
-    const presets = (S.presets || []).filter(p => p >= S.min_amount && p <= S.max_amount);
-    return `<div class="gf-card"><h2>How much?</h2><p class="sub">Between ${money(S.min_amount)} and ${money(S.max_amount)}. The card is not reloadable.</p><div class="gf-amts">${presets.map(p => `<button data-amt="${p}" aria-pressed="${Number(st.amount) === p}">${money(p)}</button>`).join("")}</div>
-    <label class="gf-f"><label>Or enter an amount (D)<input id="amt" inputmode="decimal" type="number" min="${S.min_amount}" max="${S.max_amount}" step="1" value="${st.amount || ""}" placeholder="e.g. 750"></label></label>${nav(true, true)}</div>`;
+    const t = T.find(x => x.slug === st.slug) || {};
+    return `<div class="gf-card"><h2>Make it personal</h2><p class="sub">Write a name on the card, add a message, and watch it update.</p><div class="gf-f">
+    <label>Name on the card <small>(optional)</small><input id="rn" maxlength="60" value="${esc(st.recipient)}" placeholder="Who is it for?" autocomplete="off"></label>
+    <label>From <small>(optional)</small><input id="sn" maxlength="60" value="${esc(st.sender)}" placeholder="Your name" autocomplete="name"></label>
+    <label>Personal message <small id="mc">${st.message.length}/280</small><textarea id="ms" maxlength="280" placeholder="Write something kind…">${esc(st.message)}</textarea></label></div>
+    <div class="gf-sw" id="sw"><span>Colour</span>${[0, 40, 90, 160, 220, 290].map(h => `<button data-hue="${h}" aria-pressed="${st.hue === h}" aria-label="Colour variation ${h}" style="background:conic-gradient(from ${h}deg,#ff5d73,#ffc233,#2ecf8a,#47c2ff,#7c5cff,#ff5d73)"></button>`).join("")}</div>
+    ${st.slug === "photo-custom" ? `<label class="gf-up" style="margin-top:14px"><input type="file" id="ph" accept="image/jpeg,image/png,image/webp">${st.img ? "Photo added. Tap to change." : "Tap to upload your photo (JPG, PNG, WebP up to 8 MB)"}</label>` : ""}
+    <p class="gf-chg"><a href="#/new" id="chg">← Change design (${esc(t.name || "")})</a></p>${nav(true)}</div>`;
   }
-  fnWire[3] = f => { $$("[data-amt]", f).forEach(b => b.onclick = () => { st.amount = Number(b.dataset.amt); touch(); paintForm(); paintPreview(); }); $("#amt", f).oninput = e => { st.amount = e.target.value === "" ? 0 : Number(e.target.value); touch(); $$("[data-amt]", f).forEach(b => b.setAttribute("aria-pressed", Number(b.dataset.amt) === st.amount)); paintPreview(); }; };
+  fnWire[3] = f => { const bind = (id, k) => $(id, f).oninput = e => { st[k] = e.target.value; touch(); if (k === "message") $("#mc", f).textContent = st.message.length + "/280"; paintPreview(); }; bind("#rn", "recipient"); bind("#sn", "sender"); bind("#ms", "message");
+    $("#chg", f).onclick = e => { e.preventDefault(); go(1); };
+    $$("[data-hue]", f).forEach(b => b.onclick = () => { st.hue = Number(b.dataset.hue); touch(); $$("[data-hue]", f).forEach(x => x.setAttribute("aria-pressed", x === b)); paintPreview(); });
+    const ph = $("#ph", f); if (ph) ph.onchange = async () => { try { await loadPhoto(ph.files[0]); touch(); paintForm(); paintPreview(); } catch (e) { toast(e.message); } }; };
   function s4() {
-    return `<div class="gf-card"><h2>Make it personal</h2><p class="sub">Everything updates in the preview instantly.</p><div class="gf-f">
-    <label>Recipient's name <small>(optional)</small><input id="rn" maxlength="60" value="${esc(st.recipient)}" placeholder="Who is it for?" autocomplete="off"></label>
-    <label>Your name <small>(optional)</small><input id="sn" maxlength="60" value="${esc(st.sender)}" placeholder="From" autocomplete="name"></label>
-    <label>Personal message <small id="mc">${st.message.length}/280</small><textarea id="ms" maxlength="280" placeholder="Write something kind…">${esc(st.message)}</textarea></label></div>${nav(true, true)}</div>`;
-  }
-  fnWire[4] = f => { const bind = (id, k) => $(id, f).oninput = e => { st[k] = e.target.value; touch(); if (k === "message") $("#mc", f).textContent = st.message.length + "/280"; paintPreview(); }; bind("#rn", "recipient"); bind("#sn", "sender"); bind("#ms", "message"); };
-  function s5() {
     if (st.format === "virtual") return `<div class="gf-card"><h2>Delivery</h2><p class="sub">You always get the card in My gift cards, ready to download and share.</p>
       <div class="gf-opt">${opt("data-when", "now", st.when, "Available now", "The link works immediately.")}${opt("data-when", "later", st.when, "Schedule a reveal", "The gift stays sealed until the date you choose.")}</div>
       ${st.when === "later" ? `<div class="gf-f" style="margin-top:14px"><label>Reveal date and time<input id="da" type="datetime-local" value="${esc(st.deliverAt)}"></label></div>` : ""}
       <div class="gf-f" style="margin-top:14px"><label>Recipient's email <small>(optional, saved with the gift)</small><input id="em" type="email" value="${esc(st.email)}" placeholder="name@example.com"></label><label>Recipient's phone <small>(optional)</small><input id="ph2" type="tel" value="${esc(st.phone)}" placeholder="+220…"></label></div>
-      <div class="gf-note">JulaDirect doesn't send the gift to the recipient automatically yet. After payment you'll share the secure link or the downloaded image yourself, by WhatsApp or any app.</div>${nav(true, true)}</div>`;
+      <div class="gf-note">JulaDirect doesn't send the gift to the recipient automatically yet. After payment you'll share the secure link or the downloaded image yourself, by WhatsApp or any app.</div>${nav(true)}</div>`;
     const colOK = S.collection_enabled, delOK = S.delivery_enabled;
     return `<div class="gf-card"><h2>Collection or delivery</h2><p class="sub">Your printed card is produced after payment.</p><div class="gf-opt">${opt("data-m", "collection", st.method, "Collection", colOK ? esc(S.collection_note || "Collect from JulaDirect.") : "Not available yet.", !colOK, colOK ? "" : "Unavailable")}${opt("data-m", "delivery", st.method, "Delivery", delOK ? `Delivered to the address you give (${money(S.delivery_fee)}).` : "Not available yet.", !delOK, delOK ? "" : "Unavailable")}</div>
     <div class="gf-f" style="margin-top:14px"><label>Contact name<input id="dn" value="${esc(st.dname)}" maxlength="80"></label><label>Contact phone<input id="dp" type="tel" value="${esc(st.dphone)}" placeholder="+220…"></label>${st.method === "delivery" ? `<label>Delivery address<textarea id="dad" maxlength="240">${esc(st.daddress)}</textarea></label>` : ""}<label>Notes <small>(optional)</small><input id="dno" maxlength="240" value="${esc(st.dnotes)}"></label>
     <label style="grid-auto-flow:column;justify-content:start;align-items:center;gap:10px"><input type="checkbox" id="env" ${st.envelope ? "checked" : ""} style="width:20px;height:20px"> Add a gift envelope (+${money(S.envelope_fee)})</label></div>
-    ${!colOK && !delOK ? `<p class="gf-err">Neither collection nor delivery is available right now, so printed cards can't be ordered yet.</p>` : ""}${nav(true, true)}</div>`;
+    ${!colOK && !delOK ? `<p class="gf-err">Neither collection nor delivery is available right now, so printed cards can't be ordered yet.</p>` : ""}${nav(true)}</div>`;
   }
-  fnWire[5] = f => {
+  fnWire[4] = f => {
     $$("[data-when]", f).forEach(b => b.onclick = () => { st.when = b.dataset.when; touch(); paintForm(); }); $$("[data-m]", f).forEach(b => b.onclick = () => { st.method = b.dataset.m; touch(); paintForm(); paintPreview(); });
     const b = (id, k, fn) => { const e = $(id, f); if (e) e.oninput = () => { st[k] = e.type === "checkbox" ? e.checked : e.value; touch(); if (fn) fn(); }; };
     b("#da", "deliverAt"); b("#em", "email"); b("#ph2", "phone"); b("#dn", "dname"); b("#dp", "dphone"); b("#dad", "daddress"); b("#dno", "dnotes"); b("#env", "envelope", paintPreview);
   };
-  function s6() {
+  function s5() {
     const t = T.find(x => x.slug === st.slug) || {}, f = fees();
     return `<div class="gf-card"><h2>Review and pay</h2><p class="sub">Check everything. The card is created only after your payment is confirmed.</p>
     <ul class="gf-tl"><li><span>Card<small>${st.program === "marketplace" ? "Marketplace" : "Restaurant"} · ${st.format}</small></span><b>${money(st.amount)}</b></li><li><span>Design<small>${esc(t.name || "")}</small></span><span></span></li>${st.recipient ? `<li><span>For</span><span>${esc(st.recipient)}</span></li>` : ""}${st.when === "later" && st.format === "virtual" ? `<li><span>Reveals</span><span>${esc(new Date(st.deliverAt).toLocaleString())}</span></li>` : ""}${f ? `<li><span>Printing & packaging</span><b>${money(f)}</b></li>` : ""}<li><b>Total</b><b>${money(total())}</b></li></ul>
     <h2 style="font-size:17px;margin:18px 0 10px">Pay with</h2><div class="gf-pay">${[["wave", "Wave"], ["qmoney", "QMoney"], ["afrimoney", "Afrimoney"]].map(([k, n]) => `<button data-pay="${k}" aria-pressed="${st.pay === k}">${n}</button>`).join("")}</div>
-    <div class="gf-note">You'll be taken to ModemPay's secure page to approve the payment. We never see your wallet PIN.</div><p class="gf-err" id="perr" role="alert"></p>${nav(true, true, "Pay " + money(total()))}</div>`;
+    <div class="gf-note">You'll be taken to ModemPay's secure page to approve the payment. We never see your wallet PIN.</div><p class="gf-err" id="perr" role="alert"></p>${nav(true, "Pay " + money(total()))}</div>`;
   }
-  fnWire[6] = f => { $$("[data-pay]", f).forEach(b => b.onclick = () => { st.pay = b.dataset.pay; touch(); $$("[data-pay]", f).forEach(x => x.setAttribute("aria-pressed", x === b)); }); };
+  fnWire[5] = f => { $$("[data-pay]", f).forEach(b => b.onclick = () => { st.pay = b.dataset.pay; touch(); $$("[data-pay]", f).forEach(x => x.setAttribute("aria-pressed", x === b)); }); };
 
   async function pay(btn) {
     const err = $("#perr"); err.textContent = ""; const bk = btn.textContent; btn.disabled = true; btn.textContent = "Please wait…";
@@ -208,7 +257,7 @@
   async function artFor(card, w, side) {
     const d = card.design || {}, c = document.createElement("canvas"); let image = null;
     if (d.image_path) { const cl = await client(); const url = cl.storage.from("gift-media").getPublicUrl(d.image_path).data.publicUrl; image = await new Promise(r => { const im = new Image(); im.crossOrigin = "anonymous"; im.onload = () => r(im); im.onerror = () => r(null); im.src = url; }); }
-    A.render(c, { slug: card.template_slug, hue: A.hueOf(d.accent), recipient: d.recipient_name, sender: d.sender_name, message: d.message, amount: card.initial_amount, program: card.program, qrUrl: shareUrl(card.share_token), side: side || "front", image, width: w || 700, codeHint: "…" + card.code.slice(-4) }); return c;
+    A.render(c, { slug: card.template_slug, hue: A.hueOf(d.accent), recipient: d.recipient_name, sender: d.sender_name, message: d.message, amount: card.initial_amount, program: card.program, qrUrl: shareUrl(card.share_token), side: side || "front", image, width: w || 700, code: card.code }); return c;
   }
   async function mine() {
     root.innerHTML = `<div class="gf-wrap"><div class="gf-boot"><div class="gf-sk"></div></div></div>`; if (!(await needLogin())) return;

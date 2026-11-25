@@ -4,6 +4,10 @@
   "use strict";
   const W = 1600, H = 1008, SANS = '"Inter","Segoe UI",system-ui,Arial,sans-serif', SERIF = 'Georgia,"Times New Roman",serif';
   const D = { // slug: bg stops, ink, palette, motif, layout, font
+    "jula-blue": { bg: ["#1857f0", "#0a2a8a"], ink: "#ffffff", pal: ["#ffffff", "#0a2a8a", "#8fb5ff"], motif: "jula", layout: "left", dark: 1, jula: 1 },
+    "jula-gold": { bg: ["#e0a21a", "#7a4a00"], ink: "#ffffff", pal: ["#ffffff", "#5c3600", "#ffe09a"], motif: "jula", layout: "left", dark: 1, jula: 1 },
+    "jula-emerald": { bg: ["#12b886", "#065f46"], ink: "#ffffff", pal: ["#ffffff", "#064e3b", "#9af0cf"], motif: "jula", layout: "left", dark: 1, jula: 1 },
+    "jula-violet": { bg: ["#7c4dff", "#3b1a9e"], ink: "#ffffff", pal: ["#ffffff", "#2e1280", "#c9b6ff"], motif: "jula", layout: "left", dark: 1, jula: 1 },
     "birthday-confetti": { bg: ["#fff1d0", "#ffd0e6"], ink: "#3b1d4f", pal: ["#ff4f81", "#ffb703", "#3a86ff", "#06d6a0", "#8338ec"], motif: "confetti", layout: "left" },
     "birthday-balloons": { bg: ["#bfe4ff", "#f4fbff"], ink: "#0f2c57", pal: ["#ff5d73", "#ffc233", "#47c2ff", "#7c5cff", "#2ecf8a"], motif: "balloons", layout: "left" },
     "birthday-gold": { bg: ["#1b1230", "#3b1d5e"], ink: "#fff3cf", pal: ["#ffd166", "#f4a300", "#fff3cf"], motif: "sparkle", layout: "center", dark: 1, serif: 1 },
@@ -84,6 +88,9 @@
     mosaic(c, p, r) { const s = 64; for (let y = 0; y < H / s; y++) for (let x = 0; x < W / s; x++) { if (x * s < 920 && y * s > 120 && y * s < 880) continue; if (r() < .55) { c.fillStyle = p[(x + y) % p.length]; c.globalAlpha = .55 + r() * .4; if ((x + y) % 2) c.fillRect(x * s + 4, y * s + 4, s - 8, s - 8); else { c.beginPath(); c.moveTo(x * s + 4, y * s + s - 4); c.lineTo(x * s + s - 4, y * s + s - 4); c.lineTo(x * s + s - 4, y * s + 4); c.fill(); } } } c.globalAlpha = 1; },
     pop(c, p) { c.fillStyle = p[0]; for (let y = 0; y < 14; y++) for (let x = 0; x < 12; x++) circ(c, 940 + x * 56 + (y % 2) * 28, 40 + y * 70, 4 + (13 - y) * 1.4 + x * .3); c.fillStyle = p[1]; circ(c, 1360, 740, 120); c.fillStyle = p[2]; c.font = "900 150px " + SANS; c.textAlign = "center"; c.fillText("!", 1360, 790); c.textAlign = "left"; },
     grid(c, p) { c.strokeStyle = p[0]; c.globalAlpha = .18; c.lineWidth = 1.5; for (let x = 0; x < W; x += 64) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x, H); c.stroke(); } for (let y = 0; y < H; y += 64) { c.beginPath(); c.moveTo(0, y); c.lineTo(W, y); c.stroke(); } c.globalAlpha = .9; c.fillStyle = p[2]; [[1240, 260, 150], [1380, 420, 90], [1120, 470, 60]].forEach(([x, y, s]) => { c.globalAlpha = .12; rr(c, x - s, y - s, s * 2, s * 2, s * .3); c.fill(); }); c.globalAlpha = 1; },
+    jula(c, p, r, bg2) { c.save(); c.globalAlpha = .1; c.fillStyle = "#fff"; c.beginPath(); c.arc(1420, 110, 330, 0, 7); c.fill(); c.globalAlpha = .07; c.beginPath(); c.arc(1200, 40, 200, 0, 7); c.fill(); c.beginPath(); c.arc(120, 520, 260, 0, 7); c.fill(); c.restore();
+      c.save(); c.globalAlpha = .22; c.fillStyle = p[2]; c.beginPath(); c.moveTo(0, 600); c.bezierCurveTo(500, 520, 1000, 700, W, 520); c.lineTo(W, 600); c.bezierCurveTo(1000, 760, 500, 600, 0, 690); c.closePath(); c.fill(); c.restore();
+      c.fillStyle = "#ffffff"; c.beginPath(); c.moveTo(0, 650); c.bezierCurveTo(480, 570, 1000, 760, W, 590); c.lineTo(W, H); c.lineTo(0, H); c.closePath(); c.fill(); },
     paper(c, p) { c.strokeStyle = p[1]; c.lineWidth = 2; rr(c, 40, 40, W - 80, H - 80, 24); c.stroke(); c.fillStyle = p[0]; c.fillRect(110, 118, 80, 8); },
     photo(c) { }
   };
@@ -98,6 +105,21 @@
     for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) if (m[j][i]) c.fillRect(x + (i + q) * cell, y + (j + q) * cell, cell + .6, cell + .6);
   }
 
+  function spaced(c, text, x, y, width, maxSp) { const ch = Array.from(text), nat = ch.reduce((a, t) => a + c.measureText(t).width, 0), sp = Math.max(0, Math.min(maxSp, (width - nat) / (ch.length - 1))); let cx = x; c.textAlign = "left"; ch.forEach(t => { c.fillText(t, cx, y); cx += c.measureText(t).width + sp; }); return cx - sp; }
+  const fmtNum = n => String(n || "").replace(/-/g, " ").replace(/^JD (R|M) /, "JD\u00b7$1  ");
+  function julaFront(c, o, def, hx, pal) {
+    const ink = hx(def.bg[1]), label = o.program === "restaurant" ? "RESTAURANT GIFT CARD" : "MARKETPLACE GIFT CARD";
+    drawBag(c, 110, 96, 58, "rgba(255,255,255,.25)"); c.fillStyle = "#fff"; c.font = "800 26px " + SANS; c.textAlign = "right"; c.globalAlpha = .9; c.letterSpacing = "3px"; c.fillText(label, W - 110, 138); c.letterSpacing = "0px"; c.globalAlpha = 1;
+    c.fillStyle = "#fff"; c.font = "900 190px " + SANS; c.textBaseline = "alphabetic"; let fs = 190; while (fs > 80) { c.font = "900 " + fs + "px " + SANS; if (Array.from("JULADIRECT").reduce((a, t) => a + c.measureText(t).width, 0) < 1250) break; fs -= 6; }
+    c.save(); c.shadowColor = "rgba(0,0,30,.25)"; c.shadowBlur = 30; c.shadowOffsetY = 10; const endX = spaced(c, "JULADIRECT", 110, 395, 1380, 34); c.restore();
+    c.fillStyle = pal[2]; rr(c, 110, 428, Math.max(120, endX - 110), 8, 4); c.fill();
+    c.textAlign = "left"; c.fillStyle = ink; const amt = money(o.amount || 0); c.font = "900 150px " + SANS; while (c.measureText(amt).width > 760 && c.font.indexOf("px") > 0) c.font = c.font.replace(/(\d+)px/, (_, n) => (n - 8) + "px");
+    c.fillText(amt, 110, 780);
+    c.globalAlpha = .6; c.font = "700 20px " + SANS; c.letterSpacing = "3px"; c.fillText("CARD NUMBER", 110, 842); c.globalAlpha = 1; c.font = "700 44px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace"; c.letterSpacing = "5px"; c.fillText(fmtNum(o.code || (o.program === "restaurant" ? "JD-R-\u2022\u2022\u2022\u2022-\u2022\u2022\u2022\u2022-\u2022\u2022\u2022\u2022" : "JD-M-\u2022\u2022\u2022\u2022-\u2022\u2022\u2022\u2022-\u2022\u2022\u2022\u2022")), 110, 896); c.letterSpacing = "0px";
+    c.font = "800 34px " + SANS; c.letterSpacing = "4px"; const nm = (o.recipient || "").toUpperCase(); if (nm) c.fillText(nm.length > 26 ? nm.slice(0, 25) + "…" : nm, 110, 952); else if (o.ph) { c.globalAlpha = .28; c.fillText("YOUR NAME HERE", 110, 952); c.globalAlpha = 1; } c.letterSpacing = "0px";
+    if (o.message) { c.font = "600 26px " + SANS; c.globalAlpha = .75; c.textAlign = "left"; wrap(c, o.message, 560, 2).forEach((l, i) => c.fillText(l, 800, 800 + i * 36)); c.globalAlpha = 1; }
+    if (o.qrUrl) { drawQR(c, o.qrUrl, W - 270 - 110, H - 270 - 70, 270, "#0a1a3f"); c.textAlign = "center"; c.fillStyle = ink; c.font = "800 17px " + SANS; c.globalAlpha = .7; c.fillText("SCAN TO OPEN", W - 110 - 135, H - 44); c.globalAlpha = 1; c.textAlign = "left"; }
+  }
   /* opts: {slug, hue, recipient, sender, message, amount, program, qrUrl, side, image, width, bleed, codeHint} */
   function render(canvas, o) {
     const def = D[o.slug] || D["min-paper"], bleed = o.bleed || 0, w = o.width || 1600, k = w / W, pad = bleed * k;
@@ -114,6 +136,7 @@
       const im = o.image, s = Math.max(W / im.width, H / im.height), iw = im.width * s, ih = im.height * s; c.drawImage(im, (W - iw) / 2, (H - ih) / 2, iw, ih);
       const sh = c.createLinearGradient(0, 0, W * .8, 0); sh.addColorStop(0, "rgba(5,10,30,.82)"); sh.addColorStop(1, "rgba(5,10,30,.1)"); c.fillStyle = sh; c.fillRect(0, 0, W, H);
     } else (M[def.motif] || M.paper)(c, pal, rnd, hx(def.bg[1]));
+    if (def.jula && o.side !== "back") { julaFront(c, o, def, hx, pal); c.restore(); c.restore(); return canvas; }
     const front = o.side !== "back", dark = !!def.dark, center = def.layout === "center", ax = center ? W / 2 : 110; c.textAlign = center ? "center" : "left"; c.textBaseline = "alphabetic";
     const label = o.program === "restaurant" ? "RESTAURANT GIFT CARD" : "MARKETPLACE GIFT CARD";
     // brand row
@@ -127,7 +150,8 @@
       let y = center ? 520 : 515;
       if (o.recipient) { c.font = (def.serif ? "italic 400 52px " : "600 50px ") + (def.serif ? SERIF : SANS); c.fillText("For " + o.recipient, ax, y); y += 64; }
       if (o.message) { c.font = (def.serif ? "italic 400 36px " + SERIF : "500 35px " + SANS); c.globalAlpha = .92; wrap(c, o.message, center ? 1000 : 860, 4).forEach(l => { c.fillText(l, ax, y); y += 50; }); c.globalAlpha = 1; }
-      if (o.sender) { c.font = "700 32px " + SANS; c.globalAlpha = .85; c.fillText("With love, " + o.sender, ax, Math.min(y + 24, H - 90)); c.globalAlpha = 1; }
+      if (o.sender) { c.font = "700 32px " + SANS; c.globalAlpha = .85; c.fillText("With love, " + o.sender, ax, Math.min(y + 24, H - 170)); c.globalAlpha = 1; }
+      { const nx = center ? W / 2 : 110; c.textAlign = center ? "center" : "left"; c.fillStyle = ink; c.globalAlpha = .6; c.font = "700 18px " + SANS; c.letterSpacing = "3px"; c.fillText("CARD NUMBER", nx, H - 112); c.globalAlpha = .95; c.font = "700 40px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace"; c.letterSpacing = "4px"; c.fillText(fmtNum(o.code || (o.program === "restaurant" ? "JD-R-\u2022\u2022\u2022\u2022-\u2022\u2022\u2022\u2022-\u2022\u2022\u2022\u2022" : "JD-M-\u2022\u2022\u2022\u2022-\u2022\u2022\u2022\u2022-\u2022\u2022\u2022\u2022")), nx, H - 62); c.letterSpacing = "0px"; c.globalAlpha = 1; }
       // QR
       if (o.qrUrl) { const qs = 190; drawQR(c, o.qrUrl, W - qs - 90, H - qs - 80, qs, "#0a1a3f"); c.textAlign = "center"; c.font = "700 18px " + SANS; c.fillStyle = ink; c.globalAlpha = .8; c.fillText("SCAN TO OPEN", W - qs / 2 - 90, H - 48); c.globalAlpha = 1; }
     } else {
@@ -138,7 +162,7 @@
         : ["1. Scan the QR code to open your gift and see your balance.", "2. Sign in to JulaDirect to manage your card.", "3. Keep your PIN private. JulaDirect will never ask for it.", "Balance and history: juladirect.pages.dev/gift"];
       lines.forEach((l, i) => c.fillText(l, 110, 410 + i * 56)); c.globalAlpha = 1;
       if (o.qrUrl) drawQR(c, o.qrUrl, W - 330, H - 330, 230, "#0a1a3f");
-      c.font = "600 24px " + SANS; c.globalAlpha = .7; if (o.codeHint) c.fillText("Card " + o.codeHint, 110, H - 90); c.globalAlpha = 1;
+      c.font = "600 24px " + SANS; c.globalAlpha = .7; if (o.code || o.codeHint) c.fillText("Card " + (o.code || o.codeHint), 110, H - 90); c.globalAlpha = 1;
     }
     c.restore(); c.restore();
     return canvas;
