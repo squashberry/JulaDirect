@@ -2,8 +2,10 @@
 // The card is NEVER issued here: issuance happens only in the signed webhook -> gift_process_payment().
 const corsHeaders = {
   "Access-Control-Allow-Origin": "https://juladirect.pages.dev",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  // Supabase JS v2.95+ can send retry and trace-context headers during browser calls.
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-retry-count, x-supabase-api-version, traceparent, tracestate, baggage",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+  "Access-Control-Max-Age": "86400",
   "Vary": "Origin"
 };
 const json = (body: unknown, status = 200) =>
