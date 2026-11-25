@@ -62,9 +62,17 @@
     return [...score.values()].sort((a, b) => b.n - a.n || a.text.length - b.text.length).slice(0, 5).map(x => x.text);
   }
 
+  /* Match the gift-card shop even though it is not a product listing/category. */
+  function isGiftCardsQuery(q) {
+    const key = String(q || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+    return key.length >= 3 && ["giftcard", "giftcards", "giftvoucher", "giftvouchers"].some(term => term.startsWith(key) || key.startsWith(term));
+  }
+
   /* An instant guess before the network answers: recents, popular terms and categories. */
   function quickGuess(q) {
     const lq = q.toLowerCase();
+    const key = lq.replace(/[^a-z0-9]/g, "");
+    if (key.length >= 3 && "giftcards".startsWith(key) && key !== "giftcards") return "Gift Cards";
     const pool = recents().concat(POPULAR, cats.map(c => c.id));
     return pool.find(x => x.toLowerCase().startsWith(lq) && x.toLowerCase() !== lq) || "";
   }
@@ -121,11 +129,13 @@
         if (cats.length) h += '<div class="sx-sec"><h4>Browse categories</h4><div class="sx-chips">' + cats.slice(0, 8).map(c => '<a class="sx-item sx-chip sx-chip--cat" href="explore.html?category=' + encodeURIComponent(c.id) + '">' + esc(c.id) + "</a>").join("") + "</div></div>";
       } else {
         const lq = q.toLowerCase();
-        const list = state.phrases.length ? state.phrases : (best && best.toLowerCase() !== lq ? [best] : []);
+        const giftCardsMatch = isGiftCardsQuery(q);
+        const list = state.phrases.length ? state.phrases : (best && best.toLowerCase() !== lq && !giftCardsMatch ? [best] : []);
         const cmatch = cats.filter(c => c.id.toLowerCase().includes(lq) && c.id.toLowerCase() !== lq).slice(0, 2);
         h += '<div class="sx-sec"><h4>Suggestions</h4>' +
           '<div class="sx-row"><button type="button" class="sx-item" data-go="' + esc(q) + '">' + JD.icon("search", 18) + "<span>" + esc(q) + "</span></button></div>" +
           list.map(t => '<div class="sx-row"><button type="button" class="sx-item" data-go="' + esc(t) + '">' + JD.icon("search", 18) + "<span>" + boldTail(t, q) + "</span></button>" + fillBtn(t) + "</div>").join("") +
+          (giftCardsMatch ? '<div class="sx-row"><a class="sx-item" href="/gift-cards.html">' + JD.icon("bag", 18) + "<span>Gift Cards</span>" + JD.icon("arrowRight", 16) + "</a></div>" : "") +
           cmatch.map(c => '<div class="sx-row"><a class="sx-item" href="explore.html?category=' + encodeURIComponent(c.id) + '&amp;q=' + encodeURIComponent(q) + '">' + JD.icon("grid", 18) + "<span>" + esc(q) + " in <b>" + esc(c.id) + "</b></span></a></div>").join("") + "</div>";
         if (state.loading && !state.rows.length) h += '<div class="sx-sec sx-prod"><h4>Products</h4>' + tray([], true) + "</div>";
         else if (state.rows.length) h += '<div class="sx-sec sx-prod"><h4>Products <small>' + state.total.toLocaleString("en-GB") + " found</small></h4>" + tray(state.rows) + "</div>" +
@@ -274,7 +284,17 @@
       if (e.target.closest("a")) closeIt(false);
     });
     form.addEventListener("focusout", e => { if (open && !form.contains(e.relatedTarget) && e.relatedTarget !== null) closeIt(false); else if (open && e.relatedTarget === null) setTimeout(() => { if (open && !form.contains(document.activeElement)) closeIt(false); }, 120); });
-    form.addEventListener("submit", () => { const q = val(); remember(q); closeIt(false); });
+    form.addEventListener("submit", e => {
+      const q = val();
+      remember(q);
+      if (isGiftCardsQuery(q)) {
+        e.preventDefault();
+        closeIt(false);
+        window.location.href = "/gift-cards.html";
+        return;
+      }
+      closeIt(false);
+    });
     const clear = form.querySelector(".sx-clear");
     if (clear) clear.addEventListener("click", e => { e.preventDefault(); input.value = ""; input.focus(); input.dispatchEvent(new Event("input", { bubbles: true })); });
     const cam = form.querySelector(".sx-cam");
