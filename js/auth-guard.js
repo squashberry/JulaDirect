@@ -108,7 +108,7 @@
             const context = await this.getAuthContext();
 
             if (!context) {
-                this.redirectToLogin();
+                this.showUnauthorized(requiredRole);
                 return false;
             }
 
@@ -127,7 +127,7 @@
                 return true;
             }
 
-            this.showUnauthorized();
+            this.showUnauthorized(requiredRole);
             return false;
         },
 
@@ -138,47 +138,49 @@
                 window.location.pathname.includes("/supplier/") ||
                 window.location.pathname.includes("/admin/") ||
                 window.location.pathname.includes("/delivery/") ||
-                window.location.pathname.includes("/worker/")
+                window.location.pathname.includes("/worker/") ||
+                window.location.pathname.includes("/restaurant/")
                     ? "../login.html"
                     : "login.html";
 
             window.location.href = login + "?redirect=" + encodeURIComponent(current);
         },
 
-        showUnauthorized() {
-            document.body.innerHTML = `
-                <main
-                    style="
-                        min-height:100vh;
-                        display:grid;
-                        place-items:center;
-                        padding:30px;
-                        text-align:center;
-                        background:var(--bg, #f8fafc);
-                        color:var(--text, #0f172a);
-                        font-family:system-ui, -apple-system, sans-serif;
-                    "
-                >
-                    <div>
-                        <div style="font-size:64px;margin-bottom:20px;">🔒</div>
-                        <h1 style="font-size:24px;font-weight:800;margin-bottom:10px;">Access restricted</h1>
-                        <p style="color:#64748b;margin-bottom:24px;max-width:400px;line-height:1.5;">
-                            Your account does not have permission to access this workspace.
-                        </p>
-                        <a href="../index.html" class="primary-btn" style="
-                            display:inline-block;
-                            padding:12px 24px;
-                            background:#2563eb;
-                            color:#fff;
-                            border-radius:12px;
-                            text-decoration:none;
-                            font-weight:700;
-                        ">
-                            Return to JulaDirect
-                        </a>
-                    </div>
-                </main>
-            `;
+        showUnauthorized(requiredRole) {
+            const role = requiredRole === "restaurant" ? "restaurant" : requiredRole === "seller" ? "seller" : "";
+            const nested = /\/(supplier|restaurant|delivery|worker|admin)\//.test(window.location.pathname);
+            const base = nested ? "../" : "";
+            const title = role === "restaurant" ? "Bring your restaurant to JulaDirect" : role === "seller" ? "Start selling on JulaDirect" : "Join JulaDirect";
+            const copy = role === "restaurant"
+                ? "Apply to list your restaurant, publish your menu and receive delivery or pickup orders."
+                : role === "seller"
+                    ? "Create your seller account, open your store and start selling to customers across The Gambia."
+                    : "Choose a role and apply to work with JulaDirect.";
+            const cta = role === "restaurant" ? "Apply as a restaurant" : role === "seller" ? "Become a seller · Start selling" : "View opportunities";
+            const target = base + "worker-apply.html" + (role ? "?role=" + encodeURIComponent(role) : "");
+            const existing = document.getElementById("jd-workspace-apply-modal");
+            if (existing) existing.remove();
+            const modal = document.createElement("div");
+            modal.id = "jd-workspace-apply-modal";
+            modal.setAttribute("role", "presentation");
+            modal.innerHTML = `<style>
+              #jd-workspace-apply-modal{position:fixed;inset:0;z-index:2147483000;display:grid;place-items:center;padding:20px;background:rgba(10,18,36,.62);backdrop-filter:blur(8px);font-family:system-ui,-apple-system,Segoe UI,sans-serif}
+              #jd-workspace-apply-modal .jd-apply-card{width:min(100%,440px);box-sizing:border-box;background:#fff;border:1px solid rgba(15,23,42,.08);border-radius:24px;padding:32px 26px;text-align:center;box-shadow:0 28px 90px rgba(0,0,0,.24);color:#111827}
+              #jd-workspace-apply-modal .jd-apply-icon{width:58px;height:58px;margin:0 auto 18px;display:grid;place-items:center;border-radius:18px;background:#eef7f0;font-size:29px}
+              #jd-workspace-apply-modal h2{margin:0 0 10px;font-size:24px;line-height:1.2;font-weight:850;letter-spacing:-.04em}
+              #jd-workspace-apply-modal p{margin:0 auto 22px;max-width:340px;color:#64748b;font-size:14px;line-height:1.6}
+              #jd-workspace-apply-modal .jd-apply-cta{display:flex;min-height:48px;align-items:center;justify-content:center;padding:0 18px;border-radius:13px;background:#176b3b;color:#fff;text-decoration:none;font-weight:800}
+              #jd-workspace-apply-modal .jd-apply-back{display:inline-block;margin-top:16px;color:#64748b;font-size:13px;text-decoration:none;font-weight:650}
+              @media(max-width:480px){#jd-workspace-apply-modal .jd-apply-card{padding:28px 20px;border-radius:20px}#jd-workspace-apply-modal h2{font-size:22px}}
+            </style><section class="jd-apply-card" role="dialog" aria-modal="true" aria-labelledby="jd-apply-modal-title">
+              <div class="jd-apply-icon" aria-hidden="true">${role === "restaurant" ? "🍽️" : role === "seller" ? "🛍️" : "🤝"}</div>
+              <h2 id="jd-apply-modal-title">${title}</h2><p>${copy}</p>
+              <a class="jd-apply-cta" href="${target}">${cta}</a>
+              <a class="jd-apply-back" href="${base}index.html">Not now · Back to JulaDirect</a>
+            </section>`;
+            document.body.appendChild(modal);
+            const link = modal.querySelector(".jd-apply-cta");
+            if (link) link.focus();
         },
 
         requireAuth(actionName, onAuthenticated) {

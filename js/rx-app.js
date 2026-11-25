@@ -22,8 +22,8 @@
   /* ---------- boot ---------- */
   async function boot() {
     if (!demo) {
-      const u = await GamBasketAuth.getUser().catch(() => null);
-      if (!u) { location.replace("../login.html?redirect=" + encodeURIComponent(location.href)); return; }
+      const guard = window.GamBasketGuard;
+      if (!guard || !(await guard.gatePage("restaurant"))) return;
       if (!(await F.enabled())) { location.replace("../index.html"); return; }
     }
     S.r = (demo && new URLSearchParams(location.search).has("new")) ? null : await F.mine().catch(() => null);

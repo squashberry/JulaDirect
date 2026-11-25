@@ -14,7 +14,7 @@
     const anchor = document.querySelector(".hm-short"); if (!anchor) return;
     const [list, hot] = await Promise.all([JDFood.restaurants(), JDFood.featured(10)]);
     if (!list.length) return;
-    if (!document.getElementById("fd-css")) { const l = document.createElement("link"); l.id = "fd-css"; l.rel = "stylesheet"; l.href = "css/jd-food.css"; document.head.appendChild(l); await new Promise(r => { l.onload = l.onerror = r; setTimeout(r, 1500); }); }
+    if (!document.querySelector('link[rel="stylesheet"][href*="jd-food.css"]')) return;
     const sec = document.createElement("section"); sec.className = "hm-sec"; sec.id = "hm-food-sec"; sec.setAttribute("aria-labelledby", "hm-food-h");
     sec.innerHTML = `<div class="hm-head"><div><h2 id="hm-food-h">Hungry? Order from local restaurants</h2><p>Fresh meals from kitchens near you.</p></div><a class="jd-link" href="food.html">All restaurants <span class="hm-arrow"></span></a></div><div class="fd-home__rail">${list.slice(0, 8).map(rcard).join("")}</div>` +
       (hot.length ? `<div class="hm-head" style="margin-top:6px"><div><h2 class="hm-mini">Hot right now</h2></div></div><div class="fd-hot">${hot.map((m, i) => `<a class="fd-hotcard" style="--i:${i}" href="restaurant.html?slug=${encodeURIComponent((m.restaurant || {}).slug || "")}#${esc(m.id)}"><span class="fd-plate" style="--h:${hueOf(m.restaurant)}"><span class="fd-disc">${safeUrl(m.image_url) ? `<img src="${esc(safeUrl(m.image_url))}" alt="" loading="lazy">` : `<span class="fd-emoji">${FI("plate", 80)}</span>`}</span></span><b>${esc(m.name)}</b><small>${esc((m.restaurant || {}).name || "")}</small><em>${money(m.price)}</em></a>`).join("")}</div>` : "");

@@ -15,13 +15,14 @@
   const ROLES = {
     delivery_worker: { name: "Courier", icon: "truck", blurb: "Deliver orders around your area and get paid per delivery.", steps: ["role", "you", "courier", "docs", "review"], workspace: "delivery/index.html" },
     marketplace_worker: { name: "Operations worker", icon: "inbox", blurb: "Review listings, applications and reports. Get paid per decision.", steps: ["role", "you", "ops", "docs", "review"], workspace: "worker/index.html" },
-    seller: { name: "Seller", icon: "bag", blurb: "Sell products on JulaDirect with your own store.", steps: ["role", "you", "seller", "docs", "review"], workspace: "supplier/index.html" }
+    seller: { name: "Seller", icon: "bag", blurb: "Sell products on JulaDirect with your own store.", steps: ["role", "you", "seller", "docs", "review"], workspace: "supplier/index.html" },
+    restaurant: { name: "Restaurant", icon: "bag", blurb: "List your restaurant, publish your menu and receive delivery or pickup orders.", steps: ["role", "you", "restaurant", "docs", "review"], workspace: "restaurant/index.html" }
   };
-  const STEP_TITLE = { role: "What would you like to do?", you: "About you", courier: "Your vehicle and areas", ops: "Your availability", seller: "About your selling", docs: "Verify your identity", review: "Check and submit" };
+  const STEP_TITLE = { role: "What would you like to do?", you: "About you", courier: "Your vehicle and areas", ops: "Your availability", seller: "About your selling", restaurant: "About your restaurant", docs: "Verify your identity", review: "Check and submit" };
   const STATUS = { pending: ["info", "In review"], needs_info: ["warn", "We need more from you"], approved: ["good", "Approved"], rejected: ["bad", "Not accepted"], withdrawn: ["", "Withdrawn"], suspended: ["bad", "Suspended"] };
 
   const A = { client: null, user: null, roles: [], apps: [], appsOk: true, step: 0, errors: {}, files: {}, previews: {}, busy: false, done: null };
-  let F = { role: "", name: "", phone: "", location: "", ecName: "", ecPhone: "", vehicle: "", plate: "", areas: [], days: [], shift: "flexible", experience: "", hours: "", languages: [], sellerCategory: "Individual seller", bio: "", phoneOk: false, agree: false };
+  let F = { role: "", name: "", phone: "", location: "", ecName: "", ecPhone: "", vehicle: "", plate: "", areas: [], days: [], shift: "flexible", experience: "", hours: "", languages: [], sellerCategory: "Individual seller", bio: "", restaurantName: "", restaurantCuisines: [], restaurantArea: "", restaurantDescription: "", phoneOk: false, agree: false };
 
   const saveDraft = () => { try { localStorage.setItem(DRAFT_KEY, JSON.stringify(Object.assign({}, F, { agree: false }))); } catch (e) { /* storage blocked */ } };
   const loadDraft = () => { try { const d = JSON.parse(localStorage.getItem(DRAFT_KEY) || "null"); if (d && typeof d === "object") F = Object.assign(F, d); } catch (e) { /* ignore */ } };
@@ -39,7 +40,7 @@
       if (F.name.trim().length < 3) e.name = "Enter your full name.";
       if (!phoneRe.test(F.phone.trim())) e.phone = "Enter a valid phone number.";
       if (!F.location) e.location = "Choose your area.";
-      if (F.role !== "seller") { if (F.ecName.trim().length < 2) e.ecName = "Who should we call in an emergency?"; if (!phoneRe.test(F.ecPhone.trim())) e.ecPhone = "Enter their phone number."; }
+      if (F.role !== "seller" && F.role !== "restaurant") { if (F.ecName.trim().length < 2) e.ecName = "Who should we call in an emergency?"; if (!phoneRe.test(F.ecPhone.trim())) e.ecPhone = "Enter their phone number."; }
     }
     if (name === "courier") {
       if (!F.vehicle) e.vehicle = "Choose your vehicle.";
@@ -49,6 +50,12 @@
     if (name === "ops") {
       const h = Number(F.hours); if (!Number.isFinite(h) || h < 1 || h > 60) e.hours = "Enter between 1 and 60 hours.";
       if (!F.languages.length) e.languages = "Choose at least one language.";
+    }
+    if (name === "restaurant") {
+      if (F.restaurantName.trim().length < 2) e.restaurantName = "Enter your restaurant name.";
+      if (!F.restaurantCuisines.length) e.restaurantCuisines = "Choose at least one cuisine or food type.";
+      if (!F.restaurantArea) e.restaurantArea = "Choose the restaurant's area.";
+      if (F.restaurantDescription.trim().length > 1000) e.restaurantDescription = "Keep the description under 1,000 characters.";
     }
     if (name === "docs") {
       if (!A.files.id) e.id = "Upload your ID document.";
@@ -76,11 +83,12 @@
       field("phoneOk", "Smartphone", '<label class="ap-check"><input type="checkbox" data-f="phoneOk"' + (F.phoneOk ? " checked" : "") + '><span>I have a smartphone with mobile data to use the Courier Workspace.</span></label>');
     if (name === "ops") return '<div class="ap-cols">' + input("hours", "Hours you can work per week", { type: "number", inputmode: "numeric", min: 1, max: 2, placeholder: "e.g. 20" }) + select("shift", "Best time of day", SHIFTS) + "</div>" + chips("languages", "Languages you speak", LANGS.map(l => [l, l])) + chips("days", "Days you can work", DAYS.map(d => [d, d])) + field("experience", "Relevant experience (optional)", '<textarea class="fw-textarea" id="ap-experience" data-f="experience" maxlength="1000" placeholder="Customer support, moderation, admin work, anything relevant.">' + esc(F.experience) + "</textarea>");
     if (name === "seller") return select("sellerCategory", "What kind of seller are you?", [["Individual seller", "Individual seller"], ["Small business", "Small business"], ["Shop / retailer", "Shop or retailer"], ["Manufacturer / producer", "Manufacturer or producer"]]) + field("bio", "What will you sell? (optional)", '<textarea class="fw-textarea" id="ap-bio" data-f="bio" maxlength="1000" placeholder="A short description of your products.">' + esc(F.bio) + "</textarea>");
-    if (name === "docs") return '<div class="fw-note">Your documents are stored privately. Only the operations team reviewing your application can open them, for a few minutes at a time.</div>' + drop("id", "Identity document", "National ID, passport or driving licence. Clear photo or PDF, up to 5 MB.", "image/jpeg,image/png,image/webp,application/pdf") + (F.role !== "seller" ? drop("selfie", "Selfie" + (F.role === "delivery_worker" ? "" : " (optional)"), "A recent photo of your face in good light, up to 5 MB.", "image/jpeg,image/png,image/webp") : "");
+    if (name === "restaurant") return input("restaurantName", "Restaurant name", { max: 80, placeholder: "e.g. Kotu Street Kitchen", hint: "This is the name customers will see." }) + chips("restaurantCuisines", "What food do you serve?", [["Gambian", "Gambian"], ["Grill", "Grill"], ["Rice dishes", "Rice dishes"], ["Seafood", "Seafood"], ["Fast food", "Fast food"], ["Burgers", "Burgers"], ["Pizza", "Pizza"], ["Bakery", "Bakery"], ["Desserts", "Desserts"], ["Drinks", "Drinks"], ["Chinese", "Chinese"], ["Lebanese", "Lebanese"]]) + select("restaurantArea", "Restaurant location / area", AREAS.map(a => [a, a])) + field("restaurantDescription", "Tell us about your restaurant (optional)", '<textarea class="fw-textarea" id="ap-restaurantDescription" data-f="restaurantDescription" maxlength="1000" placeholder="What do you serve, and what makes your kitchen special?">' + esc(F.restaurantDescription) + "</textarea>");
+    if (name === "docs") return '<div class="fw-note">Your documents are stored privately. Only the operations team reviewing your application can open them, for a few minutes at a time.</div>' + drop("id", "Identity document", "National ID, passport or driving licence. Clear photo or PDF, up to 5 MB.", "image/jpeg,image/png,image/webp,application/pdf") + (F.role !== "seller" && F.role !== "restaurant" ? drop("selfie", "Selfie" + (F.role === "delivery_worker" ? "" : " (optional)"), "A recent photo of your face in good light, up to 5 MB.", "image/jpeg,image/png,image/webp") : "") + (F.role === "restaurant" ? drop("business", "Restaurant or business document (optional)", "Food business licence, registration or other supporting document. Up to 5 MB.", "image/jpeg,image/png,image/webp,application/pdf") : "");
     const r = ROLES[F.role];
     return '<div class="ap-summary"><dl class="fw-kv"><dt>Applying as</dt><dd><b>' + esc(r.name) + "</b></dd><dt>Name</dt><dd>" + esc(F.name) + "</dd><dt>Phone</dt><dd>" + esc(F.phone) + "</dd><dt>Area</dt><dd>" + esc(F.location) + "</dd>" +
-      (F.role === "delivery_worker" ? "<dt>Vehicle</dt><dd>" + esc(F.vehicle) + (F.plate ? " · " + esc(F.plate) : "") + "</dd><dt>Delivers in</dt><dd>" + esc(F.areas.join(", ")) + "</dd>" : "") + (F.role === "marketplace_worker" ? "<dt>Hours / week</dt><dd>" + esc(F.hours) + "</dd><dt>Languages</dt><dd>" + esc(F.languages.join(", ")) + "</dd>" : "") +
-      "<dt>Documents</dt><dd>" + esc([A.files.id && A.files.id.name, A.files.selfie && A.files.selfie.name].filter(Boolean).join(", ")) + "</dd></dl>" +
+      (F.role === "restaurant" ? "<dt>Restaurant</dt><dd>" + esc(F.restaurantName) + "</dd><dt>Cuisine</dt><dd>" + esc(F.restaurantCuisines.join(", ")) + "</dd><dt>Restaurant area</dt><dd>" + esc(F.restaurantArea) + "</dd>" : "") + (F.role === "delivery_worker" ? "<dt>Vehicle</dt><dd>" + esc(F.vehicle) + (F.plate ? " · " + esc(F.plate) : "") + "</dd><dt>Delivers in</dt><dd>" + esc(F.areas.join(", ")) + "</dd>" : "") + (F.role === "marketplace_worker" ? "<dt>Hours / week</dt><dd>" + esc(F.hours) + "</dd><dt>Languages</dt><dd>" + esc(F.languages.join(", ")) + "</dd>" : "") +
+      "<dt>Documents</dt><dd>" + esc([A.files.id && A.files.id.name, A.files.selfie && A.files.selfie.name, A.files.business && A.files.business.name].filter(Boolean).join(", ")) + "</dd></dl>" +
       field("agree", "Confirmation", '<label class="ap-check"><input type="checkbox" data-f="agree"' + (F.agree ? " checked" : "") + '><span>I confirm that everything above is true and I agree to JulaDirect checking my documents. I understand that false information means my application will be rejected.</span></label>') + "</div>";
   }
 
@@ -101,17 +109,29 @@
 
   function render() {
     const main = $("#apMain");
-    if (!A.user) { main.innerHTML = hero() + '<section class="fw-card ap-app"><h2>Sign in to apply</h2><p class="fw-muted">You need a JulaDirect account so we can keep your application and documents safe.</p><div class="fw-row" style="flex-wrap:wrap"><a class="fw-btn fw-btn--primary" href="login.html?redirect=' + encodeURIComponent("worker-apply.html") + '">Sign in</a><a class="fw-btn" href="signup.html?redirect=' + encodeURIComponent("worker-apply.html") + '">Create an account</a></div></section>'; return; }
+    if (!A.user) { const next = "worker-apply.html" + (F.role ? "?role=" + encodeURIComponent(F.role) : ""); main.innerHTML = hero() + '<section class="fw-card ap-app"><h2>Sign in to apply</h2><p class="fw-muted">You need a JulaDirect account so we can keep your application and documents safe.</p><div class="fw-row" style="flex-wrap:wrap"><a class="fw-btn fw-btn--primary" href="login.html?redirect=' + encodeURIComponent(next) + '">Sign in</a><a class="fw-btn" href="signup.html?redirect=' + encodeURIComponent(next) + '">Create an account</a></div></section>'; return; }
     if (A.done) { main.innerHTML = '<section class="fw-card ap-done"><div class="fw-avatar" style="width:56px;height:56px">' + FW.icon("check").replace("<svg", '<svg style="width:28px;height:28px;fill:none;stroke:currentColor;stroke-width:2.4"') + '</div><h2>Application sent</h2><p class="fw-muted">Keep this reference. We\'ll update your status below, usually within two working days.</p><div class="ap-ref">' + esc(A.done.reference_code) + '</div><button class="fw-btn fw-btn--primary" type="button" data-act="again">View my applications</button></section>'; return; }
     const hasOpenAll = A.apps.some(a => ["pending", "needs_info"].includes(a.status));
     main.innerHTML = hero() + (A.apps.length ? '<div class="fw-stack"><h2 style="font-size:18px">Your applications</h2>' + A.apps.map(appCard).join("") + "</div>" : "") + (A.appsOk ? "" : '<div class="fw-note fw-note--warn">Application tracking needs a database update to be applied. You can still apply.</div>') +
       '<div class="fw-stack"><h2 style="font-size:18px">' + (A.apps.length ? "Start a new application" : "Apply") + "</h2>" + wizard() + "</div>" + (hasOpenAll ? "" : "");
   }
-  const hero = () => '<div class="ap-hero"><h1>Work with JulaDirect</h1><p>Deliver orders or help run the marketplace. Apply in a few minutes, upload your documents privately and track your application here.</p></div><div class="ap-perks"><div class="ap-perk"><b>Paid per task</b><span>Earnings are tracked in your workspace. Request a payout any time you reach the minimum.</span></div><div class="ap-perk"><b>Work when you want</b><span>Go online or offline whenever it suits you.</span></div><div class="ap-perk"><b>Private and safe</b><span>Your ID is only seen by the review team.</span></div></div>';
+  const hero = () => '<div class="ap-hero"><h1>Work with JulaDirect</h1><p>Become a seller, list your restaurant, deliver orders or help run the marketplace. Apply in a few minutes, upload your documents privately and track your application here.</p></div><div class="ap-perks"><div class="ap-perk"><b>Paid per task</b><span>Earnings are tracked in your workspace. Request a payout any time you reach the minimum.</span></div><div class="ap-perk"><b>Work when you want</b><span>Go online or offline whenever it suits you.</span></div><div class="ap-perk"><b>Private and safe</b><span>Your ID is only seen by the review team.</span></div></div>';
 
   /* ---------- actions ---------- */
   async function loadApps() {
-    try { A.apps = await FW.rpc("my_worker_applications"); A.appsOk = true; } catch (e) { A.apps = []; A.appsOk = !/database update/i.test(FW.errText(e)); if (A.appsOk) console.warn("[apply] tracker:", e); }
+    try {
+      const workerApps = await FW.rpc("my_worker_applications");
+      const { data: requests, error } = await A.client.from("verification_requests")
+        .select("id,role_type,business_name,status,submitted_at,review_notes")
+        .eq("user_id", A.user.id).order("submitted_at", { ascending: false }).limit(30);
+      if (error) throw error;
+      const businessApps = (requests || []).filter(r => ["seller", "restaurant"].includes(r.role_type)).map(r => ({
+        id: r.id, worker_type: r.role_type, reference_code: (r.role_type === "restaurant" ? "REST-" : "SELLER-") + String(r.id).slice(0, 6).toUpperCase(),
+        created_at: r.submitted_at, status: r.status, review_notes: r.review_notes, events: []
+      }));
+      A.apps = [...(workerApps || []), ...businessApps].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      A.appsOk = true;
+    } catch (e) { A.apps = []; A.appsOk = !/database update/i.test(FW.errText(e)); if (A.appsOk) console.warn("[apply] tracker:", e); }
   }
   async function upload(file) {
     const path = A.user.id + "/" + Date.now() + "_" + clean(file.name);
@@ -124,10 +144,17 @@
     try {
       const idPath = await upload(A.files.id); uploaded.push(idPath);
       const selfiePath = A.files.selfie ? await upload(A.files.selfie) : null; if (selfiePath) uploaded.push(selfiePath);
+      const businessPath = A.files.business ? await upload(A.files.business) : null; if (businessPath) uploaded.push(businessPath);
       let ref;
-      if (F.role === "seller") {
-        const { data, error } = await A.client.rpc("submit_verification_request", { p_role_type: "seller", p_business_name: F.name.trim(), p_business_category: F.sellerCategory, p_identity_document_url: idPath, p_business_document_url: null, p_additional_document_url: null, p_notes: F.bio.trim() || ("Contact: " + F.phone + "; area: " + F.location) });
-        if (error) throw error; ref = { reference_code: data && data.id ? "SELLER-" + String(data.id).slice(0, 6).toUpperCase() : "SELLER" };
+      if (F.role === "seller" || F.role === "restaurant") {
+        const restaurant = F.role === "restaurant";
+        const businessName = restaurant ? F.restaurantName.trim() : F.name.trim();
+        const businessCategory = restaurant ? F.restaurantCuisines.join(", ") : F.sellerCategory;
+        const notes = restaurant
+          ? "Owner: " + F.name.trim() + "; contact: " + F.phone + "; restaurant area: " + F.restaurantArea + "; description: " + F.restaurantDescription.trim()
+          : F.bio.trim() || ("Contact: " + F.phone + "; area: " + F.location);
+        const { data, error } = await A.client.rpc("submit_verification_request", { p_role_type: F.role, p_business_name: businessName, p_business_category: businessCategory, p_identity_document_url: idPath, p_business_document_url: businessPath, p_additional_document_url: null, p_notes: notes });
+        if (error) throw error; ref = { reference_code: data && data.id ? (restaurant ? "REST-" : "SELLER-") + String(data.id).slice(0, 6).toUpperCase() : (restaurant ? "REST" : "SELLER") };
       } else {
         ref = await FW.rpc("submit_worker_application", { p_worker_type: F.role, p_full_name: F.name.trim(), p_phone: F.phone.trim(), p_location: F.location, p_areas: F.role === "delivery_worker" ? F.areas : null, p_vehicle_type: F.role === "delivery_worker" ? F.vehicle : null, p_plate: F.plate || null, p_experience: F.experience.trim() || null, p_identity_path: idPath, p_selfie_path: selfiePath, p_emergency_name: F.ecName.trim(), p_emergency_phone: F.ecPhone.trim(), p_availability: { days: F.days, shift: F.shift }, p_languages: F.role === "marketplace_worker" ? F.languages : null, p_weekly_hours: F.role === "marketplace_worker" ? Number(F.hours) : null });
       }
@@ -176,6 +203,8 @@
   /* ---------- boot ---------- */
   (async function () {
     FW.hydrateIcons(document); loadDraft();
+    const requestedRole = new URLSearchParams(location.search).get("role");
+    if (requestedRole && ROLES[requestedRole]) { F.role = requestedRole; A.step = 1; }
     try {
       await window.GamBasketAuth.ready(); A.client = window.GamBasketAuth.getClient(); A.user = await window.GamBasketAuth.getUser();
       FW.state.client = A.client; FW.state.user = A.user;
@@ -183,7 +212,7 @@
         const [prof, roles] = await Promise.all([A.client.from("profiles").select("first_name,last_name,phone").eq("id", A.user.id).maybeSingle(), A.client.from("user_roles").select("role_id").eq("user_id", A.user.id).eq("is_active", true)]);
         A.roles = (roles.data || []).map(r => r.role_id);
         const p = prof.data || {}; if (!F.name) F.name = [p.first_name, p.last_name].filter(Boolean).join(" "); if (!F.phone && p.phone) F.phone = p.phone;
-        if (F.role && A.roles.includes(F.role)) F.role = "";
+        if (F.role && A.roles.includes(F.role)) { F.role = ""; A.step = 0; }
         await loadApps();
       }
     } catch (e) { console.error("[apply] boot:", e); FW.toast(FW.errText(e), "bad"); }
