@@ -99,7 +99,10 @@ Deno.serve(async (req: Request) => {
       || payload.payment_intent_id || await sha256(raw);
     const eventId = (eventType + ":" + String(baseId)).slice(0, 240);
     let result: any;
-    if (eventType.startsWith("charge.") || eventType.startsWith("payment.")) {
+    if ((eventType.startsWith("charge.") || eventType.startsWith("payment.")) && payload?.metadata?.gift_order_id) {
+      // Gift card purchases are verified and issued by their own transactional function.
+      result = await rpc("gift_process_payment", { p_event_id: eventId, p_event_type: eventType, p_payload: payload });
+    } else if (eventType.startsWith("charge.") || eventType.startsWith("payment.")) {
       result = await rpc("gambasket_process_modempay_charge",
         { p_event_id: eventId, p_event_type: eventType, p_payload: payload });
     } else if (eventType.startsWith("transfer.") || eventType.startsWith("payout.")) {
