@@ -5,7 +5,7 @@
      menu with Add to cart, Buy now, Save to wishlist, Compare, Quick view,
      Share, Copy link... Every action presses the product's own button, so
      existing logic (login, stock, toasts, animations) still runs.
-   - Right-click empty space: a 3D orbiting navigation ring around the
+   - Right-click empty space: a flat navigation ring that blooms out of the
      pointer (Home, Explore, Cart, Wishlist, Orders, Account, Sell, Help).
    - Images can't be saved from the page: no native image menu, no drag,
      no long-press save. (Browsers can't make this absolute: screenshots and
@@ -66,24 +66,23 @@
     ".jdc-it.on i{background:#1451e6;color:#fff}.jdc-it[disabled]{opacity:.45;cursor:not-allowed}.jdc-it[disabled]:hover i{background:rgba(20,81,230,.09);color:#1451e6;transform:none}" +
     ".jdc-sep{height:1px;margin:6px 8px;background:rgba(20,81,230,.1)}" +
     "@keyframes jdc-in{from{opacity:0;transform:translateX(-10px) scale(.96)}to{opacity:1;transform:none}}" +
-    /* 3D radial menu */
+    /* flat radial navigation */
     ".jdr{position:fixed;z-index:2147483300;width:0;height:0;font:700 12px/1 var(--jd-font,system-ui,-apple-system,'Segoe UI',Roboto,sans-serif)}" +
-    ".jdr-stage{position:absolute;left:0;top:0;width:0;height:0;perspective:950px;perspective-origin:50% 50%}" +
-    ".jdr-ring{position:absolute;left:0;top:0;width:0;height:0;transform-style:preserve-3d}" +
     ".jdr-orbit,.jdr-halo{position:absolute;border-radius:50%;pointer-events:none}" +
-    ".jdr-halo{background:radial-gradient(closest-side,rgba(47,107,255,.3),rgba(47,107,255,.12) 55%,transparent)}" +
-    ".jdr-orbit{border:2px dashed rgba(20,81,230,.32)}" +
-    ".jdr-it{position:absolute;display:block;width:var(--d);height:var(--d);left:calc(var(--d) / -2);top:calc(var(--d) / -2);color:#fff;text-decoration:none;-webkit-tap-highlight-color:transparent;outline:none;will-change:transform;cursor:pointer}" +
-    ".jdr-disc{position:absolute;left:0;top:0;right:0;bottom:0;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 32% 24%,#9bbcff 0,#2f6bff 40%,#1451e6 74%,#0e3dbd 100%);box-shadow:inset 0 -6px 10px rgba(7,17,43,.36),inset 0 5px 8px rgba(255,255,255,.55),0 14px 22px rgba(14,61,189,.38),0 0 0 3px rgba(255,255,255,.92);transition:transform .38s cubic-bezier(.34,1.56,.64,1),box-shadow .25s}" +
+    ".jdr-halo{background:radial-gradient(closest-side,rgba(47,107,255,.22),rgba(47,107,255,.08) 62%,transparent)}" +
+    ".jdr-orbit{border:2px dashed rgba(20,81,230,.34)}" +
+    ".jdr-it{position:absolute;display:block;width:var(--d);height:var(--d);left:calc(var(--d) / -2);top:calc(var(--d) / -2);color:#fff;text-decoration:none;-webkit-tap-highlight-color:transparent;outline:none;cursor:pointer}" +
+    ".jdr-disc{position:absolute;left:0;top:0;right:0;bottom:0;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 32% 24%,#9bbcff 0,#2f6bff 40%,#1451e6 74%,#0e3dbd 100%);box-shadow:inset 0 -5px 9px rgba(7,17,43,.34),inset 0 4px 7px rgba(255,255,255,.55),0 10px 18px rgba(14,61,189,.34),0 0 0 3px rgba(255,255,255,.95);transition:transform .38s cubic-bezier(.34,1.56,.64,1),box-shadow .25s}" +
     ".jdr-disc svg{width:44%;height:44%;filter:drop-shadow(0 1px 1px rgba(7,17,43,.4))}" +
-    ".jdr-it:hover .jdr-disc,.jdr-it:focus-visible .jdr-disc{transform:scale(1.3) translateY(-5px);box-shadow:inset 0 -6px 10px rgba(7,17,43,.36),inset 0 5px 8px rgba(255,255,255,.6),0 22px 30px rgba(14,61,189,.5),0 0 0 4px #fff,0 0 28px rgba(47,107,255,.65)}" +
-    ".jdr-it.here .jdr-disc{box-shadow:inset 0 -6px 10px rgba(7,17,43,.36),inset 0 5px 8px rgba(255,255,255,.55),0 14px 22px rgba(14,61,189,.38),0 0 0 3px #fff,0 0 0 6px rgba(47,107,255,.55)}" +
-    ".jdr-lab{position:absolute;left:50%;top:calc(100% + 9px);transform:translateX(-50%);white-space:nowrap;padding:5px 10px;border-radius:999px;color:#0a1a3f;background:rgba(255,255,255,.94);box-shadow:0 5px 12px rgba(10,26,63,.2);font-weight:800;letter-spacing:.01em;transition:transform .3s cubic-bezier(.34,1.56,.64,1)}" +
-    ".jdr-it:hover .jdr-lab,.jdr-it:focus-visible .jdr-lab{transform:translateX(-50%) translateY(6px) scale(1.08)}" +
+    ".jdr-it:hover .jdr-disc,.jdr-it:focus-visible .jdr-disc{transform:scale(1.2);box-shadow:inset 0 -5px 9px rgba(7,17,43,.34),inset 0 4px 7px rgba(255,255,255,.6),0 16px 26px rgba(14,61,189,.5),0 0 0 4px #fff,0 0 26px rgba(47,107,255,.65)}" +
+    ".jdr-it.here .jdr-disc{box-shadow:inset 0 -5px 9px rgba(7,17,43,.34),inset 0 4px 7px rgba(255,255,255,.55),0 10px 18px rgba(14,61,189,.34),0 0 0 3px #fff,0 0 0 6px rgba(47,107,255,.55)}" +
+    ".jdr-lab{position:absolute;white-space:nowrap;padding:5px 10px;border-radius:999px;color:#0a1a3f;background:rgba(255,255,255,.96);box-shadow:0 5px 12px rgba(10,26,63,.2);font-weight:800;letter-spacing:.01em;transition:background .2s,color .2s}" +
+    ".jdr-lab.t{left:50%;bottom:calc(100% + 11px);transform:translateX(-50%)}.jdr-lab.b{left:50%;top:calc(100% + 11px);transform:translateX(-50%)}" +
+    ".jdr-lab.l{right:calc(100% + 11px);top:50%;transform:translateY(-50%)}.jdr-lab.r{left:calc(100% + 11px);top:50%;transform:translateY(-50%)}" +
+    ".jdr-it:hover .jdr-lab,.jdr-it:focus-visible .jdr-lab{background:#1451e6;color:#fff}" +
     ".jdr-bdg{position:absolute;right:-3px;top:-3px;min-width:20px;height:20px;padding:0 5px;border-radius:999px;background:#fff;color:#1451e6;font:800 11px/20px system-ui,sans-serif;text-align:center;box-shadow:0 3px 8px rgba(10,26,63,.3)}" +
-    ".jdr-hub{position:absolute;left:-26px;top:-26px;width:52px;height:52px;border-radius:50%;display:grid;place-items:center;color:#1451e6;background:radial-gradient(circle at 35% 28%,#fff,#e4edff);box-shadow:0 10px 22px rgba(10,26,63,.28),0 0 0 3px rgba(47,107,255,.35),inset 0 -4px 7px rgba(20,81,230,.18);cursor:pointer;border:0;padding:0;outline:none}" +
-    ".jdr-hub:focus-visible{box-shadow:0 10px 22px rgba(10,26,63,.28),0 0 0 3px #1451e6}" +
-    ".jdr-cap{position:absolute;left:50%;top:calc(100% + 8px);transform:translateX(-50%);padding:5px 11px;border-radius:999px;background:#0a1a3f;color:#fff;white-space:nowrap;font-weight:800;box-shadow:0 6px 14px rgba(10,26,63,.35)}";
+    ".jdr-hub{position:absolute;left:-19px;top:-19px;width:38px;height:38px;border-radius:50%;display:grid;place-items:center;color:#1451e6;background:radial-gradient(circle at 35% 28%,#fff,#e4edff);box-shadow:0 8px 18px rgba(10,26,63,.26),0 0 0 3px rgba(47,107,255,.4),inset 0 -3px 6px rgba(20,81,230,.18);cursor:pointer;border:0;padding:0;outline:none}" +
+    ".jdr-hub:focus-visible{box-shadow:0 8px 18px rgba(10,26,63,.26),0 0 0 3px #1451e6}";
   var st = D.createElement("style"); st.id = "jd-ctx-css"; st.textContent = CSS; D.head.appendChild(st);
 
   /* ---------- state ---------- */
@@ -103,7 +102,7 @@
     setTimeout(rm, 220);
   }
   function arm(c) {
-    c.onAway = function (e) { if (cur === c && !(e && e.target && c.el.contains && c.el.contains(e.target))) closeAll(); };
+    c.onAway = function (e) { if (e && e.type === "scroll" && Date.now() - lastOpen < 300) return; if (cur === c && !(e && e.target && c.el.contains && c.el.contains(e.target))) closeAll(); };
     c.onKey = function (e) {
       if (e.key === "Escape") { e.preventDefault(); closeAll(); return; }
       var its = [].slice.call(c.el.querySelectorAll(".jdc-it:not([disabled]),.jdr-it")), i = its.indexOf(D.activeElement);
@@ -118,15 +117,15 @@
   }
 
   /* ---------- product menu ---------- */
-  var ITEM = ".jd-pcard,.jd-rrow,.jd-pdp,.pd,.qv";
+  var ITEM = ".jd-pcard,.jd-rrow,.pd,.qv";
   function q1(root, sel) { return root.querySelector(sel); }
   function firstEnabled(root, sel) { var l = root.querySelectorAll(sel); for (var i = 0; i < l.length; i++) if (!l[i].disabled) return l[i]; return null; }
   function press(el) { try { el.click(); } catch (e) {} }
   function toast(m) { if (window.JD && JD.toast) JD.toast(m, "ok"); }
   function absUrl(a) { try { return new URL(a.getAttribute("href"), location.href).href; } catch (e) { return null; } }
   function productInfo(item) {
-    var t = q1(item, ".jd-pcard__title,.jd-rrow__title,.jd-buy h1,.pd-title,.qv-title,[data-qv-title]"), p = q1(item, ".jd-pcard__price,.jd-rrow__price,.jd-buy__price,.pd-price,.qv-price");
-    var a = q1(item, 'a[href*="product.html"]') || q1(item, "[data-qv-details]"), url = a ? absUrl(a) : (item.matches(".pd,.jd-pdp") ? location.href : null);
+    var t = q1(item, ".jd-pcard__title,.jd-rrow__title,.pd-title,.qv-title,[data-qv-title]"), p = q1(item, ".jd-pcard__price,.jd-rrow__price,.pd-price,.qv-price");
+    var a = q1(item, 'a[href*="product.html"]') || q1(item, "[data-qv-details]"), url = a ? absUrl(a) : (item.matches(".pd") ? location.href : null);
     return { title: (t && t.textContent.trim()) || "Product", price: p ? p.textContent.trim().split("\n")[0] : "", url: url, link: a };
   }
   function copy(text) {
@@ -143,9 +142,9 @@
     var c = q1(item, "[data-compare]");
     if (c) { var con = c.getAttribute("aria-pressed") === "true"; A.push({ icon: "scale", label: con ? "Remove from compare" : "Add to compare", on: con, run: function () { press(c); } }); }
     A.push("sep");
-    /* (no quick-view modal exists on this site, so no "Quick view" entry; "Open product page" below covers it) */
+    if (item.matches(".jd-pcard,.jd-rrow") && info.link) A.push({ icon: "eye", label: "Quick view", run: function () { press(info.link); } });
     var lb = q1(item, "[data-lightbox]"); if (lb) A.push({ icon: "expand", label: "View photos full screen", run: function () { press(lb); } });
-    if (info.url && !(item.matches(".pd,.jd-pdp") && info.url === location.href)) A.push({ icon: "ext", label: "Open product page", run: function () { location.href = info.url; } });
+    if (info.url && !(item.matches(".pd") && info.url === location.href)) A.push({ icon: "ext", label: "Open product page", run: function () { location.href = info.url; } });
     if (info.url) A.push({ icon: "ext", label: "Open in new tab", run: function () { window.open(info.url, "_blank", "noopener"); } });
     if (info.url) A.push({ icon: "link", label: "Copy link", run: function () { copy(info.url); } });
     if (info.url && navigator.share) A.push({ icon: "share", label: "Share", run: function () { navigator.share({ title: info.title, url: info.url }).catch(function () {}); } });
@@ -179,7 +178,7 @@
   }
   var e_isKeyboard = false;
 
-  /* ---------- 3D radial navigation ---------- */
+  /* ---------- radial navigation ---------- */
   var NAV = [
     ["Home", "index.html", "home"], ["Explore", "explore.html", "explore"], ["Cart", "cart.html", "cart"], ["Wishlist", "wishlist.html", "heart"],
     ["Orders", "orders.html", "orders"], ["Account", "me.html", "user"], ["Sell", "supplier/index.html", "sell"], ["Help", "help.html", "help"]
@@ -190,48 +189,43 @@
   function openRadial(x, y) {
     closeAll(true);
     var vw = window.innerWidth, vh = window.innerHeight, small = Math.min(vw, vh) < 560;
-    var Rr = small ? 92 : 128, disc = small ? 56 : 68, TH = small ? 40 : 38;
-    var vr = Rr * Math.sin(TH * PI / 180);
-    var cx = cl(x, Rr + disc * 0.8 + 10, Math.max(Rr + disc * 0.8 + 10, vw - Rr - disc * 0.8 - 10)), cy = cl(y, vr + disc + 26, Math.max(vr + disc + 26, vh - vr - disc - 44));
+    var Rr = small ? 82 : 108, disc = small ? 52 : 62, n = NAV.length;
+    var padH = Rr + disc / 2 + (small ? 72 : 84), padV = Rr + disc / 2 + 34;
+    var cx = vw <= padH * 2 ? vw / 2 : cl(x, padH, vw - padH), cy = vh <= padV * 2 ? vh / 2 : cl(y, padV, vh - padV);
     var scrim = D.createElement("div"); scrim.className = "jdc-scrim jdc-scrim--r"; scrim.style.setProperty("--x", cx + "px"); scrim.style.setProperty("--y", cy + "px");
     var el = D.createElement("div"); el.className = "jdr"; el.style.left = cx + "px"; el.style.top = cy + "px"; el.style.setProperty("--d", disc + "px");
     el.setAttribute("role", "menu"); el.setAttribute("aria-label", "Navigation menu");
-    var base = root(), cnt = cartCount(), n = NAV.length, items = "";
-    NAV.forEach(function (m, i) { items += '<a class="jdr-it' + (here(m[1]) ? " here" : "") + '" role="menuitem" href="' + esc(base + m[1]) + '" data-i="' + i + '" aria-label="' + esc(m[0]) + '"><span class="jdr-disc">' + svg(m[2], 26) + (m[2] === "cart" && cnt ? '<b class="jdr-bdg">' + cnt + "</b>" : "") + '</span><span class="jdr-lab">' + esc(m[0]) + "</span></a>"; });
-    el.innerHTML = '<div class="jdr-stage"><div class="jdr-ring"><div class="jdr-halo"></div><div class="jdr-orbit"></div>' + items +
-      '<button type="button" class="jdr-hub" aria-label="Close menu">' + svg("compass", 24) + '<span class="jdr-cap">Go to…</span></button></div></div>';
+    var base = root(), cnt = cartCount(), items = "", th = [];
+    NAV.forEach(function (m, i) {
+      var ang = -PI / 2 + i * 2 * PI / n, c = Math.cos(ang), sn = Math.sin(ang), pos = Math.abs(c) < 0.35 ? (sn < 0 ? "t" : "b") : (c > 0 ? "r" : "l");
+      th.push(ang);
+      items += '<a class="jdr-it' + (here(m[1]) ? " here" : "") + '" role="menuitem" href="' + esc(base + m[1]) + '" data-i="' + i + '" aria-label="' + esc(m[0]) + '"><span class="jdr-disc">' + svg(m[2], 26) + (m[2] === "cart" && cnt ? '<b class="jdr-bdg">' + cnt + "</b>" : "") + '</span><span class="jdr-lab ' + pos + '">' + esc(m[0]) + "</span></a>";
+    });
+    el.innerHTML = '<div class="jdr-halo"></div><div class="jdr-orbit"></div>' + items + '<button type="button" class="jdr-hub" aria-label="Close menu">' + svg("compass", 22) + "</button>";
     R.appendChild(scrim); R.appendChild(el);
-    var ring = el.querySelector(".jdr-ring"), halo = el.querySelector(".jdr-halo"), orbit = el.querySelector(".jdr-orbit"), hub = el.querySelector(".jdr-hub"), cap = el.querySelector(".jdr-cap"), its = [].slice.call(el.querySelectorAll(".jdr-it"));
+    var halo = el.querySelector(".jdr-halo"), orbit = el.querySelector(".jdr-orbit"), hub = el.querySelector(".jdr-hub"), its = [].slice.call(el.querySelectorAll(".jdr-it"));
     var c = { kind: "radial", el: el, scrim: scrim, restore: D.activeElement, raf: 0 }; cur = c; arm(c); lastOpen = Date.now();
-    var px = 0, py = 0, tx = 0, ty = 0, t0 = performance.now();
-    var onMove = function (e) { tx = cl((e.clientX - cx) / (Rr * 1.6), -1, 1); ty = cl((e.clientY - cy) / (Rr * 1.6), -1, 1); };
-    scrim.addEventListener("pointermove", onMove); el.addEventListener("pointermove", onMove);
-    el.addEventListener("pointerover", function (e) { var a = e.target.closest && e.target.closest(".jdr-it"); cap.textContent = a ? a.getAttribute("aria-label") : "Go to…"; });
-    el.addEventListener("pointerleave", function () { cap.textContent = "Go to…"; });
     hub.addEventListener("click", function () { closeAll(); });
     el.addEventListener("click", function (e) { var a = e.target.closest(".jdr-it"); if (!a) return; if (Date.now() - lastOpen < 320) { e.preventDefault(); return; } if (!(e.ctrlKey || e.metaKey || e.shiftKey)) setTimeout(function () { closeAll(true); }, 30); });
     el.addEventListener("contextmenu", function (e) { e.preventDefault(); });
-    function size(tag, w, h, rx) { tag.style.width = w + "px"; tag.style.height = h + "px"; tag.style.left = -w / 2 + "px"; tag.style.top = -h / 2 + "px"; }
-    function frame(now) {
-      if (cur !== c) return;
-      var t = (now - t0) / 1000, p = RM ? 1 : sg(t, 0, 0.95), Rk = Rr * (RM ? 1 : elo(sg(p, 0, 0.75), 0.5));
-      px += (tx - px) * 0.12; py += (ty - py) * 0.12;
-      var sway = p >= 1 && !RM ? Math.sin(t * 1.3) : 0;
-      var spin = RM ? 0 : lp(-300, 0, 1) * (1 - elo(p, 0.7)) + px * 14 + sway * 4;
-      var th = TH + py * 6 + (RM ? 0 : Math.cos(t * 1.1) * 1.2);
-      ring.style.transform = "rotateX(" + (-th) + "deg) rotateY(" + spin + "deg)";
-      size(halo, Rk * 2.5, Rk * 2.5); halo.style.transform = "rotateX(90deg)"; size(orbit, Rk * 2, Rk * 2); orbit.style.transform = "rotateX(90deg)";
-      halo.style.opacity = orbit.style.opacity = String(sg(p, 0.1, 0.5));
-      hub.style.transform = "rotateX(" + th + "deg) scale(" + (RM ? 1 : elo(sg(p, 0, 0.5), 0.5)) + ")";
+    function box(t, w) { t.style.width = t.style.height = w + "px"; t.style.left = t.style.top = -w / 2 + "px"; }
+    /* every item starts as a droplet at the pointer, then spirals out into the circle with a rubber overshoot */
+    function place(p) {
+      var ge = RM ? 1 : elo(sg(p, 0, 0.7), 0.5);
+      box(halo, Rr * 2.6 * Math.max(0, ge), 0); box(orbit, Rr * 2 * Math.max(0, ge), 0);
+      halo.style.opacity = orbit.style.opacity = String(RM ? 1 : sg(p, 0.05, 0.4));
+      hub.style.transform = "scale(" + (RM ? 1 : elo(sg(p, 0, 0.45), 0.5)) + ")";
       for (var i = 0; i < n; i++) {
-        var a = i * 360 / n, phi = (a + spin) * PI / 180, d = (Math.cos(phi) + 1) / 2, sc = (RM ? 1 : elo(sg(p, 0.05 + i * 0.045, 0.05 + i * 0.045 + 0.6), 0.45)) * (0.84 + 0.16 * d);
-        var it = its[i];
-        it.style.transform = "rotateY(" + a + "deg) translateZ(" + Rk + "px) rotateY(" + (-(a + spin)) + "deg) rotateX(" + th + "deg) scale(" + Math.max(0.001, sc) + ")";
-        it.style.opacity = String(Math.min(1, (0.58 + 0.42 * d) * sg(p, 0.05 + i * 0.045, 0.05 + i * 0.045 + 0.18)));
+        var u = RM ? 1 : sg(p, i * 0.035, i * 0.035 + 0.66), e = RM ? 1 : elo(u, 0.46), r = Rr * e, a = th[i] + (RM ? 0 : (1 - eo(u)) * -1.25);
+        var s = RM ? 1 : lp(0.22, 1, e), it = its[i];
+        it.style.transform = "translate(" + (Math.cos(a) * r).toFixed(2) + "px," + (Math.sin(a) * r).toFixed(2) + "px) scale(" + Math.max(0.001, s).toFixed(3) + ")";
+        it.style.opacity = String(RM ? 1 : sg(u, 0, 0.12));
+        it.lastChild.style.opacity = String(RM ? 1 : sg(p, 0.55, 0.85));
       }
-      c.raf = requestAnimationFrame(frame);
     }
-    void el.offsetWidth; scrim.classList.add("on"); c.raf = requestAnimationFrame(frame);
+    var t0 = performance.now();
+    function frame(now) { if (cur !== c) return; var p = sg((now - t0) / 1000, 0, 1.05); place(p); if (p < 1) c.raf = requestAnimationFrame(frame); }
+    place(0); void el.offsetWidth; scrim.classList.add("on"); c.raf = requestAnimationFrame(frame);
     if (e_isKeyboard) { var f = its[0]; f && f.focus({ preventScroll: true }); }
     return true;
   }
