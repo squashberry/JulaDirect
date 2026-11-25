@@ -395,6 +395,7 @@
   /* ---------- shell ---------- */
   function headerHtml() {
     return '<a class="jd-skip" href="#jd-main">Skip to content</a>' +
+      '<div class="jd-announcement" id="jd-announcement" hidden role="region" aria-label="Store announcement"></div>' +
       '<div class="jd-top"><div class="jd-container jd-top__in"><span>' + JD.icon("truck", 15) + 'Delivery available across Greater Banjul</span>' +
       '<nav class="jd-top__links" aria-label="Quick links"><a href="supplier/index.html">Sell on JulaDirect</a><a href="help.html">Help</a><a href="customer-care.html">Customer care</a></nav></div></div>' +
       '<header class="jd-header">' +
@@ -425,6 +426,53 @@
       '<a class="jd-act" href="cart.html" aria-label="Cart">' + JD.icon("cart", 20) + '<span>Cart</span><em class="jd-badge-count" data-cart-count hidden>0</em></a>' +
       '<div class="jd-account" id="jd-account"></div></nav></div>' +
       '<div class="jd-catrail"><div class="jd-container jd-catrail__in" id="jd-catrail" role="navigation" aria-label="Categories"></div></div></header>';
+  }
+
+  function loadAnnouncementStrip() {
+    const bar = document.getElementById("jd-announcement");
+    if (!bar || /\/admin\//.test(location.pathname) || !JD.data || typeof JD.data.activeAnnouncement !== "function") return;
+    JD.data.activeAnnouncement().then(item => {
+      if (!item || !item.message) { bar.hidden = true; return; }
+      const stamp = String(item.updated_at || item.message);
+      try { if (sessionStorage.getItem("jd_announcement_dismissed") === stamp) return; } catch (e) { /* storage optional */ }
+      const hex = value => /^#[0-9a-f]{6}$/i.test(String(value || "")) ? value : "";
+      bar.style.backgroundColor = hex(item.background_color) || "#1451e6";
+      bar.style.color = hex(item.text_color) || "#ffffff";
+      bar.replaceChildren();
+      const inner = document.createElement("div");
+      inner.className = "jd-container jd-announcement__in";
+      const message = document.createElement("span");
+      message.className = "jd-announcement__message";
+      message.textContent = item.message;
+      inner.appendChild(message);
+      if (item.link_label && item.link_url) {
+        const raw = String(item.link_url).trim();
+        let href = "";
+        if (/^https:\/\//i.test(raw)) href = JD.safeUrl(raw);
+        else if (raw.startsWith("/") && !raw.startsWith("//")) href = raw;
+        else if (!/^[a-z][a-z0-9+.-]*:/i.test(raw) && !raw.startsWith("//")) href = JD.root + raw.replace(/^\.\//, "");
+        if (href) {
+          const link = document.createElement("a");
+          link.className = "jd-announcement__link";
+          link.href = href;
+          link.textContent = item.link_label;
+          if (/^https:\/\//i.test(raw)) { link.target = "_blank"; link.rel = "noopener noreferrer"; }
+          inner.appendChild(link);
+        }
+      }
+      const close = document.createElement("button");
+      close.type = "button";
+      close.className = "jd-announcement__close";
+      close.setAttribute("aria-label", "Dismiss announcement");
+      close.textContent = "×";
+      close.addEventListener("click", () => {
+        bar.hidden = true;
+        try { sessionStorage.setItem("jd_announcement_dismissed", stamp); } catch (e) { /* storage optional */ }
+      });
+      inner.appendChild(close);
+      bar.appendChild(inner);
+      bar.hidden = false;
+    }).catch(() => { bar.hidden = true; });
   }
 
   function footerHtml() {
@@ -537,7 +585,7 @@
     if (roles.includes("seller") || isAdmin) work += link("supplier/index.html", "store", "Seller Centre");
     if (roles.includes("delivery_worker") || isAdmin) work += link("delivery/index.html", "truck", "Courier workspace");
     if (roles.includes("marketplace_worker") || isAdmin) work += link("worker/index.html", "shield", "Operations centre");
-    if (isAdmin) work += link("admin/index.html", "settings", "Administration") + link("admin/banners.html", "tag", "Homepage banners") + link("admin/popups.html", "tag", "Popups & promos");
+    if (isAdmin) work += link("admin/index.html", "settings", "Administration") + link("admin/announcement.html", "tag", "Announcement strip") + link("admin/banners.html", "tag", "Homepage banners") + link("admin/popups.html", "tag", "Popups & promos");
     box.innerHTML = '<button class="jd-act" type="button" id="jd-account-btn" aria-haspopup="true" aria-expanded="false" aria-controls="jd-menu"><span class="jd-avatar" aria-hidden="true">' + JD.esc(name.charAt(0).toUpperCase()) + "</span><span>" + JD.esc(name) + "</span></button>" +
       '<div class="jd-menu" id="jd-menu" hidden><div class="jd-menu__label">My JulaDirect</div>' +
       link("me.html", "user", "My account") + link("orders.html", "package", "Orders &amp; tracking") + link("wishlist.html", "heart", "Wishlist") +
@@ -780,6 +828,7 @@
     const f = document.getElementById("jd-footer");
     const b = document.getElementById("jd-bottomnav");
     if (h) h.innerHTML = headerHtml();
+    loadAnnouncementStrip();
     if (f) f.outerHTML = footerHtml();
     if (b) b.outerHTML = floatingNavHtml(o.active || "");
     const q = document.getElementById("jd-q");

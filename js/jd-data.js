@@ -64,6 +64,22 @@
         return b;
       } catch (e) { return null; }
     },
+    /* Slim announcement strip above the shared header (one active row at most). */
+    async activeAnnouncement() {
+      try {
+        const c = await JD.client();
+        if (!c) return null;
+        const { data, error } = await c.from("site_announcement_bars")
+          .select("id,message,link_label,link_url,background_color,text_color,starts_at,ends_at,updated_at")
+          .eq("id", 1).eq("is_active", true).maybeSingle();
+        if (error || !data) return null;
+        const now = Date.now();
+        if (data.starts_at && new Date(data.starts_at).getTime() > now) return null;
+        if (data.ends_at && new Date(data.ends_at).getTime() <= now) return null;
+        return data;
+      } catch (e) { return null; }
+    },
+
     /* Admin preview of any banner by id (row-level security hides it from everyone else). */
     async bannerById(id) {
       if (!JD.isUuid(id)) return null;

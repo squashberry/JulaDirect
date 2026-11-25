@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>Announcement strip — JulaDirect Admin</title>
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#1451e6">
+  <link rel="icon" href="../favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../css/jd.css">
+  <script src="../js/jd-jelly.js" defer></script>
+</head>
+<body class="jd">
+  <div id="jd-header"></div>
+  <main id="jd-main" class="jd-container">
+    <nav class="jd-breadcrumb" aria-label="Breadcrumb"><a href="../index.html">Home</a><span aria-hidden="true">/</span><a href="index.html">Administration</a><span aria-hidden="true">/</span><span aria-current="page">Announcement strip</span></nav>
+    <div class="jd-page-head" style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap">
+      <div><h1 style="font-size:clamp(1.6rem,3vw,2.3rem)">Top announcement strip</h1><p>Publish a slim message above the storefront header for Black Friday, delivery updates, seasonal offers or important notices.</p></div>
+      <span id="jd-announcement-state" class="jd-badge" hidden></span>
+    </div>
+    <div class="jd-callout" style="margin:16px 0"><span>This strip appears across the storefront on desktop and mobile. It is separate from the full-screen homepage banner. Visitors can dismiss it for their current browser session; you can edit, switch off or remove it here.</span></div>
+    <section class="jd-announcement-admin-panel" style="padding:20px;margin-bottom:24px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px"><h2 style="font-size:1.1rem">Live preview</h2><span class="jd-hint">Updates as you type</span></div>
+      <div id="f-preview" class="jd-announcement-admin-preview" style="background:#1451e6;color:#fff"><span id="f-preview-message">Your announcement will appear here</span><a id="f-preview-link" href="#" hidden>Shop now</a><span class="jd-announcement-admin-preview__close" aria-hidden="true">×</span></div>
+    </section>
+    <form id="jd-announcement-form" class="jd-announcement-admin-panel" style="padding:22px" hidden>
+      <div class="jd-form-grid">
+        <div class="jd-field jd-span2"><label class="jd-label" for="f-message">Announcement message</label><input class="jd-input" id="f-message" maxlength="180" required placeholder="Black Friday deals are live — shop your favourites today."><span class="jd-hint">Keep it short. Maximum 180 characters.</span></div>
+        <div class="jd-field"><label class="jd-label" for="f-link-label">Link label (optional)</label><input class="jd-input" id="f-link-label" maxlength="32" placeholder="Shop deals"></div>
+        <div class="jd-field"><label class="jd-label" for="f-link-url">Link URL (optional)</label><input class="jd-input" id="f-link-url" maxlength="500" placeholder="explore.html?sort=newest"><span class="jd-hint">Use a page on JulaDirect or a full https:// URL. Both link fields must be filled together.</span></div>
+        <div class="jd-field"><label class="jd-label" for="f-background">Strip background</label><div class="jd-announcement-color"><input id="f-background" type="color" value="#1451e6"><code id="f-background-value">#1451E6</code></div></div>
+        <div class="jd-field"><label class="jd-label" for="f-text-color">Text colour</label><div class="jd-announcement-color"><input id="f-text-color" type="color" value="#ffffff"><code id="f-text-color-value">#FFFFFF</code></div></div>
+        <div class="jd-field"><label class="jd-label" for="f-starts-at">Show from (optional)</label><input class="jd-input" id="f-starts-at" type="datetime-local"></div>
+        <div class="jd-field"><label class="jd-label" for="f-ends-at">Show until (optional)</label><input class="jd-input" id="f-ends-at" type="datetime-local"></div>
+        <div class="jd-field jd-span2"><label style="display:flex;align-items:center;gap:10px;font-weight:700"><input id="f-active" type="checkbox"> Show this announcement on the storefront</label><span class="jd-hint">Leave this off while preparing a future announcement. Scheduled dates are respected automatically.</span></div>
+      </div>
+      <div id="jd-announcement-status" class="jd-form-note" role="status" style="margin-top:16px"></div>
+      <div class="jd-announcement-admin-actions" style="margin-top:16px">
+        <button type="button" id="jd-announcement-delete" class="jd-btn jd-btn--ghost" hidden>Remove strip</button>
+        <div class="jd-announcement-admin-actions__right"><a class="jd-btn jd-btn--secondary" href="index.html">Back to admin</a><button type="submit" id="jd-announcement-save" class="jd-btn jd-btn--primary">Save announcement</button></div>
+      </div>
+    </form>
+    <div id="jd-announcement-blocked" class="jd-callout" hidden></div>
+  </main>
+  <div id="jd-footer"></div>
+  <div id="jd-bottomnav"></div>
+  <script src="../js/config.js"></script>
+  <script src="../js/supabase.js"></script>
+  <script src="../js/jd-core.js"></script>
+  <script src="../js/jd-data.js"></script>
+  <script src="../js/jd-admin-announcement.js"></script>
+</body>
+</html>
