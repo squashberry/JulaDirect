@@ -88,7 +88,7 @@
     return {
       key: "food",
       label: restaurantQuery ? "Restaurants & Food" : "Food & Restaurants",
-      href: "/food.html"
+      href: "/food"
     };
   }
 
@@ -153,7 +153,7 @@
         if (cats.length) h += '<div class="sx-sec"><h4>Browse categories</h4><div class="sx-chips">' + cats.slice(0, 8).map(c => '<a class="sx-item sx-chip sx-chip--cat" href="explore.html?category=' + encodeURIComponent(c.id) + '">' + esc(c.id) + "</a>").join("") + "</div></div>";
         h += '<div class="sx-sec"><h4>Explore more</h4><div class="sx-chips">' +
           '<a class="sx-item sx-chip" href="/gift-cards.html">Gift Cards</a>' +
-          '<a class="sx-item sx-chip" href="/food.html">Food &amp; Restaurants</a>' +
+          '<a class="sx-item sx-chip" href="/food">Food &amp; Restaurants</a>' +
           "</div></div>";
       } else {
         const lq = q.toLowerCase();

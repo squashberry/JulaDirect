@@ -27,7 +27,7 @@
             type: "special",
             key: "food",
             label: "Food & Restaurants",
-            href: "/food.html",
+            href: "/food",
             keywords: ["food", "foods", "restaurant", "restaurants", "meal", "meals", "takeaway", "takeaways", "takeout", "menu", "menus"]
         }
     ];
@@ -197,4 +197,4 @@
         SEARCH_INPUT_IDS
             .map(id => document.getElementById(id))
             .filter(input => input && input.value && document.activeElement === input)
-            .forEach(
+            .forEach(input => input
