@@ -407,6 +407,12 @@ begin
   select * into s from public.gift_settings where id = 1;
   select * into c from public.gift_cards where id = p_card for update;
   if not found or c.program <> 'restaurant' then return jsonb_build_object('ok',false,'error','NOT_FOUND'); end if;
+  -- re-check idempotency now that we hold the card lock (a concurrent twin may have just committed)
+  select * into r from public.gift_redemptions where restaurant_id = p_restaurant and idem_key = p_idem;
+  if found then
+    if r.card_id <> p_card or r.amount <> p_amount then return jsonb_build_object('ok',false,'error','IDEMPOTENCY_CONFLICT'); end if;
+    return jsonb_build_object('ok',true,'duplicate',true,'redemption_id',r.id,'receipt_no',r.receipt_no,'amount',r.amount,'balance_after',r.balance_after);
+  end if;
   if c.locked_until is not null and c.locked_until > now() then return jsonb_build_object('ok',false,'error','LOCKED','until',c.locked_until); end if;
   if c.status not in ('active','partially_redeemed') then return jsonb_build_object('ok',false,'error','CARD_NOT_USABLE','status',c.status); end if;
   if c.pin_hash is null then return jsonb_build_object('ok',false,'error','PIN_NOT_SET'); end if;
@@ -668,5 +674,13 @@ do $$ begin
     drop policy if exists gift_media_delete on storage.objects;
     create policy gift_media_delete on storage.objects for delete to authenticated using (bucket_id = 'gift-media' and (storage.foldername(name))[1] = auth.uid()::text);
   end if;
+end $$;
+
+-- Only signed-in users may call the client-facing functions (anon is rejected at the door).
+do $$ declare f text; begin
+  foreach f in array array['gift_create_order(text,text,numeric,jsonb,text,text,text,timestamptz,boolean,jsonb)','gift_claim(text)','gift_set_pin(uuid)','gift_lookup(uuid,text)','gift_redeem(uuid,uuid,text,numeric,text,numeric)','gift_request_enrolment(uuid)','gift_set_staff(uuid,text,boolean)','gift_restaurant_summary(uuid)','gift_admin_set_card_status(uuid,text,text)','gift_admin_adjust(uuid,numeric,text)','gift_admin_reverse_redemption(uuid,text)','gift_admin_set_restaurant(uuid,text)','gift_admin_create_settlement(uuid,text)','gift_admin_resolve_settlement(uuid,boolean,text)','gift_admin_set_fulfilment(uuid,text,text)','gift_admin_update_settings(jsonb)','gift_admin_set_template(text,boolean)'] loop
+    execute format('revoke all on function public.%s from public, anon', f);
+    execute format('grant execute on function public.%s to authenticated', f);
+  end loop;
 end $$;
 commit;

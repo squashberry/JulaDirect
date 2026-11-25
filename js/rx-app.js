@@ -27,11 +27,16 @@
       if (!(await F.enabled())) { location.replace("../index.html"); return; }
     }
     S.r = (demo && new URLSearchParams(location.search).has("new")) ? null : await F.mine().catch(() => null);
+    if (!S.r && !demo) {
+      try { const c = await F.client(), { data: ms } = await c.from("gift_restaurant_staff").select("restaurant_id").limit(1);
+        if (ms && ms[0]) { const { data: rr } = await c.from("restaurants").select("*").eq("id", ms[0].restaurant_id).maybeSingle(); if (rr) { S.r = rr; S.staff = true; } } } catch (e) {}
+    }
     if (!S.r) { S.ob = { step: 0, d: { cuisines: [], offers_delivery: true, offers_pickup: true, delivery_fee: 50, min_order: 0, prep_minutes: 25 } }; return onboard(); }
     await enter();
   }
   async function enter() {
     S.ob = null;
+    if (S.staff) { S.menu = []; S.orders = []; S.known = new Set(); shell(); if (location.hash !== "#/gifts") location.hash = "#/gifts"; route(); window.addEventListener("hashchange", route); return; }
     S.menu = await F.menu(S.r.id).catch(() => []);
     S.orders = demo ? demoOrders() : await F.restaurantOrders(S.r.id).catch(() => []);
     S.known = new Set(S.orders.map(o => o.id));
@@ -53,25 +58,26 @@
   const newCount = () => S.orders.filter(o => o.status === "new").length;
 
   /* ---------- shell ---------- */
-  const NAV = [["overview", "home", "Overview"], ["orders", "receipt", "Orders"], ["menu", "utensils", "Menu"], ["profile", "store", "Restaurant"]];
-  const TITLES = { overview: "Overview", orders: "Orders", menu: "Menu", profile: "Restaurant profile" };
+  const NAV = [["overview", "home", "Overview"], ["orders", "receipt", "Orders"], ["menu", "utensils", "Menu"], ["gifts", "wallet", "Gift cards"], ["profile", "store", "Restaurant"]];
+  const TITLES = { overview: "Overview", orders: "Orders", menu: "Menu", gifts: "Gift cards", profile: "Restaurant profile" };
   function shell() {
+    const NAVX = S.staff ? NAV.filter(n => n[0] === "gifts") : NAV;
     const link = (k, ic, t) => `<a href="#/${k}" data-nav="${k}">${FI(ic, 23)}<span>${t}</span><b class="rx-badge" data-b="${k}" hidden></b></a>`;
-    root.innerHTML = `<div class="rx-shell"><aside class="rx-side"><div class="brand"><i>${FI("chef", 22)}</i><div>${esc(S.r.name)}<small>Restaurant Studio</small></div></div>${NAV.map(n => link(...n)).join("")}<div class="sp"></div><a href="../food.html">${FI("bowl", 22)}<span>Customer food app</span></a><a href="../index.html" class="out">${FI("back", 22)}<span>Back to JulaDirect</span></a></aside>
+    root.innerHTML = `<div class="rx-shell"><aside class="rx-side"><div class="brand"><i>${FI("chef", 22)}</i><div>${esc(S.r.name)}<small>Restaurant Studio</small></div></div>${NAVX.map(n => link(...n)).join("")}<div class="sp"></div><a href="../food.html">${FI("bowl", 22)}<span>Customer food app</span></a><a href="../index.html" class="out">${FI("back", 22)}<span>Back to JulaDirect</span></a></aside>
     <div><header class="rx-top"><h1 id="rx-t"></h1><a class="rx-ib" href="../food.html" title="Customer app" aria-label="Customer app">${FI("bowl", 22)}</a></header><main class="rx-main" id="rx-m"></main></div>
-    <nav class="rx-tabs">${NAV.map(n => link(...n)).join("")}</nav></div>`;
+    <nav class="rx-tabs">${NAVX.map(n => link(...n)).join("")}</nav></div>`;
     badge();
   }
   function badge() { const n = newCount(); document.querySelectorAll('[data-b="orders"]').forEach(b => { b.hidden = !n; b.textContent = n; }); document.title = (n ? `(${n}) ` : "") + "Restaurant Studio — JulaDirect"; }
   function route() {
-    const v = (location.hash.match(/#\/(\w+)/) || [])[1]; S.view = TITLES[v] ? v : "overview";
+    const v = (location.hash.match(/#\/(\w+)/) || [])[1]; S.view = S.staff ? "gifts" : TITLES[v] ? v : "overview";
     closeDrawer(true);
     document.querySelectorAll("[data-nav]").forEach(a => a.setAttribute("aria-current", a.dataset.nav === S.view ? "page" : "false"));
     $("#rx-t").textContent = TITLES[S.view]; paint(true); window.scrollTo(0, 0);
   }
   function paint(anim) {
     const m = $("#rx-m"); if (!m) return;
-    m.innerHTML = `<div class="${anim ? "rx-view" : ""}">${({ overview, orders, menu, profile })[S.view]()}</div>`; hydrate(m);
+    m.innerHTML = `<div class="${anim ? "rx-view" : ""}">${({ overview, orders, menu, gifts, profile })[S.view]()}</div>`; hydrate(m);
   }
 
   /* ---------- Overview ---------- */
@@ -272,7 +278,71 @@
       if (!demo) try { await F.saveRestaurant({ id: S.r.id, is_open: v }); } catch (er) { S.r.is_open = !v; paint(); toast("Could not update."); }
     }
   });
-  const _paint = paint; paint = function (a) { _paint(a); if (S.view === "profile") bindProfile(); };
+  const _paint = paint; paint = function (a) { _paint(a); if (S.view === "profile") bindProfile(); if (S.view === "gifts") giftLoad(); };
   document.addEventListener("keydown", e => { if (e.key === "Escape") closeDrawer(); });
+
+  /* ---------- Gift cards (universal Restaurant Gift Card redemption) ---------- */
+  const G = { sum: null, enrol: null, reds: [], credits: [], sets: [], card: null, idem: null, receipt: null, busy: false, err: "" };
+  const gerr = { FORBIDDEN: "You are not allowed to do that for this restaurant.", NOT_FOUND: "We couldn't find a Restaurant Gift Card with that number.", RESTAURANT_NOT_ENROLLED: "This restaurant isn't approved for gift cards yet.", RATE_LIMITED: "Too many attempts. Please wait a few minutes.", BAD_PIN: "That PIN is not correct.", LOCKED: "This card is locked after too many wrong PINs. Try again later.", PIN_NOT_SET: "The card owner hasn't created a PIN yet.", INSUFFICIENT_BALANCE: "The card doesn't have enough balance.", CARD_NOT_USABLE: "This card can't be used right now.", BAD_AMOUNT: "Enter a valid amount.", AMOUNT_EXCEEDS_BILL: "The gift card amount can't be more than the bill.", IDEMPOTENCY_CONFLICT: "Please start the redemption again." };
+  const gifts = () => `<div id="gx"><div class="rx-empty">Loading…</div></div>`;
+  async function giftLoad() {
+    const c = await F.client(); if (!c) return; const el = $("#gx"); if (!el) return;
+    const rid = S.r.id;
+    const [sm, rd, cr, se] = await Promise.all([c.rpc("gift_restaurant_summary", { p_restaurant: rid }), c.from("gift_redemptions").select("id,receipt_no,card_ref,amount,status,created_at").eq("restaurant_id", rid).order("created_at", { ascending: false }).limit(50), c.from("gift_merchant_credits").select("redemption_id,kind,amount,status").eq("restaurant_id", rid), c.from("gift_settlements").select("id,total,status,reference,created_at,paid_at").eq("restaurant_id", rid).order("created_at", { ascending: false }).limit(20)]);
+    if (sm.error || !sm.data || !sm.data.ok) { el.innerHTML = `<div class="rx-card"><h2>Gift cards aren't set up yet</h2><p class="sub">Ask JulaDirect to switch the gift card programme on for the platform.</p></div>`; return; }
+    G.sum = sm.data; G.reds = rd.data || []; G.credits = cr.data || []; G.sets = se.data || []; giftPaint();
+  }
+  const credStatus = id => { const k = G.credits.filter(x => x.redemption_id === id && x.kind === "redemption")[0]; return k ? k.status : "pending"; };
+  function giftPaint() {
+    const el = $("#gx"); if (!el) return; const en = G.sum.enrolment, sm = G.sum;
+    const head = en === "approved" ? "" : `<div class="rx-banner rx-banner--${en === "requested" ? "pending" : en === "suspended" || en === "rejected" ? "suspended" : "pending"}">${FI("wallet", 22)}<div>${en === "requested" ? "Your request to accept Restaurant Gift Cards is awaiting approval." : en === "suspended" ? "Gift card redemptions are suspended for this restaurant." : en === "rejected" ? "Your gift card request was not approved. Contact JulaDirect." : "Accept JulaDirect Restaurant Gift Cards. Customers use one card at any participating restaurant, and you are credited for what they spend with you."}</div>${!en || en === "rejected" ? `<button class="rx-btn rx-btn--sm" data-g-enrol>Request to join</button>` : ""}</div>`;
+    const kp = `<div class="rx-kpis"><div class="rx-kpi rx-kpi--hot"><small>Pending settlement</small><b>${money(sm.pending)}</b></div><div class="rx-kpi"><small>Total redeemed</small><b>${money(sm.redeemed_total)}</b></div><div class="rx-kpi"><small>Settled to you</small><b>${money(sm.settled)}</b></div><div class="rx-kpi"><small>Redemptions</small><b>${sm.redemptions}</b></div></div>`;
+    const redeem = en === "approved" ? `<div class="rx-card"><h2>Redeem a gift card</h2><p class="sub">Enter the card number, or paste the QR link. The customer approves with their 6-digit PIN.</p>${G.receipt ? receiptHtml() : G.card ? redeemForm() : lookupForm()}</div>` : "";
+    const rows = G.reds.length ? `<div class="rx-tblw"><table class="rx-tbl"><thead><tr><th>Date</th><th>Receipt</th><th>Card</th><th>Amount</th><th>Settlement</th></tr></thead><tbody>${G.reds.map(r => `<tr><td>${new Date(r.created_at).toLocaleString()}</td><td>${esc(r.receipt_no)}</td><td>${esc(r.card_ref)}</td><td><b>${money(r.amount)}</b>${r.status === "reversed" ? ' <span class="rx-tag rx-tag--bad">Reversed</span>' : ""}</td><td><span class="rx-tag ${credStatus(r.id) === "settled" ? "rx-tag--ok" : "rx-tag--warn"}">${credStatus(r.id) === "settled" ? "Settled" : credStatus(r.id) === "in_settlement" ? "In settlement" : "Pending"}</span></td></tr>`).join("")}</tbody></table></div>` : empty("wallet", "No gift card redemptions yet.");
+    const sets = G.sets.length ? `<ul class="rx-sl">${G.sets.map(x => `<li><span><b>${money(x.total)}</b><small>${new Date(x.created_at).toLocaleDateString()}${x.reference ? " · " + esc(x.reference) : ""}</small></span><span class="rx-tag ${x.status === "paid" ? "rx-tag--ok" : x.status === "cancelled" ? "" : "rx-tag--warn"}">${x.status === "paid" ? "Paid" : x.status === "cancelled" ? "Cancelled" : "Payment due"}</span></li>`).join("")}</ul>` : `<p class="sub">No settlements yet.</p>`;
+    const staff = G.sum.enrolment && S.r && true ? `<div class="rx-card"><h2>Staff who can redeem</h2><p class="sub">Add a team member by the email of their JulaDirect account.</p><div class="rx-row"><input id="g-st" type="email" placeholder="staff@example.com" style="flex:1;min-width:200px"><button class="rx-btn rx-btn--soft rx-btn--sm" data-g-staff="1">Add</button><button class="rx-btn rx-btn--ghost rx-btn--sm" data-g-staff="0">Remove</button></div></div>` : "";
+    el.innerHTML = `${head}${en === "approved" ? kp : ""}${redeem}<div class="rx-cols"><div class="rx-card"><h2>Redemption history</h2><p class="sub">Only your restaurant's transactions appear here.</p>${rows}</div><div><div class="rx-card"><h2>Settlements</h2>${sets}</div>${staff}</div></div>`;
+    const ref = $("#g-ref"); if (ref) ref.focus && 0;
+  }
+  const lookupForm = () => `<div class="rx-f"><label>Card number or QR link<input id="g-ref" placeholder="JD-R-XXXX-XXXX-XXXX" autocomplete="off" autocapitalize="characters"></label><div class="rx-row"><button class="rx-btn rx-sp" data-g-look>Find card</button>${"BarcodeDetector" in window ? `<button class="rx-btn rx-btn--ghost" data-g-scan>Scan QR</button>` : ""}</div><p class="gf-err rx-gerr" role="alert">${esc(G.err)}</p></div>`;
+  const redeemForm = () => `<div class="rx-banner rx-banner--approved" style="margin-bottom:12px">${FI("check", 22)}<div><b>${esc(G.card.ref)}</b><br>Balance ${money(G.card.balance)}${G.card.recipient_name ? " · for " + esc(G.card.recipient_name) : ""}</div></div>${G.card.usable ? `<form class="rx-f rx-f--2" id="g-form" novalidate><label>Bill total (D) <small>optional</small><input id="g-bill" type="number" inputmode="decimal" min="0" step="1"></label><label>Amount to pay with gift card (D)<input id="g-amt" type="number" inputmode="decimal" min="1" step="1" max="${G.card.balance}" required></label><label class="wide">Customer's 6-digit PIN<input id="g-pin" type="password" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="••••••" style="letter-spacing:.4em;font-size:20px"></label><div class="wide rx-row"><button type="submit" class="rx-btn rx-sp" id="g-go">Review and redeem</button><button type="button" class="rx-btn rx-btn--ghost" data-g-reset>Cancel</button></div><p class="gf-err rx-gerr wide" role="alert">${esc(G.err)}</p></form>` : `<p class="gf-err">${G.card.locked ? "This card is locked for a while after too many wrong PINs." : "This card can't be used (" + esc(G.card.status.replace(/_/g, " ")) + ")."}</p><button class="rx-btn rx-btn--ghost" data-g-reset>Back</button>`}`;
+  const receiptHtml = () => `<div class="rx-banner rx-banner--approved">${FI("check", 22)}<div><b>Redeemed ${money(G.receipt.amount)}</b><br>Receipt ${esc(G.receipt.receipt_no)} · card balance now ${money(G.receipt.balance_after)}${G.receipt.duplicate ? " (already recorded)" : ""}</div></div><p class="sub" style="margin-top:12px">${esc(S.r.name)} will be credited ${money(G.receipt.amount)}. Collect any remaining bill another way.</p><div class="rx-row"><button class="rx-btn" data-g-reset>Next customer</button><button class="rx-btn rx-btn--ghost" data-g-print>Print receipt</button></div>`;
+  function refOf(v) { v = String(v || "").trim(); const m = /[?&]t=([0-9a-f]{48})/i.exec(v); return m ? m[1].toLowerCase() : v; }
+  async function gLookup() {
+    const c = await F.client(), ref = refOf($("#g-ref").value); if (!ref) return;
+    G.err = ""; const { data, error } = await c.rpc("gift_lookup", { p_restaurant: S.r.id, p_ref: ref });
+    if (error || !data || !data.ok) { G.err = gerr[data && data.error] || "We couldn't look that card up."; return giftPaint(); }
+    G.card = data; G.idem = null; giftPaint();
+  }
+  async function gRedeem(e) {
+    e.preventDefault(); if (G.busy) return; const amt = Number($("#g-amt").value), bill = $("#g-bill").value === "" ? null : Number($("#g-bill").value), pin = $("#g-pin").value.trim();
+    const bad = m => { G.err = m; $(".rx-gerr").textContent = m; };
+    if (!(amt > 0) || Math.round(amt * 100) !== amt * 100) return bad("Enter a valid amount."); if (amt > G.card.balance) return bad("That's more than the card balance."); if (bill != null && amt > bill) return bad("The gift card amount can't be more than the bill."); if (!/^\d{6}$/.test(pin)) return bad("Enter the customer's 6-digit PIN.");
+    if (!confirm(`Redeem ${money(amt)} from this gift card?\n${bill != null && bill > amt ? "The customer pays the remaining " + money(bill - amt) + " another way." : ""}`)) return;
+    G.busy = true; const b = $("#g-go"); b.disabled = true; b.textContent = "Redeeming…";
+    G.idem = G.idem || "rdm-" + (crypto.randomUUID ? crypto.randomUUID() : Date.now() + "-" + Math.random().toString(16).slice(2));
+    try {
+      const c = await F.client(), { data, error } = await c.rpc("gift_redeem", { p_restaurant: S.r.id, p_card: G.card.card_id, p_pin: pin, p_amount: amt, p_idem: G.idem, p_bill: bill });
+      if (error || !data) throw new Error("network"); if (!data.ok) { G.busy = false; G.err = gerr[data.error] || "The redemption was not completed. No money was taken from the card."; if (data.error === "LOCKED") G.card.usable = false; giftPaint(); return; }
+      G.receipt = data; G.card = null; G.idem = null; G.busy = false; await giftLoad();
+    } catch (er) { G.busy = false; G.err = "Connection problem. Tap redeem again: it can't be charged twice."; giftPaint(); }
+  }
+  function gScan() {
+    openDrawer(`<span class="rx-grab"></span><h2>Scan QR</h2><video id="g-v" playsinline muted style="width:100%;border-radius:18px;background:#000"></video><form><button type="button" class="rx-btn rx-btn--ghost" data-g-stop style="margin-top:12px">Close</button></form>`, {}, () => {});
+    let stop = false, stream; const done = () => { stop = true; if (stream) stream.getTracks().forEach(t => t.stop()); closeDrawer(); };
+    $("[data-g-stop]", drawerEl).onclick = done;
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } }).then(async s => { stream = s; const v = $("#g-v"); v.srcObject = s; await v.play(); const det = new BarcodeDetector({ formats: ["qr_code"] });
+      const tick = async () => { if (stop) return; try { const r = await det.detect(v); if (r[0]) { $("#g-ref") && ($("#g-ref").value = r[0].rawValue); done(); gLookup(); return; } } catch (e) {} requestAnimationFrame(tick); }; tick(); }).catch(() => { toast("Camera isn't available. Type the card number instead."); done(); });
+  }
+  document.addEventListener("click", async e => {
+    const t = e.target, c = () => F.client();
+    if (t.closest("[data-g-enrol]")) { const { data } = await (await c()).rpc("gift_request_enrolment", { p_restaurant: S.r.id }); toast(data && data.ok ? "Request sent" : "Could not send request"); return giftLoad(); }
+    if (t.closest("[data-g-look]")) return gLookup(); if (t.closest("[data-g-scan]")) return gScan();
+    if (t.closest("[data-g-reset]")) { G.card = null; G.receipt = null; G.err = ""; G.idem = null; return giftPaint(); }
+    if (t.closest("[data-g-print]")) return window.print();
+    const st = t.closest("[data-g-staff]"); if (st) { const em = $("#g-st").value.trim(); if (!em) return; const { data } = await (await c()).rpc("gift_set_staff", { p_restaurant: S.r.id, p_email: em, p_add: st.dataset.gStaff === "1" }); toast(data && data.ok ? (st.dataset.gStaff === "1" ? "Staff member added" : "Staff member removed") : data && data.error === "USER_NOT_FOUND" ? "No JulaDirect account uses that email." : "Only the restaurant owner can change staff."); }
+  });
+  document.addEventListener("submit", e => { if (e.target.id === "g-form") gRedeem(e); });
+  document.addEventListener("keydown", e => { if (e.key === "Enter" && e.target.id === "g-ref") { e.preventDefault(); gLookup(); } });
   boot();
 })();

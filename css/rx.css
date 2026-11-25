@@ -102,3 +102,7 @@
 .rx-ob__nav .rx-btn{white-space:nowrap}.rx-ob__nav .rx-btn--ghost{flex:0 0 auto;padding:0 26px}
 @media (min-width:900px){.rx-kan{grid-template-columns:repeat(2,minmax(0,1fr))}.rx-kan>div,.rx-orders{min-width:0}.rx-orders{grid-template-columns:minmax(0,1fr)}}
 @media (min-width:1300px){.rx-kan{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.rx-tblw{overflow-x:auto}.rx-tbl{width:100%;border-collapse:collapse;font-size:14px}.rx-tbl th{text-align:left;color:var(--rx-mut);font-size:12px;text-transform:uppercase;letter-spacing:.06em;padding:8px 10px;border-bottom:1px solid var(--rx-line)}.rx-tbl td{padding:12px 10px;border-bottom:1px solid var(--rx-line);white-space:nowrap}
+.rx-sl{list-style:none;margin:0;padding:0}.rx-sl li{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--rx-line)}.rx-sl small{display:block;color:var(--rx-mut)}
+.rx-gerr{color:#b42318;font-weight:600;margin:0}
+@media print{.rx-side,.rx-top,.rx-tabs,.rx-btn{display:none!important}}
