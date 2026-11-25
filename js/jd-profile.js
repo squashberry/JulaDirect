@@ -178,7 +178,8 @@
     if (followButton) {
       followButton.setAttribute("aria-pressed", String(!!d.following));
       const followLabel = $("span", followButton);
-      if (followLabel) followLabel.textContent = d.following ? "Following" : "Follow";
+      if (followLabel) followLabel.textContent = d.isAuthenticated === false ? (kind === "supplier" ? "Log in to follow supplier" : "Log in to follow seller") : (d.following ? "Following" : "Follow");
+      followButton.setAttribute("aria-label", d.isAuthenticated === false ? (kind === "supplier" ? "Log in to follow supplier" : "Log in to follow seller") : (d.following ? "Unfollow " : "Follow ") + d.name);
     }
     const hash = location.hash.replace("#", ""); if (hash && panels[hash]) show(hash, true);
     if (window.JD && JD.syncWishlist) JD.syncWishlist(root);
@@ -203,7 +204,16 @@
     const c = e.target.closest("[data-cat]"); if (c) { state.category = c.dataset.cat; $$("[data-cat]").forEach(x => x.setAttribute("aria-pressed", String(x === c))); paintGrid(); return emit("filter", { category: state.category }); }
     const a = e.target.closest("[data-pf]"); if (!a) { if (e.target.id === "pf-scrim") sheet(false); return; }
     const k = a.dataset.pf;
-    if (k === "follow") { state.following = !state.following; a.setAttribute("aria-pressed", String(state.following)); $("span", a).textContent = state.following ? "Following" : "Follow"; emit("follow", { following: state.following }); }
+    if (k === "follow") {
+      if (state.data?.isAuthenticated === false) {
+        location.assign(window.JD?.loginUrl?.() || "login.html?redirect=" + encodeURIComponent(location.href));
+        return;
+      }
+      state.following = !state.following;
+      a.setAttribute("aria-pressed", String(state.following));
+      $("span", a).textContent = state.following ? "Following" : "Follow";
+      emit("follow", { following: state.following });
+    }
     else if (k === "message") emit("message", { profile: state.data });
     else if (k === "quote") sheet(true);
     else if (k === "close") sheet(false);

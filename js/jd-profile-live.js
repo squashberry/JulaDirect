@@ -201,6 +201,7 @@
         showError(kind==="supplier" ? "This account has not published a supplier profile yet." : "This seller profile is not available.");
         return null;
       }
+      data.isAuthenticated = !!session?.user;
       active={kind,data};
       window.JD_PROFILE_LIVE_STATE=active;
       window.JDProfile.mount({kind,data});
@@ -226,6 +227,13 @@
     busy=true;
     const button=$('[data-pf="follow"]');
     try {
+      const auth=window.GamBasketAuth;
+      const user=auth ? await auth.getUser() : null;
+      if(!user) {
+        active.data.isAuthenticated=false;
+        location.assign(window.JD?.loginUrl?.() || "login.html?redirect=" + encodeURIComponent(location.href));
+        return;
+      }
       const c=await client();
       const {data,error}=await c.rpc("set_seller_follow",{p_seller:active.data.sellerId,p_follow:!!e.detail?.following});
       if(error) throw error;
