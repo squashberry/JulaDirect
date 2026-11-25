@@ -1111,9 +1111,9 @@ form.sx-hasvs.vs-on button.sx-cam .sx-vthumb { transform: scale(1.08); }
 /* Mobile compare tray: keep it a readable panel instead of a squeezed capsule. */
 @media (max-width: 720px) {
   .jd-compare-tray {
-    left: 50%;
+    left: max(12px, calc((100vw - 520px) / 2));
     right: auto;
-    transform: translateX(-50%);
+    transform: none;
     width: min(520px, calc(100vw - 24px));
     max-width: none;
     display: grid;
@@ -1154,10 +1154,10 @@ form.sx-hasvs.vs-on button.sx-cam .sx-vthumb { transform: scale(1.08); }
 
 @media (max-width: 600px) {
   .jd-compare-tray {
-    left: 50%;
+    left: max(12px, calc((100vw - 520px) / 2));
     right: auto;
     bottom: calc(var(--jd-fnav-bottom) + 76px + env(safe-area-inset-bottom, 0px));
-    transform: translateX(-50%);
+    transform: none;
     width: min(520px, calc(100vw - 24px));
     max-width: none;
     min-height: 54px;
