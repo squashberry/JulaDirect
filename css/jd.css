@@ -182,7 +182,7 @@ body.jd {
 .jd-catrail__in { display: flex; gap: 8px; align-items: center; overflow-x: auto; padding: 10px 0; scrollbar-width: none; }
 .jd-catrail__in::-webkit-scrollbar { display: none; }
 
-.jd-compare-tray { position: fixed; z-index: 150; left: 50%; transform: translateX(-50%); bottom: calc(var(--jd-fnav-bottom) + 76px); display: flex; align-items: center; gap: 14px; padding: 10px 12px 10px 18px; background: var(--jd-navy-900); color: #fff; border-radius: 999px; box-shadow: var(--jd-shadow-2); font-size: 14px; font-weight: 600; }
+.jd-compare-tray { position: fixed; z-index: 150; left: 50%; transform: translateX(-50%); bottom: calc(var(--jd-fnav-bottom) + 76px); display: flex; align-items: center; justify-content: center; gap: 12px; width: max-content; max-width: calc(100vw - 32px); min-height: 52px; padding: 10px 16px; background: var(--jd-navy-900); color: #fff; border-radius: 16px; box-shadow: var(--jd-shadow-2); font-size: 14px; font-weight: 600; white-space: nowrap; }
 .jd-compare-tray button { border: 0; background: transparent; color: #b9c6e8; font-size: 13px; }
 
 /* ---------- floating expanding tab navigation ---------- */
@@ -1149,4 +1149,11 @@ form.sx-hasvs.vs-on button.sx-cam .sx-vthumb { transform: scale(1.08); }
     white-space: nowrap;
     justify-self: end;
   }
+}
+
+
+@media (max-width: 600px) {
+  .jd-compare-tray { left: 12px; right: 12px; bottom: calc(var(--jd-fnav-bottom) + 76px + env(safe-area-inset-bottom, 0px)); transform: none; width: auto; max-width: none; min-height: 54px; justify-content: space-between; gap: 8px; padding: 10px 14px; border-radius: 16px; }
+  .jd-compare-tray > * { flex: 0 0 auto; }
+  .jd-compare-tray button { min-height: 36px; padding: 6px 8px; white-space: nowrap; }
 }
