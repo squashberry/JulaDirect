@@ -228,6 +228,115 @@
                     color: #fff;
                 }
 
+                /* Full-page offline layer: the live page remains mounted underneath. */
+                .gb-network-fullscreen {
+                    position: fixed;
+                    inset: 0;
+                    z-index: 100010;
+                    display: grid;
+                    place-items: center;
+                    overflow-y: auto;
+                    padding: 24px;
+                    background: rgba(248, 250, 252, .93);
+                    color: #0f172a;
+                    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+                    backdrop-filter: blur(12px);
+                    -webkit-backdrop-filter: blur(12px);
+                    opacity: 0;
+                    pointer-events: none;
+                    transition: opacity .25s ease;
+                }
+
+                .gb-network-fullscreen.show {
+                    opacity: 1;
+                    pointer-events: auto;
+                }
+
+                .gb-network-offline-card {
+                    width: min(100%, 460px);
+                    padding: clamp(24px, 5vw, 38px);
+                    border: 1px solid #e2e8f0;
+                    border-radius: 26px;
+                    background: #fff;
+                    box-shadow: 0 24px 70px rgba(15, 23, 42, .16);
+                    text-align: center;
+                }
+
+                .gb-network-offline-icon {
+                    width: 66px;
+                    height: 66px;
+                    display: grid;
+                    place-items: center;
+                    margin: 0 auto 20px;
+                    border-radius: 22px;
+                    background: #eff6ff;
+                    color: #2563eb;
+                }
+
+                .gb-network-offline-icon svg { width: 32px; height: 32px; }
+                .gb-network-offline-eyebrow {
+                    margin: 0 0 9px;
+                    color: #2563eb;
+                    font-size: 11px;
+                    font-weight: 800;
+                    letter-spacing: .13em;
+                }
+
+                .gb-network-offline-title {
+                    margin: 0 0 10px;
+                    color: #0f172a;
+                    font-size: clamp(25px, 5vw, 34px);
+                    line-height: 1.15;
+                    letter-spacing: -.04em;
+                }
+
+                .gb-network-offline-copy {
+                    margin: 0 auto 24px;
+                    max-width: 360px;
+                    color: #64748b;
+                    font-size: 14px;
+                    line-height: 1.7;
+                }
+
+                .gb-network-fullscreen-button {
+                    width: 100%;
+                    min-height: 50px;
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 9px;
+                    padding: 12px 18px;
+                    border: 0;
+                    border-radius: 13px;
+                    background: #2563eb;
+                    color: #fff;
+                    font: inherit;
+                    font-size: 14px;
+                    font-weight: 750;
+                    cursor: pointer;
+                    transition: background .2s ease, transform .2s ease;
+                }
+
+                .gb-network-fullscreen-button:hover { background: #1d4ed8; transform: translateY(-1px); }
+                .gb-network-fullscreen-button:disabled { cursor: wait; opacity: .78; transform: none; }
+                .gb-network-offline-status {
+                    min-height: 18px;
+                    margin: 16px 0 0;
+                    color: #64748b;
+                    font-size: 12px;
+                    line-height: 1.5;
+                }
+
+                .dark .gb-network-fullscreen { background: rgba(15, 23, 42, .94); color: #f8fafc; }
+                .dark .gb-network-offline-card { background: #111827; border-color: #334155; }
+                .dark .gb-network-offline-title { color: #f8fafc; }
+                .dark .gb-network-offline-copy, .dark .gb-network-offline-status { color: #cbd5e1; }
+                .dark .gb-network-offline-icon { background: rgba(37, 99, 235, .18); color: #93c5fd; }
+
+                @media (prefers-reduced-motion: reduce) {
+                    .gb-network-fullscreen, .gb-network-fullscreen-button { transition: none; }
+                }
+
                 @keyframes gb-spin {
                     to { transform: rotate(360deg); }
                 }
@@ -439,6 +548,7 @@
 
         showSoftOfflineNotice() {
             if (this.softNoticeEl) return;
+            if (this.fullScreenEl || document.getElementById("gb-network-fullscreen")) return;
             if (document.getElementById("gb-network-toast")) return;
 
             const toast = document.createElement("div");
@@ -485,22 +595,68 @@
         }
 
         showOfflineScreen() {
-            if (this.offlinePageRedirecting || /^\/offline(?:\.html)?\/?$/.test(window.location.pathname)) return;
-            this.offlinePageRedirecting = true;
             this.hideSoftOfflineNotice();
-            this.hideOfflineScreen(); // Clean up a leftover overlay from an older cached script.
-            window.location.replace("/offline.html");
+
+            let overlay = this.fullScreenEl || document.getElementById("gb-network-fullscreen");
+            if (overlay && !overlay.isConnected) overlay = null;
+            if (overlay) {
+                if (overlay._gbRemoveTimer) clearTimeout(overlay._gbRemoveTimer);
+                overlay.inert = false;
+                overlay.classList.add("show");
+                this.fullScreenEl = overlay;
+                return;
+            }
+
+            overlay = document.createElement("div");
+            overlay.id = "gb-network-fullscreen";
+            overlay.className = "gb-network-fullscreen";
+            overlay.setAttribute("role", "dialog");
+            overlay.setAttribute("aria-modal", "true");
+            overlay.setAttribute("aria-labelledby", "gb-network-offline-title");
+            overlay.setAttribute("aria-describedby", "gb-network-offline-copy");
+            overlay.innerHTML = `
+                <section class="gb-network-offline-card">
+                    <div class="gb-network-offline-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M3 9a15 15 0 0 1 18 0"></path>
+                            <path d="M6.5 12.5a9.5 9.5 0 0 1 11 0"></path>
+                            <path d="M10 16a4 4 0 0 1 4 0"></path>
+                            <path d="M12 20h.01"></path>
+                            <path d="m3 3 18 18"></path>
+                        </svg>
+                    </div>
+                    <p class="gb-network-offline-eyebrow">CONNECTION INTERRUPTED</p>
+                    <h2 class="gb-network-offline-title" id="gb-network-offline-title">You're offline</h2>
+                    <p class="gb-network-offline-copy" id="gb-network-offline-copy">
+                        JulaDirect can't reach the marketplace right now. Your current page stays open underneath this screen, so your place and anything you've entered are preserved.
+                    </p>
+                    <button type="button" class="gb-network-fullscreen-button" id="gb-fullscreen-retry">
+                        Retry connection
+                    </button>
+                    <p class="gb-network-offline-status" id="gb-fullscreen-status" role="status" aria-live="polite">
+                        This screen will close automatically when your connection returns.
+                    </p>
+                </section>
+            `;
+
+            document.body.appendChild(overlay);
+            this.fullScreenEl = overlay;
+            requestAnimationFrame(() => overlay.classList.add("show"));
+            document.getElementById("gb-fullscreen-retry")?.addEventListener("click", () => this.retry());
+            document.getElementById("gb-fullscreen-retry")?.focus({ preventScroll: true });
         }
 
         hideOfflineScreen() {
             const overlay = this.fullScreenEl || document.getElementById("gb-network-fullscreen");
             if (!overlay) return;
 
+            overlay.inert = true;
             overlay.classList.remove("show");
-            setTimeout(() => {
-                overlay.remove();
-                if (this.fullScreenEl === overlay) {
-                    this.fullScreenEl = null;
+            if (overlay._gbRemoveTimer) clearTimeout(overlay._gbRemoveTimer);
+            overlay._gbRemoveTimer = setTimeout(() => {
+                if (!overlay.classList.contains("show")) {
+                    overlay.remove();
+                    if (this.fullScreenEl === overlay) this.fullScreenEl = null;
                 }
             }, 300);
         }
@@ -510,9 +666,10 @@
             this.clearTimers();
 
             const button = document.getElementById("gb-fullscreen-retry") || document.getElementById("gb-toast-retry");
+            const status = document.getElementById("gb-fullscreen-status");
             const spinner = document.createElement("span");
             spinner.className = "gb-network-spinner";
-            
+
             let originalContent = "";
             if (button) {
                 originalContent = button.innerHTML;
@@ -520,21 +677,25 @@
                 button.innerHTML = "";
                 button.appendChild(spinner);
             }
+            if (status) status.textContent = "Checking your connection...";
 
             const connected = await this.checkConnectivity();
 
             if (connected) {
-                this.handleOnline();
-            } else {
-                if (button) {
-                    button.disabled = false;
-                    button.innerHTML = originalContent;
-                }
-
-                // A manual retry is still only one failed probe; require confirmation again.
-                this.isOfflineState = false;
-                this.handleRequestFailure(new Error("Manual connectivity check failed"), true);
+                // Keep the current document alive: recovery only dismisses the overlay.
+                await this.recover();
+                return;
             }
+
+            if (button) {
+                button.disabled = false;
+                button.innerHTML = originalContent;
+            }
+            if (status) status.textContent = "Still offline. Your current page is safe here; check your connection and retry.";
+
+            // A manual retry is still only one failed probe; require confirmation again.
+            this.isOfflineState = false;
+            this.handleRequestFailure(new Error("Manual connectivity check failed"), true);
         }
 
         isOffline() {
