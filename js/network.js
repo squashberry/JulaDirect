@@ -31,24 +31,24 @@
     const isNetworkError = (error) => {
         if (!error) return false;
         const message = String(error.message || error || "").toLowerCase();
-        
-        // Ignore Edge tracking prevention / storage blocker errors
-        if (message.includes("tracking prevention") || 
-            message.includes("blocked access to storage") || 
-            message.includes("securityerror") ||
-            message.includes("database") ||
-            message.includes("rpc")) {
+        const name = String(error.name || "").toLowerCase();
+
+        if (name === "aborterror" || message.includes("abort") || message.includes("cancelled") || message.includes("canceled")) {
             return false;
         }
-        
-        // Exclude specific HTTP status errors if they are passed as error objects
-        if (error.status && [400, 401, 403, 404, 409, 422, 500].includes(error.status)) {
+
+        // Privacy/storage warnings, CORS failures and application-level errors are not device-offline signals.
+        if (message.includes("tracking prevention") || message.includes("blocked access to storage") ||
+            message.includes("securityerror") || message.includes("database") || message.includes("rpc") ||
+            message.includes("cors") || message.includes("cross-origin") || message.includes("access-control")) {
             return false;
         }
-        
-        if (!navigator.onLine) return true;
-        
-        return /failed to fetch|networkerror|network error|fetch failed|econnrefused|enotfound|timeout|abort/.test(message);
+
+        const status = Number(error.status || error.statusCode || (error.response && error.response.status) || 0);
+        if (status >= 400 && status < 600) return false;
+
+        // navigator.onLine is only a hint; the manager confirms loss with repeated same-origin probes.
+        return /failed to fetch|networkerror|network error|fetch failed|load failed|econnrefused|enotfound|err_internet_disconnected|network is unreachable|timed? out|timeout/.test(message);
     };
 
     class NetworkManager {
@@ -61,9 +61,13 @@
             this.pendingRequests = [];
             this.softNoticeEl = null;
             this.fullScreenEl = null;
-            this.offlineTimeoutDuration = 12000; // 12 seconds
-            this.softNoticeDelay = 2000; // 2 seconds
-            
+            // Require repeated failed probes before showing an offline state.
+            this.offlineTimeoutDuration = 90000; // 90 seconds after connectivity loss is confirmed
+            this.softNoticeDelay = 6000; // 6 seconds after confirmation
+            this.requiredConnectivityFailures = 3;
+            this.failedConnectivityChecks = 0;
+            this.connectivityCheckPromise = null;
+
             this.onOnlineBound = this.handleOnline.bind(this);
             this.onOfflineBound = this.handleOffline.bind(this);
             this.onUnhandledRejectionBound = this.handleUnhandledRejection.bind(this);
@@ -250,21 +254,29 @@
                 try {
                     return await nativeFetch(...args);
                 } catch (error) {
-                    if (isNetworkError(error)) {
-                        log("request failed", error);
-                        
-                        return new Promise((resolve, reject) => {
-                            this.pendingRequests.push({
-                                args,
-                                resolve,
-                                reject,
-                                nativeFetch
-                            });
+                    if (!isNetworkError(error)) throw error;
 
-                            this.handleRequestFailure(error);
-                        });
+                    log("request failed; checking actual connectivity", error);
+
+                    // Do not turn a CORS/API failure into an offline state. Probe this origin first.
+                    const online = await this.checkConnectivity();
+                    if (online) {
+                        if (this.isOfflineState) this.recover();
+                        else this.stopPingMonitoring();
+                        throw error;
                     }
-                    throw error;
+
+                    this.handleRequestFailure(error, true);
+
+                    // Only queue safe reads. Never silently replay payments, orders or other writes.
+                    const request = args[0];
+                    const init = args[1] || {};
+                    const method = String(init.method || (request && request.method) || "GET").toUpperCase();
+                    if (method !== "GET" && method !== "HEAD") throw error;
+
+                    return new Promise((resolve, reject) => {
+                        this.pendingRequests.push({ args, resolve, reject, nativeFetch });
+                    });
                 }
             };
         }
@@ -276,34 +288,47 @@
             }
         }
 
-        handleRequestFailure(error) {
+        handleRequestFailure(error, connectivityAlreadyFailed = false) {
             if (this.isOfflineState) return;
-            
+
+            // A single failed request or browser offline event is only a candidate.
+            if (connectivityAlreadyFailed) {
+                this.failedConnectivityChecks = Math.max(1, this.failedConnectivityChecks);
+            }
+            this.startPingMonitoring(connectivityAlreadyFailed);
+        }
+
+        async handleOnline() {
+            log("browser reported that the connection may be restored");
+            const connected = await this.checkConnectivity();
+            if (connected) {
+                log("connection restored");
+                this.recover();
+            } else {
+                this.handleRequestFailure(new Error("Connection restoration could not be confirmed"), true);
+            }
+        }
+
+        handleOffline() {
+            log("browser reported a possible offline state; verifying it");
+            this.handleRequestFailure(new Error("Browser offline event"));
+        }
+
+        confirmOffline() {
+            if (this.isOfflineState) return;
+
             this.isOfflineState = true;
             this.clearTimers();
+            log("offline state confirmed after repeated connectivity failures");
 
-            // Set timer for Soft Notice (~2s)
             this.softNoticeTimer = setTimeout(() => {
                 this.showSoftOfflineNotice();
             }, this.softNoticeDelay);
 
-            // Set timer for Full Offline Screen (12 seconds)
             this.fullScreenTimer = setTimeout(() => {
-                log("offline timeout reached");
+                log("confirmed offline timeout reached");
                 this.showOfflineScreen();
             }, this.offlineTimeoutDuration);
-
-            this.startPingMonitoring();
-        }
-
-        handleOnline() {
-            log("connection restored");
-            this.recover();
-        }
-
-        handleOffline() {
-            log("device went offline according to event");
-            this.handleRequestFailure(new Error("Device is offline"));
         }
 
         async recover() {
@@ -316,7 +341,7 @@
             const queue = [...this.pendingRequests];
             this.pendingRequests = [];
 
-            log(`retrying ${queue.length} pending request(s)`);
+            log("retrying " + queue.length + " safe read request(s)");
 
             for (const req of queue) {
                 try {
@@ -325,7 +350,7 @@
                 } catch (err) {
                     if (isNetworkError(err)) {
                         this.pendingRequests.push(req);
-                        this.handleRequestFailure(err);
+                        this.handleRequestFailure(err, true);
                     } else {
                         req.reject(err);
                     }
@@ -334,31 +359,63 @@
         }
 
         async checkConnectivity() {
-            if (!navigator.onLine) return false;
-            try {
-                // sw.js is deliberately outside the service worker's cache strategies.
-                const fetcher = this.nativeFetch || window.fetch.bind(window);
-                const response = await fetcher("/sw.js?ping=" + Date.now(), {
-                    method: "GET",
-                    cache: "no-store",
-                    credentials: "same-origin"
-                });
-                return response.ok;
-            } catch {
-                return false;
-            }
+            if (this.connectivityCheckPromise) return this.connectivityCheckPromise;
+
+            this.connectivityCheckPromise = (async () => {
+                let timeout = null;
+                let controller = null;
+                try {
+                    // Use a real, uncached same-origin request. navigator.onLine alone is unreliable.
+                    const fetcher = this.nativeFetch || window.fetch.bind(window);
+                    if (typeof AbortController === "function") {
+                        controller = new AbortController();
+                        timeout = setTimeout(() => controller.abort(), 5000);
+                    }
+                    const response = await fetcher("/sw.js?ping=" + Date.now(), {
+                        method: "GET",
+                        cache: "no-store",
+                        credentials: "same-origin",
+                        ...(controller ? { signal: controller.signal } : {})
+                    });
+                    return response.ok;
+                } catch {
+                    return false;
+                } finally {
+                    if (timeout) clearTimeout(timeout);
+                    this.connectivityCheckPromise = null;
+                }
+            })();
+
+            return this.connectivityCheckPromise;
         }
 
-        startPingMonitoring() {
+        startPingMonitoring(knownFailedProbe = false) {
             if (this.pingInterval) return;
+            if (knownFailedProbe) this.failedConnectivityChecks = Math.max(1, this.failedConnectivityChecks);
 
-            this.pingInterval = setInterval(async () => {
-                log("retrying connection check...");
+            const check = async () => {
+                log("verifying connection...");
                 const online = await this.checkConnectivity();
+
                 if (online) {
-                    this.handleOnline();
+                    this.failedConnectivityChecks = 0;
+                    if (this.isOfflineState || this.pendingRequests.length) {
+                        this.recover();
+                    } else {
+                        this.stopPingMonitoring();
+                    }
+                    return;
                 }
-            }, 3000);
+
+                this.failedConnectivityChecks += 1;
+                log("connectivity probe failed", this.failedConnectivityChecks);
+                if (this.failedConnectivityChecks >= this.requiredConnectivityFailures) {
+                    this.confirmOffline();
+                }
+            };
+
+            this.pingInterval = setInterval(check, 4000);
+            if (!knownFailedProbe) check();
         }
 
         stopPingMonitoring() {
@@ -366,6 +423,7 @@
                 clearInterval(this.pingInterval);
                 this.pingInterval = null;
             }
+            this.failedConnectivityChecks = 0;
         }
 
         clearTimers() {
@@ -464,7 +522,7 @@
             }
 
             const connected = await this.checkConnectivity();
-            
+
             if (connected) {
                 this.handleOnline();
             } else {
@@ -472,15 +530,10 @@
                     button.disabled = false;
                     button.innerHTML = originalContent;
                 }
-                
-                this.softNoticeTimer = setTimeout(() => {
-                    this.showSoftOfflineNotice();
-                }, this.softNoticeDelay);
 
-                this.fullScreenTimer = setTimeout(() => {
-                    log("offline timeout reached after failed manual retry");
-                    this.showOfflineScreen();
-                }, this.offlineTimeoutDuration);
+                // A manual retry is still only one failed probe; require confirmation again.
+                this.isOfflineState = false;
+                this.handleRequestFailure(new Error("Manual connectivity check failed"), true);
             }
         }
 

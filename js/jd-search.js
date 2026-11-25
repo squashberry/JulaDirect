@@ -28,6 +28,43 @@
   let cats = [];
   if (JD.data && JD.data.categoryStats) JD.data.categoryStats().then(s => { cats = (s && s.categories) || []; }).catch(() => {});
 
+  // Food/Restaurants is a gated destination. Unknown or disabled means it stays hidden.
+  let foodEnabled = false;
+  let foodFlagPromise = null;
+  function refreshFoodFlag(force) {
+    if (foodFlagPromise && !force) return foodFlagPromise;
+    foodFlagPromise = (async () => {
+      try {
+        // Wait for parser-loaded shared scripts, including jd-food.js, before checking the flag.
+        if (document.readyState === "loading") {
+          await new Promise(resolve => document.addEventListener("DOMContentLoaded", resolve, { once: true }));
+        }
+        if (window.JDFood && typeof window.JDFood.enabled === "function") {
+          return (await window.JDFood.enabled(true)) === true;
+        }
+        if (window.GamBasketAuth) {
+          await window.GamBasketAuth.ready();
+          const client = window.GamBasketAuth.getClient();
+          if (client && client.rpc) {
+            const result = await client.rpc("food_enabled");
+            return !result.error && result.data === true;
+          }
+        }
+      } catch (e) {}
+      return false;
+    })().then(enabled => {
+      foodEnabled = enabled === true;
+      window.dispatchEvent(new CustomEvent("jd:food-flag-updated", { detail: { enabled: foodEnabled } }));
+      return foodEnabled;
+    }).catch(() => {
+      foodEnabled = false;
+      window.dispatchEvent(new CustomEvent("jd:food-flag-updated", { detail: { enabled: false } }));
+      return false;
+    });
+    return foodFlagPromise;
+  }
+  refreshFoodFlag();
+
   async function lookup(q) {
     const key = q.toLowerCase();
     if (cache.has(key)) return cache.get(key);
@@ -69,6 +106,8 @@
     if (compact.length >= 3 && ["giftcard", "giftcards", "giftvoucher", "giftvouchers"].some(term => term.startsWith(compact) || compact.startsWith(term))) {
       return { key: "gift-cards", label: "Gift Cards", href: "/gift-cards.html" };
     }
+
+    if (!foodEnabled) return null;
 
     const first = words[0] || "";
     const foodTerms = ["restaurant", "restaurants", "food", "foods", "meal", "meals", "takeaway", "takeaways", "takeout", "menu", "menus"];
@@ -153,7 +192,7 @@
         if (cats.length) h += '<div class="sx-sec"><h4>Browse categories</h4><div class="sx-chips">' + cats.slice(0, 8).map(c => '<a class="sx-item sx-chip sx-chip--cat" href="explore.html?category=' + encodeURIComponent(c.id) + '">' + esc(c.id) + "</a>").join("") + "</div></div>";
         h += '<div class="sx-sec"><h4>Explore more</h4><div class="sx-chips">' +
           '<a class="sx-item sx-chip" href="/gift-cards.html">Gift Cards</a>' +
-          '<a class="sx-item sx-chip" href="/food">Food &amp; Restaurants</a>' +
+          (foodEnabled ? '<a class="sx-item sx-chip" href="/food">Food &amp; Restaurants</a>' : "") +
           "</div></div>";
       } else {
         const lq = q.toLowerCase();
@@ -271,6 +310,12 @@
     }
 
     /* events */
+    on(window, "jd:food-flag-updated", () => {
+      if (!open) return;
+      best = quickGuess(val());
+      render();
+      paintGhost();
+    });
     input.addEventListener("focus", () => {
       if (mode === "m") { openIt(); refresh(); }
     });

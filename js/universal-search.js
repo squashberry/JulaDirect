@@ -15,6 +15,40 @@
 
     const normalise = value => String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
 
+    let foodEnabled = false;
+    let foodFlagPromise = null;
+
+    function refreshFoodFlag() {
+        if (foodFlagPromise) return foodFlagPromise;
+        foodFlagPromise = (async () => {
+            try {
+                if (document.readyState === "loading") {
+                    await new Promise(resolve => document.addEventListener("DOMContentLoaded", resolve, { once: true }));
+                }
+                if (window.JDFood && typeof window.JDFood.enabled === "function") {
+                    return (await window.JDFood.enabled(true)) === true;
+                }
+                if (window.GamBasketAuth) {
+                    await window.GamBasketAuth.ready();
+                    const client = window.GamBasketAuth.getClient();
+                    if (client && client.rpc) {
+                        const result = await client.rpc("food_enabled");
+                        return !result.error && result.data === true;
+                    }
+                }
+            } catch (_) {}
+            return false;
+        })().then(enabled => {
+            foodEnabled = enabled === true;
+            window.dispatchEvent(new CustomEvent("jd:food-flag-updated", { detail: { enabled: foodEnabled } }));
+            return foodEnabled;
+        }).catch(() => {
+            foodEnabled = false;
+            return false;
+        });
+        return foodFlagPromise;
+    }
+
     const SPECIAL_DESTINATIONS = [
         {
             type: "special",
@@ -69,7 +103,8 @@
 
     function collectLiveData() {
         const products = collectRenderedProducts();
-        return { products, categories: collectCategories(products), specials: SPECIAL_DESTINATIONS };
+        const specials = foodEnabled ? SPECIAL_DESTINATIONS : SPECIAL_DESTINATIONS.filter(item => item.key !== "food");
+        return { products, categories: collectCategories(products), specials };
     }
 
     function scoreMatch(item, query) {
@@ -188,6 +223,15 @@
             .forEach(setupInput);
     }
 
+    window.addEventListener("jd:food-flag-updated", event => {
+        foodEnabled = !!(event.detail && event.detail.enabled);
+        SEARCH_INPUT_IDS
+            .map(id => document.getElementById(id))
+            .filter(input => input && input.value)
+            .forEach(input => input.dispatchEvent(new Event("input", { bubbles: true })));
+    });
+
+    refreshFoodFlag();
     setupUniversalSearch();
 
     const observer = new MutationObserver(mutations => {
@@ -197,4 +241,7 @@
         SEARCH_INPUT_IDS
             .map(id => document.getElementById(id))
             .filter(input => input && input.value && document.activeElement === input)
-            .forEach(input => input
+            .forEach(input => input.dispatchEvent(new Event("input")));
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+})();
