@@ -1106,3 +1106,47 @@ form.sx-hasvs.vs-on button.sx-cam .sx-vthumb { transform: scale(1.08); }
 @keyframes jdBagFlip{0%,12%{transform:rotate(0) scale(1)}22%{transform:rotate(0) scale(1.1,.88)}40%,60%{transform:rotate(180deg) scale(.95,1.08)}72%{transform:rotate(180deg) scale(1.1,.9)}90%,100%{transform:rotate(360deg) scale(1)}}
 @keyframes jdBagPour{0%,36%{opacity:0;transform:translateY(0)}42%{opacity:1}62%{opacity:1;transform:translateY(16px)}70%,100%{opacity:0;transform:translateY(20px)}}
 @media (prefers-reduced-motion:reduce){.jd-bag__g,.jd-bag__i{animation:none}}
+
+
+/* Mobile compare tray: keep it a readable panel instead of a squeezed capsule. */
+@media (max-width: 720px) {
+  .jd-compare-tray {
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    width: min(520px, calc(100vw - 24px));
+    max-width: none;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 14px;
+    border-radius: 18px;
+    box-sizing: border-box;
+  }
+  .jd-compare-tray > span:first-child {
+    display: block;
+    min-width: 0;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
+  .jd-compare-tray > .jd-muted {
+    display: block;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  .jd-compare-tray > a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 38px;
+    padding-inline: 10px;
+    white-space: nowrap;
+  }
+  .jd-compare-tray > button {
+    min-height: 38px;
+    padding: 0 8px;
+    white-space: nowrap;
+    justify-self: end;
+  }
+}
