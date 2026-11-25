@@ -104,7 +104,7 @@
       (a.status === "approved" ? '<div class="fw-note fw-note--good">You\'re in. ' + (r.workspace ? '<a href="' + esc(r.workspace) + '"><b>Open your workspace →</b></a>' : "") + "</div>" : "") +
       (a.status === "rejected" ? '<div class="fw-note fw-note--bad">' + esc(a.review_notes || "Your application wasn't accepted this time.") + "</div>" : "") +
       '<ol class="fw-tl">' + (a.events || []).map(e => "<li><b>" + esc(FW.label(e.event)) + "</b>" + (e.note ? " — " + esc(e.note) : "") + "<small>" + esc(FW.dayTime(e.created_at)) + "</small></li>").join("") + "</ol>" +
-      (open ? '<div><button class="fw-btn fw-btn--sm" type="button" data-act="withdraw" data-id="' + esc(a.id) + '">Withdraw application</button></div>' : "") + "</article>";
+      (open && a.source !== "verification" ? '<div><button class="fw-btn fw-btn--sm" type="button" data-act="withdraw" data-id="' + esc(a.id) + '">Withdraw application</button></div>' : "") + "</article>";
   }
 
   function render() {
@@ -126,7 +126,7 @@
         .eq("user_id", A.user.id).order("submitted_at", { ascending: false }).limit(30);
       if (error) throw error;
       const businessApps = (requests || []).filter(r => ["seller", "restaurant"].includes(r.role_type)).map(r => ({
-        id: r.id, worker_type: r.role_type, reference_code: (r.role_type === "restaurant" ? "REST-" : "SELLER-") + String(r.id).slice(0, 6).toUpperCase(),
+        id: r.id, source: "verification", worker_type: r.role_type, reference_code: (r.role_type === "restaurant" ? "REST-" : "SELLER-") + String(r.id).slice(0, 6).toUpperCase(),
         created_at: r.submitted_at, status: r.status, review_notes: r.review_notes, events: []
       }));
       A.apps = [...(workerApps || []), ...businessApps].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));

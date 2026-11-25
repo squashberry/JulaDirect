@@ -147,16 +147,20 @@
         },
 
         showUnauthorized(requiredRole) {
-            const role = requiredRole === "restaurant" ? "restaurant" : requiredRole === "seller" ? "seller" : "";
+            const role = ["restaurant", "seller", "delivery_worker", "marketplace_worker"].includes(requiredRole) ? requiredRole : "";
             const nested = /\/(supplier|restaurant|delivery|worker|admin)\//.test(window.location.pathname);
             const base = nested ? "../" : "";
-            const title = role === "restaurant" ? "Bring your restaurant to JulaDirect" : role === "seller" ? "Start selling on JulaDirect" : "Join JulaDirect";
+            const title = role === "restaurant" ? "Bring your restaurant to JulaDirect" : role === "seller" ? "Start selling on JulaDirect" : role === "delivery_worker" ? "Become a JulaDirect courier" : role === "marketplace_worker" ? "Work with JulaDirect operations" : "Join JulaDirect";
             const copy = role === "restaurant"
                 ? "Apply to list your restaurant, publish your menu and receive delivery or pickup orders."
                 : role === "seller"
                     ? "Create your seller account, open your store and start selling to customers across The Gambia."
-                    : "Choose a role and apply to work with JulaDirect.";
-            const cta = role === "restaurant" ? "Apply as a restaurant" : role === "seller" ? "Become a seller · Start selling" : "View opportunities";
+                    : role === "delivery_worker"
+                        ? "Apply to deliver orders around your area and manage deliveries in the Courier Workspace."
+                        : role === "marketplace_worker"
+                            ? "Apply to help review listings, applications and reports in the Operations Workspace."
+                            : "Choose a role and apply to work with JulaDirect.";
+            const cta = role === "restaurant" ? "Apply as a restaurant" : role === "seller" ? "Become a seller · Start selling" : role === "delivery_worker" ? "Apply as a courier" : role === "marketplace_worker" ? "Apply as an operations worker" : "View opportunities";
             const target = base + "worker-apply.html" + (role ? "?role=" + encodeURIComponent(role) : "");
             const existing = document.getElementById("jd-workspace-apply-modal");
             if (existing) existing.remove();
