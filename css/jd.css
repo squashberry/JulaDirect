@@ -1153,7 +1153,22 @@ form.sx-hasvs.vs-on button.sx-cam .sx-vthumb { transform: scale(1.08); }
 
 
 @media (max-width: 600px) {
-  .jd-compare-tray { left: 12px; right: 12px; bottom: calc(var(--jd-fnav-bottom) + 76px + env(safe-area-inset-bottom, 0px)); transform: none; width: auto; max-width: none; min-height: 54px; justify-content: space-between; gap: 8px; padding: 10px 14px; border-radius: 16px; }
-  .jd-compare-tray > * { flex: 0 0 auto; }
-  .jd-compare-tray button { min-height: 36px; padding: 6px 8px; white-space: nowrap; }
+  .jd-compare-tray {
+    left: 50%;
+    right: auto;
+    bottom: calc(var(--jd-fnav-bottom) + 76px + env(safe-area-inset-bottom, 0px));
+    transform: translateX(-50%);
+    width: min(520px, calc(100vw - 24px));
+    max-width: none;
+    min-height: 54px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: center;
+    justify-content: initial;
+    gap: 8px;
+    padding: 11px 14px;
+    border-radius: 18px;
+    box-sizing: border-box;
+  }
+  .jd-compare-tray > button { min-height: 38px; padding: 0 8px; white-space: nowrap; }
 }
