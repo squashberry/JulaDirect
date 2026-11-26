@@ -147,6 +147,22 @@
       : esc(text);
   }
 
+  /* Open the existing image-search panel, carrying a clipboard image through lazy loading. */
+  function launchVisual(form, file) {
+    if (JD.visual && typeof JD.visual.open === "function") {
+      JD.visual.open(form, file || null);
+      return;
+    }
+    JD._vsPending = { form: form, file: file || null };
+    if (!document.querySelector("script[data-jd-visual]")) {
+      const s = document.createElement("script");
+      s.src = SELF_SRC.replace(/jd-search\.js.*$/, "jd-visual.js");
+      s.async = true;
+      s.setAttribute("data-jd-visual", "");
+      document.head.appendChild(s);
+    }
+  }
+
   /* ---------- one search box ---------- */
   function Box(form) {
     const input = form.querySelector("input[name=q]");
@@ -371,19 +387,30 @@
     });
     const clear = form.querySelector(".sx-clear");
     if (clear) clear.addEventListener("click", e => { e.preventDefault(); input.value = ""; input.focus(); input.dispatchEvent(new Event("input", { bubbles: true })); });
+    /* Pasting an image while the search input is focused opens image search directly. */
+    form.addEventListener("paste", e => {
+      const items = e.clipboardData && e.clipboardData.items;
+      if (!items) return;
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (!item || !/^image\//i.test(item.type || "")) continue;
+        const file = item.getAsFile && item.getAsFile();
+        if (!file) continue;
+        e.preventDefault();
+        if (open) closeIt(false);
+        form.dispatchEvent(new CustomEvent("jd:image-search", { bubbles: true, detail: { source: "clipboard" } }));
+        launchVisual(form, file);
+        return;
+      }
+    });
+
     const cam = form.querySelector(".sx-cam");
     if (cam) cam.addEventListener("click", e => {
       e.preventDefault();
       form.dispatchEvent(new CustomEvent("jd:image-search", { bubbles: true }));
       if (open) closeIt(false);
       /* the visual-search panel loads on first use */
-      if (JD.visual) { JD.visual.open(form); return; }
-      JD._vsPending = form;
-      if (!document.querySelector("script[data-jd-visual]")) {
-        const s = document.createElement("script");
-        s.src = SELF_SRC.replace(/jd-search\.js.*$/, "jd-visual.js"); s.async = true; s.setAttribute("data-jd-visual", "");
-        document.head.appendChild(s);
-      }
+      launchVisual(form, null);
     });
     /* the router rewrites the box when a tab opens with ?q= */
     on(window, "jd:pane:show", () => { if (open) closeIt(false); });
