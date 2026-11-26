@@ -81,6 +81,7 @@
     chevronDown: '<path d="m5 9 7 7 7-7"/>',
     filter: '<path d="M4 6h16M7 12h10M10 18h4"/>',
     close: '<path d="M6 6l12 12M18 6 6 18"/>',
+    bolt: '<path d="M13 3 5 14h6l-1 7 8-11h-6z"/>',
     plus: '<path d="M12 5v14M5 12h14"/>',
     minus: '<path d="M5 12h14"/>',
     message: '<path d="M20 12a7.5 7.5 0 0 1-11 6.6L4 20l1.3-4.2A7.5 7.5 0 1 1 20 12Z"/>',
@@ -403,12 +404,13 @@
       '<div class="jd-tbar jd-container"><button type="button" class="jd-tbtn" id="jd-menu-btn" aria-label="Open menu" aria-haspopup="dialog">' + JD.icon("menu", 22) + "</button>" +
       '<a class="jd-tbar__logo" href="index.html" aria-label="JulaDirect home"><span class="jd-logo__word"><b>Jula</b>Direct</span></a>' +
       '<div class="jd-tbar__actions"><button type="button" class="jd-tbtn" id="jd-search-btn" aria-label="Search" aria-haspopup="dialog">' + JD.icon("search", 21) + "</button>" +
+      '<a class="jd-tbtn" href="supplier/index.html" data-sell-menu aria-label="Sell on JulaDirect">' + JD.icon("store", 21) + "</a>" +
       '<a class="jd-tbtn" href="cart.html" aria-label="Cart">' + JD.icon("cart", 21) + '<em class="jd-badge-count" data-cart-count hidden>0</em></a>' +
       '<a class="jd-tbtn" href="me.html" aria-label="Account">' + JD.icon("user", 21) + "</a></div></div>" +
       /* mobile app header */
       '<div class="jd-mhead jd-container"><div class="jd-mhead__row">' +
       '<button class="jd-area" type="button" id="jd-area-btn" aria-haspopup="dialog"><span class="jd-roundbtn">' + JD.icon("pin", 22) + '</span><span class="jd-area__txt"><small>Shop in</small><strong id="jd-area-label">All Gambia</strong></span>' + JD.icon("chevronDown", 18) + "</button>" +
-      '<div class="jd-mhead__actions"><a class="jd-roundbtn" href="cart.html" aria-label="Cart">' + JD.icon("cart", 22) + '<em class="jd-badge-count" data-cart-count hidden>0</em></a>' +
+      '<div class="jd-mhead__actions"><a class="jd-roundbtn jd-roundbtn--sell" href="supplier/index.html" data-sell-menu aria-label="Sell on JulaDirect">' + JD.icon("store", 22) + '</a><a class="jd-roundbtn" href="cart.html" aria-label="Cart">' + JD.icon("cart", 22) + '<em class="jd-badge-count" data-cart-count hidden>0</em></a>' +
       '<a class="jd-roundbtn" href="me.html" aria-label="Account">' + JD.icon("user", 22) + "</a></div></div>" +
       '<div class="jd-msearch-wrap"><span class="jd-msearch-sentinel" aria-hidden="true"></span>' +
       '<form class="jd-msearch" data-sx="m" role="search" action="explore.html" method="get"><span class="jd-msearch__box">' + JD.icon("search", 20) + '<span class="sx-field"><span class="sx-ghost" aria-hidden="true" hidden></span><label class="jd-sr" for="jd-q-m">Search JulaDirect</label><input id="jd-q-m" name="q" type="search" placeholder="Search products, brands and sellers" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" maxlength="100"></span>' +
@@ -420,13 +422,38 @@
       '<form class="jd-search" data-sx="d" role="search" action="explore.html" method="get"><button class="jd-search__btn" type="submit" aria-label="Search">' + JD.icon("search", 20) + "</button>" +
       '<span class="sx-field"><span class="sx-ghost" aria-hidden="true" hidden></span><label class="jd-sr" for="jd-q">Search JulaDirect</label><input id="jd-q" name="q" type="search" placeholder="Search" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" maxlength="100"></span>' +
       '<button type="button" class="sx-cam" data-image-search aria-label="Search by image">' + JD.icon("camera", 20) + '</button><button type="button" class="sx-clear" aria-label="Clear search">' + JD.icon("close", 16) + '</button><div class="sx-panel" role="listbox" hidden></div></form>' +
-      '<nav class="jd-actions" aria-label="Orders, wishlist, cart and account">' +
+      '<nav class="jd-actions" aria-label="Sell, orders, wishlist, cart and account">' +
+      '<a class="jd-sellbtn" href="supplier/index.html" data-sell-menu>' + JD.icon("store", 19) + "<span>Sell on JulaDirect</span></a>" +
       '<a class="jd-act jd-act--orders" href="orders.html">' + JD.icon("package", 20) + "<span>Orders</span></a>" +
       '<a class="jd-act jd-act--wish" href="wishlist.html">' + JD.icon("heart", 20) + "<span>Wishlist</span></a>" +
       '<a class="jd-act" href="cart.html" aria-label="Cart">' + JD.icon("cart", 20) + '<span>Cart</span><em class="jd-badge-count" data-cart-count hidden>0</em></a>' +
       '<div class="jd-account" id="jd-account"></div></nav></div>' +
       '<div class="jd-catrail"><div class="jd-container jd-catrail__in" id="jd-catrail" role="navigation" aria-label="Categories"></div></div></header>';
   }
+
+  /* ---- "Sell on JulaDirect" chooser: Quick sell or Seller dashboard / Become a seller ---- */
+  function openSellMenu(trigger) {
+    const old = document.getElementById("jd-sell-pop"); if (old) old.remove();
+    const pop = document.createElement("div"); pop.id = "jd-sell-pop"; pop.className = "jd-sellpop";
+    pop.innerHTML = '<div class="jd-sellpop__bd" data-close></div><div class="jd-sellpop__card" role="dialog" aria-modal="true" aria-labelledby="jd-sellpop-h"><button type="button" class="jd-sellpop__x" data-close aria-label="Close">' + JD.icon("close", 18) + '</button><span class="jd-sellpop__eyebrow">Sell on JulaDirect</span><h2 id="jd-sellpop-h">How would you like to sell?</h2><div class="jd-sellpop__opts" id="jd-sellpop-o"><div class="jd-sellpop__sk"></div><div class="jd-sellpop__sk"></div></div></div>';
+    document.body.appendChild(pop); document.documentElement.classList.add("jd-lock");
+    const close = () => { pop.classList.add("out"); document.documentElement.classList.remove("jd-lock"); document.removeEventListener("keydown", esc); setTimeout(() => pop.remove(), 220); if (trigger && trigger.focus) trigger.focus(); };
+    const esc = e => { if (e.key === "Escape") close(); };
+    document.addEventListener("keydown", esc); pop.addEventListener("click", e => { if (e.target.closest("[data-close]")) close(); });
+    requestAnimationFrame(() => pop.classList.add("in"));
+    const paint = isSeller => {
+      const o = document.getElementById("jd-sell-pop") && document.getElementById("jd-sellpop-o"); if (!o) return;
+      o.innerHTML =
+        '<a class="jd-sellopt" href="quick-sell.html"><span class="jd-sellopt__i jd-sellopt__i--q">' + JD.icon("bolt", 24) + '</span><span class="jd-sellopt__t"><b>Quick sell</b><small>Sell one item in a minute. No store or business account needed.</small></span><span class="jd-sellopt__go">' + JD.icon("chevronRight", 18) + '</span></a>' +
+        (isSeller
+          ? '<a class="jd-sellopt" href="supplier/index.html"><span class="jd-sellopt__i jd-sellopt__i--s">' + JD.icon("store", 24) + '</span><span class="jd-sellopt__t"><b>Seller dashboard</b><small>Manage your products, orders, customers and earnings.</small></span><span class="jd-sellopt__go">' + JD.icon("chevronRight", 18) + '</span></a>'
+          : '<a class="jd-sellopt" href="worker-apply.html?role=seller"><span class="jd-sellopt__i jd-sellopt__i--s">' + JD.icon("store", 24) + '</span><span class="jd-sellopt__t"><b>Become a Seller on JulaDirect</b><small>Open your own store, list unlimited products and grow your business.</small></span><span class="jd-sellopt__go">' + JD.icon("chevronRight", 18) + '</span></a>');
+      const f = o.querySelector("a"); if (f) f.focus({ preventScroll: true });
+    };
+    let done = false; const A = JD.auth();
+    Promise.race([ (async () => { try { const r = (A && await A.getUserRoles()) || []; return r.includes("seller") || r.includes("admin"); } catch (e) { return false; } })(), new Promise(r => setTimeout(() => r(false), 2500)) ]).then(v => { if (!done) { done = true; paint(v); } });
+  }
+  document.addEventListener("click", e => { const t = e.target.closest && e.target.closest("[data-sell-menu]"); if (!t || e.metaKey || e.ctrlKey || e.shiftKey || e.button) return; e.preventDefault(); openSellMenu(t); });
 
   function loadAnnouncementStrip() {
     const bar = document.getElementById("jd-announcement");

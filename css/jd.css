@@ -1199,3 +1199,27 @@ body.jd-takeover-on .jd-announcement { display: none !important; }
 .jd-announcement-color code { padding: 7px 9px; border: 1px solid var(--jd-line-2); border-radius: 8px; background: var(--jd-soft); }
 .jd-announcement-admin-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .jd-announcement-admin-actions__right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+/* Sell on JulaDirect entry in the header */
+.jd-sellbtn{display:inline-flex;align-items:center;gap:8px;height:42px;padding:0 16px;margin-right:6px;border-radius:999px;background:var(--jd-blue-600,#1451e6);color:#fff;font-weight:700;font-size:14px;white-space:nowrap;text-decoration:none;box-shadow:0 6px 14px rgba(20,81,230,.25);transition:transform .25s cubic-bezier(.34,1.56,.5,1),box-shadow .2s}
+.jd-sellbtn:hover{transform:translateY(-1px);color:#fff;box-shadow:0 10px 20px rgba(20,81,230,.32)}.jd-sellbtn:active{transform:scale(.96)}
+.jd-sellbtn .jd-i{flex:none}
+@media(max-width:1180px){.jd-sellbtn span{display:none}.jd-sellbtn{width:42px;padding:0;justify-content:center}}
+.jd-roundbtn--sell{color:var(--jd-blue-600,#1451e6)}
+.jd-sellbtn,.jd-sellbtn:hover,.jd-sellbtn span{color:#fff!important}
+html.jd-lock{overflow:hidden}
+.jd-sellpop{position:fixed;inset:0;z-index:2147482000;display:grid;place-items:center;padding:16px}
+.jd-sellpop__bd{position:absolute;inset:0;background:rgba(10,18,36,.55);backdrop-filter:blur(6px);opacity:0;transition:opacity .25s}
+.jd-sellpop__card{position:relative;width:min(100%,460px);background:#fff;border-radius:28px;padding:28px 22px 22px;box-shadow:0 30px 90px rgba(5,15,50,.35);transform:translateY(24px) scale(.96);opacity:0;transition:transform .45s cubic-bezier(.34,1.4,.5,1),opacity .25s}
+.jd-sellpop.in .jd-sellpop__bd{opacity:1}.jd-sellpop.in .jd-sellpop__card{transform:none;opacity:1}.jd-sellpop.out .jd-sellpop__bd{opacity:0}.jd-sellpop.out .jd-sellpop__card{transform:translateY(20px) scale(.97);opacity:0}
+.jd-sellpop__x{position:absolute;top:14px;right:14px;width:36px;height:36px;border-radius:50%;border:0;background:#f1f4fb;cursor:pointer;display:grid;place-items:center;color:#475467}
+.jd-sellpop__eyebrow{font-size:12px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:#1451e6}
+.jd-sellpop h2{margin:6px 40px 16px 0;font-size:24px;letter-spacing:-.03em;line-height:1.15}
+.jd-sellpop__opts{display:grid;gap:12px}
+.jd-sellopt{display:flex;align-items:center;gap:14px;padding:16px;border:1.5px solid #e4e9f4;border-radius:20px;text-decoration:none;color:#101828;background:#fff;transition:transform .35s cubic-bezier(.34,1.56,.5,1),border-color .2s,box-shadow .2s;animation:jdSellIn .5s cubic-bezier(.2,.9,.3,1) backwards}.jd-sellopt:nth-child(2){animation-delay:.07s}
+@keyframes jdSellIn{from{opacity:0;transform:translateY(14px)}}
+.jd-sellopt:hover,.jd-sellopt:focus-visible{transform:translateY(-3px);border-color:#1451e6;box-shadow:0 14px 28px -14px rgba(20,81,230,.45);outline:none}
+.jd-sellopt__i{flex:none;width:52px;height:52px;border-radius:16px;display:grid;place-items:center;color:#fff}.jd-sellopt__i--q{background:linear-gradient(135deg,#ffb020,#f0701f)}.jd-sellopt__i--s{background:linear-gradient(135deg,#2f6bff,#0a2a8a)}
+.jd-sellopt__t{display:grid;gap:3px;min-width:0;flex:1}.jd-sellopt__t b{font-size:16.5px}.jd-sellopt__t small{color:#667085;font-size:13.5px;line-height:1.4}
+.jd-sellopt__go{flex:none;width:34px;height:34px;border-radius:11px;background:#e8f0ff;color:#1451e6;display:grid;place-items:center;transition:transform .3s}.jd-sellopt:hover .jd-sellopt__go{transform:translateX(3px)}
+.jd-sellpop__sk{height:84px;border-radius:20px;background:linear-gradient(100deg,#eef1f8 30%,#f8faff 50%,#eef1f8 70%);background-size:200% 100%;animation:jdSk 1.2s linear infinite}@keyframes jdSk{to{background-position:-200% 0}}
+@media(max-width:560px){.jd-sellpop{place-items:end center;padding:0}.jd-sellpop__card{width:100%;border-radius:28px 28px 0 0;padding-bottom:max(22px,env(safe-area-inset-bottom));transform:translateY(100%)}}
