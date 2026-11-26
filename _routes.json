@@ -10,6 +10,8 @@
     "/sitemap.xml",
     "/robots.txt",
     "/api/visual-search",
+    "/admin",
+    "/admin/",
     "/admin/index.html"
   ],
   "exclude": []
