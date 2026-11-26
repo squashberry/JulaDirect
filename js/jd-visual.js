@@ -347,6 +347,7 @@
       document.dispatchEvent(new CustomEvent("jd:visual-search", { detail: detail }));
       setTimeout(function () {
         if (!S) return;
+        if (detail.handled && detail.pending) return;
         stage.classList.remove("is-scanning"); S.root.classList.remove("is-busy");
         S.root.querySelector('[data-vs="go"] span').textContent = "Search with this photo";
         if (detail.handled) { close(); return; }
@@ -397,6 +398,70 @@
       window.removeEventListener("resize", schedule); window.removeEventListener("scroll", schedule, true); window.removeEventListener("jd:pane:show", onShow);
     };
   }
+
+  /* ---------- live multimodal matcher ---------- */
+  function visualStatus(message) {
+    if (!S) return;
+    var stage = S.root.querySelector(".vs__stage"), button = S.root.querySelector('[data-vs="go"]');
+    if (stage) stage.classList.remove("is-scanning");
+    S.root.classList.remove("is-busy");
+    if (button) {
+      button.disabled = false;
+      var label = button.querySelector("span");
+      if (label) label.textContent = "Search with this photo";
+    }
+    var note = S.root.querySelector(".vs__note");
+    if (!note) return;
+    note.hidden = false;
+    note.textContent = message;
+  }
+
+  document.addEventListener("jd:visual-search", function (event) {
+    var detail = event.detail;
+    if (!detail || !detail.blob || detail.handled) return;
+
+    /* Claim the event synchronously so the crop panel does not fall back to text-only search. */
+    detail.handled = true;
+    detail.pending = true;
+    visualStatus("Finding visually similar products in the JulaDirect marketplace…");
+
+    (async function () {
+      try {
+        var body = new FormData();
+        body.append("image", detail.blob, "juladirect-visual-search.jpg");
+        if (detail.hint) body.append("hint", String(detail.hint).slice(0, 180));
+
+        var res = await fetch("/api/visual-search", {
+          method: "POST",
+          headers: { Accept: "application/json" },
+          body: body
+        });
+        var payload = await res.json().catch(function () { return {}; });
+        if (!res.ok) throw new Error(payload.error || "Image search could not be completed.");
+
+        var matches = Array.isArray(payload.matches) ? payload.matches : [];
+        var ids = matches.map(function (match) { return match && match.id; })
+          .filter(function (id) { return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(id || "")); })
+          .slice(0, 30);
+
+        if (!ids.length) {
+          detail.pending = false;
+          visualStatus("We couldn't find close matches for this photo yet. Try a clearer photo or add a product clue.");
+          return;
+        }
+
+        try { sessionStorage.setItem("jd-visual-results", JSON.stringify(ids)); } catch (e) { /* IDs are also carried in the URL. */ }
+        detail.pending = false;
+        close();
+        var url = "explore.html?vs=1&vsi=" + encodeURIComponent(ids.join(","));
+        if (JD.router && JD.router.navigate) JD.router.navigate(url);
+        else location.href = url;
+      } catch (error) {
+        detail.pending = false;
+        visualStatus(error && error.message ? error.message : "Image search failed. Please try again.");
+      }
+    })();
+  });
 
   JD.visual = { open: open, close: close, toggle: open, isOpen: function () { return !!S; } };
   if (JD._vsPending) { var f = JD._vsPending; JD._vsPending = null; open(f); }

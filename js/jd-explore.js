@@ -17,7 +17,7 @@
   const num = v => { if (v === "" || v === null || v === undefined) return ""; const n = Number(v); return Number.isFinite(n) && n >= 0 ? String(n) : ""; };
   function readState() {
     const p = JD.params(), sort = p.get("sort") === "best-selling" ? "popular" : p.get("sort");
-    return { q: (p.get("q") || "").slice(0, 100), category: (p.get("category") || "All").slice(0, 50), location: LOCATIONS.includes(p.get("location")) ? p.get("location") : "all", min: num(p.get("min")), max: num(p.get("max")), condition: CONDITIONS.some(c => c[0] === p.get("condition")) ? p.get("condition") : "", stock: p.get("stock") === "1", delivery: p.get("delivery") === "1", sort: SORTS.includes(sort) ? sort : "newest", brandModel: (p.get("brandModel") || "").slice(0, 80), seller: JD.isUuid(p.get("seller")) ? p.get("seller") : "", page: Math.max(1, parseInt(p.get("page"), 10) || 1) };
+    return { q: (p.get("q") || "").slice(0, 100), category: (p.get("category") || "All").slice(0, 50), location: LOCATIONS.includes(p.get("location")) ? p.get("location") : "all", min: num(p.get("min")), max: num(p.get("max")), condition: CONDITIONS.some(c => c[0] === p.get("condition")) ? p.get("condition") : "", stock: p.get("stock") === "1", delivery: p.get("delivery") === "1", sort: SORTS.includes(sort) ? sort : "newest", brandModel: (p.get("brandModel") || "").slice(0, 80), seller: JD.isUuid(p.get("seller")) ? p.get("seller") : "", visual: p.get("vs") === "1", visualIds: (p.get("vsi") || "").split(",").filter(JD.isUuid).slice(0, 30), page: Math.max(1, parseInt(p.get("page"), 10) || 1) };
   }
   function toQuery(st) {
     const p = new URLSearchParams();
@@ -32,6 +32,11 @@
     if (st.sort !== "newest") p.set("sort", st.sort);
     if (st.brandModel) p.set("brandModel", st.brandModel);
     if (st.seller) p.set("seller", st.seller);
+    if (st.visual) {
+      p.set("vs", "1");
+      const ids = (st.visualIds || []).filter(JD.isUuid).slice(0, 30);
+      if (ids.length) p.set("vsi", ids.join(","));
+    }
     if (st.page > 1) p.set("page", String(st.page));
     return p.toString();
   }
@@ -86,7 +91,8 @@
   /* ---------- results ---------- */
   function heading() {
     let t = "Explore the marketplace";
-    if (state.q) t = "Results for \u201c" + state.q + "\u201d"; else if (state.category !== "All") t = state.category;
+    if (state.visual) t = "Visually similar products";
+    if (state.q) t = "Results for “" + state.q + "”"; else if (!state.visual && state.category !== "All") t = state.category;
     $("jd-title").textContent = t; document.title = t + " \u2014 JulaDirect";
   }
   function chips(rows) {
@@ -99,6 +105,7 @@
     if (state.brandModel) add("brandModel", state.brandModel);
     if (state.stock) add("stock", "In stock");
     if (state.delivery) add("delivery", "Delivery available");
+    if (state.visual) add("visual", "Visual matches");
     $("jd-active").innerHTML = out.join("") + (out.length > 1 ? '<button type="button" class="ex-link" data-clear-all>Clear all</button>' : "");
     const strip = $("ex-seller");
     if (state.seller && rows && rows[0] && rows[0]._seller) {
@@ -121,7 +128,7 @@
   const setGrid = (html, asGrid) => { const g = $("productGrid"); g.classList.toggle("jd-grid", asGrid); g.innerHTML = html; };
   function emptyState() {
     const cats = stats ? stats.categories.slice(0, 6) : [];
-    return '<div class="ex-sugg"><div class="jd-empty__icon" style="margin:0">' + JD.icon("search", 28) + "</div><h3>No products match your search</h3><p>Try removing a filter or using a broader search. You can also save this search to be notified when a match is listed.</p>" +
+    return '<div class="ex-sugg"><div class="jd-empty__icon" style="margin:0">' + JD.icon("search", 28) + "</div><h3>" + (state.visual ? "No visually similar products found" : "No products match your search") + "</h3><p>" + (state.visual ? "Try a clearer photo, crop the item more tightly, or search with a different angle." : "Try removing a filter or using a broader search. You can also save this search to be notified when a match is listed.") + "</p>" +
       (cats.length ? '<div class="ex-sugg__cats">' + cats.map(c => '<button type="button" class="ex-pill" data-cat="' + JD.esc(c.id) + '">' + JD.esc(c.id) + "</button>").join("") + "</div>" : "") +
       '<div class="ex-sugg__btns"><button type="button" class="jd-btn jd-btn--primary" data-clear-all>Clear filters</button><button type="button" class="jd-btn jd-btn--secondary" data-save-open>Save this search</button></div></div>';
   }
@@ -159,6 +166,20 @@
       pagination(res); JD.syncWishlist($("productGrid")); JD.syncCompare();
     };
     try {
+      if (snap.visual) {
+        let ids = (snap.visualIds || []).filter(JD.isUuid).slice(0, 30);
+        if (!ids.length) {
+          try { ids = JSON.parse(sessionStorage.getItem("jd-visual-results") || "[]").filter(JD.isUuid).slice(0, 30); } catch (e) { ids = []; }
+        }
+        const rows = ids.length ? await JD.data.byIds(ids) : [];
+        const byId = new Map(rows.map(row => [row.id, row]));
+        const ordered = ids.map(id => byId.get(id)).filter(Boolean);
+        if (my !== reqId) return;
+        paint({ rows: ordered, total: ordered.length, page: 1, pages: 1 });
+        $("jd-count").textContent = ordered.length ? ordered.length.toLocaleString("en-GB") + " visually similar products" : "No visual matches found";
+        $("jd-pagination").innerHTML = "";
+        return;
+      }
       const result = await JD.swr("explore:" + toQuery(snap), () => JD.data.search(snap), paint);
       const base = result || painted;
       // Keep explicit text searches, seller pages and non-default sort orders strict.
@@ -190,7 +211,7 @@
     }
   }
   function go(next, replace) {
-    state = next;
+    state = Object.assign({}, next, { visual: false, visualIds: [] });
     if (state.q) remember(state.q);
     history[replace ? "replaceState" : "pushState"](null, "", urlFor(state));
     fillForm(); load();
@@ -300,7 +321,7 @@
       if (t.closest("[data-clear-recent]")) { try { localStorage.removeItem(RQ); } catch (er) { /* ignore */ } suggest(false); return; }
       if ((b = t.closest("[data-remove]"))) {
         const k = b.getAttribute("data-remove"), next = Object.assign({}, state, { page: 1 });
-        if (k === "price") { next.min = ""; next.max = ""; } else if (k === "category") next.category = "All"; else if (k === "location") next.location = "all"; else if (k === "stock" || k === "delivery") next[k] = false; else next[k] = "";
+        if (k === "visual") { next.visual = false; next.visualIds = []; } else if (k === "price") { next.min = ""; next.max = ""; } else if (k === "category") next.category = "All"; else if (k === "location") next.location = "all"; else if (k === "stock" || k === "delivery") next[k] = false; else next[k] = "";
         go(next); return;
       }
       if (t.closest("[data-clear-all]")) { go(cleared()); return; }
