@@ -630,7 +630,7 @@
         };
         const page = aliases[requested] || requested;
         const exists = Object.prototype.hasOwnProperty.call(pageTitles, page) &&
-            $(".admin-section").some(section => section.dataset.section === page);
+            $$(".admin-section").some(section => section.dataset.section === page);
 
         return exists ? page : "overview";
     }
