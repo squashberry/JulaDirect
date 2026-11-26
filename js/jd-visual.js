@@ -88,8 +88,14 @@
   function schedule() { if (raf) return; raf = requestAnimationFrame(function () { raf = 0; place(); }); }
 
   /* ---------- open / close ---------- */
-  function open(form) {
-    if (S) { if (S.form === form) return close(); close(true); }
+  function open(form, pastedFile) {
+    if (S) {
+      if (S.form === form) {
+        if (pastedFile) { useFile(pastedFile); return true; }
+        return close();
+      }
+      close(true);
+    }
     var root = build(form);
     document.body.appendChild(root);
     S = { form: form, root: root, state: "pick", stream: null, facing: "environment", canvas: null, crop: null, colors: [], prevFocus: document.activeElement };
@@ -125,9 +131,14 @@
       kids.forEach(function (k, i) { if (k.animate) k.animate([{ opacity: 0, transform: "translateY(10px) scale(.94)" }, { opacity: 1, transform: "none" }], { duration: 420, delay: 380 + i * 55, easing: "cubic-bezier(.2,.9,.3,1.3)", fill: "backwards" }); });
     }
     bindSession();
-    var rec = form.classList.contains("sx-hasvs") && saved();
-    if (rec) restore(rec);
-    setTimeout(function () { var b = root.querySelector('[data-vs="camera"]'); if (b) b.focus({ preventScroll: true }); }, 380);
+    if (pastedFile) {
+      /* Open directly on the crop view with the pasted image; the shopper can adjust it before searching. */
+      useFile(pastedFile);
+    } else {
+      var rec = form.classList.contains("sx-hasvs") && saved();
+      if (rec) restore(rec);
+      setTimeout(function () { var b = root.querySelector('[data-vs="camera"]'); if (b) b.focus({ preventScroll: true }); }, 380);
+    }
   }
 
   function jelly(node) {
@@ -464,5 +475,10 @@
   });
 
   JD.visual = { open: open, close: close, toggle: open, isOpen: function () { return !!S; } };
-  if (JD._vsPending) { var f = JD._vsPending; JD._vsPending = null; open(f); }
+  if (JD._vsPending) {
+    var pending = JD._vsPending;
+    JD._vsPending = null;
+    if (pending && pending.form) open(pending.form, pending.file || null);
+    else open(pending);
+  }
 })();
