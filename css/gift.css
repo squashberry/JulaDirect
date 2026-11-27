@@ -149,3 +149,35 @@ body.gf{background:radial-gradient(60% 40% at 8% 0%,#e9efff 0%,transparent 70%),
 .gf .gf-srch input:not([type=checkbox]):not([type=radio]):not([type=file]){padding-left:48px}
 .gf-studio{overflow-x:clip}
 @media(max-width:900px){.gf-sbody{grid-template-columns:minmax(0,1fr)}}.gf-sbody>*,.gf-sright>*,.gf-sbar>*{min-width:0}.gf-sright{min-width:0}
+
+/* ---- physical card activation ---- */
+.gx{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:48px;align-items:center;padding-top:34px;padding-bottom:48px}
+.gx-art{perspective:1400px;min-width:0}.gx-art canvas{width:100%;height:auto;display:block;border-radius:20px}
+.gx-duo{position:relative;height:clamp(250px,34vw,400px)}.gx-c{position:absolute;width:76%;border-radius:20px;box-shadow:0 26px 50px rgba(11,26,74,.28);overflow:hidden;animation:gxin .8s var(--g-spring) both}
+.gx-c--f{left:0;top:0;transform:rotate(-5deg)}.gx-c--b{right:0;bottom:0;transform:rotate(4deg);animation-delay:.12s}
+.gx-tag{position:absolute;background:#fff;color:var(--g-navy);font-weight:800;font-size:12.5px;border-radius:99px;padding:6px 12px;box-shadow:0 8px 20px rgba(11,26,74,.18);z-index:2}.gx-tag--1{left:8px;bottom:22%}.gx-tag--2{right:8px;top:18%}
+@keyframes gxin{from{opacity:0;translate:0 30px}to{opacity:1;translate:0 0}}
+.gx-flip{position:relative;aspect-ratio:1.586;transform-style:preserve-3d;transition:transform .9s var(--g-spring)}.gx-flip.flipped{transform:rotateY(180deg)}
+.gx-face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:20px;overflow:hidden;box-shadow:0 26px 50px rgba(11,26,74,.28)}.gx-face--b{transform:rotateY(180deg)}
+.gx-flip.live .gx-face{animation:gxglow 2.4s ease-out 1}@keyframes gxglow{0%{box-shadow:0 0 0 0 rgba(18,184,134,.7)}100%{box-shadow:0 0 0 38px rgba(18,184,134,0)}}
+.gx-live{position:absolute;right:14px;top:14px;background:#12b886;color:#fff;font-weight:900;font-size:12px;letter-spacing:.12em;padding:5px 12px;border-radius:99px;z-index:3;animation:gxin .5s .4s both}
+.gx-cap{text-align:center;color:var(--g-mut);font-weight:700;margin:18px 0 0}
+.gx-main{min-width:0;max-width:520px}.gx-h{font-size:clamp(26px,3.6vw,36px);line-height:1.12;margin:6px 0 8px;color:var(--g-ink)}.gx-sub{color:var(--g-mut);margin:0 0 18px;font-size:16px}
+.gx-l{display:grid;gap:8px;font-weight:800;color:var(--g-ink);font-size:14px}
+.gx-num{width:100%;box-sizing:border-box;min-height:58px;border:2px solid var(--g-line);border-radius:16px;padding:0 16px;font:800 20px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.08em;color:var(--g-navy);background:#fff;transition:border-color .2s,box-shadow .2s}
+.gx-num:focus{outline:0;border-color:var(--g-blue);box-shadow:0 0 0 4px rgba(20,80,230,.14)}.gx-code{text-align:center;font-size:24px;letter-spacing:.18em}
+.gx-or{display:flex;align-items:center;gap:12px;color:var(--g-mut);font-size:13px;margin:14px 0}.gx-or::before,.gx-or::after{content:"";flex:1;height:1px;background:var(--g-line)}
+.gx-scan{width:100%}.gx-go{width:100%;margin-top:16px}.gx-fine{color:var(--g-mut);font-size:13.5px;margin:12px 0 0}.gx-err{margin:12px 0 0;padding:10px 14px;background:#fef3f2;border-radius:12px}
+.gx-dots{display:flex;justify-content:center;gap:16px;margin:8px 0 18px;min-height:20px}.gx-dots i{width:18px;height:18px;border-radius:50%;border:2px solid #c3cde6;transition:transform .3s var(--g-spring),background .2s}.gx-dots i.opt{opacity:.55;width:14px;height:14px;align-self:center}.gx-dots i.on{background:var(--g-blue);border-color:var(--g-blue);transform:scale(1.15);opacity:1}
+.gx-dots.shake{animation:gxsh .45s}.gx-dots.busy{opacity:.5}@keyframes gxsh{20%{transform:translateX(-10px)}40%{transform:translateX(10px)}60%{transform:translateX(-6px)}80%{transform:translateX(6px)}}
+.gx-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-width:340px;margin:14px auto}
+.gx-pad button{min-height:64px;border:0;border-radius:18px;background:#fff;box-shadow:0 2px 0 var(--g-line),0 0 0 1px var(--g-line) inset;font:800 26px/1 inherit;color:var(--g-navy);cursor:pointer;display:grid;place-items:center;transition:transform .2s var(--g-spring),background .15s}
+.gx-pad button:active{transform:scale(.92);background:#e8eefc}.gx-pad__ok{background:var(--g-blue)!important;color:#fff!important}.gx-pad__ok:disabled{opacity:.35;cursor:not-allowed}.gx-pad__x{background:#f2f4f9!important}
+.gx-ok{text-align:center}.gx-check{width:84px;height:84px;margin:0 auto 14px}.gx-check svg{width:100%;height:100%;fill:none;stroke:#12b886;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}.gx-check circle{stroke-dasharray:152;stroke-dashoffset:152;animation:gxd .7s ease forwards}.gx-check path{stroke-dasharray:40;stroke-dashoffset:40;animation:gxd .45s .5s ease forwards}@keyframes gxd{to{stroke-dashoffset:0}}
+.gx-tips{list-style:none;margin:18px 0;padding:0;display:grid;gap:10px;text-align:left}.gx-tips li{background:#f2f6ff;border-radius:14px;padding:12px 14px;font-size:14.5px;color:#344054}.gx-ok .gf-nav2{justify-content:center;flex-wrap:wrap}
+.gx-conf{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:50}.gx-conf i{position:absolute;top:-12px;left:var(--x);width:9px;height:14px;background:var(--c);transform:rotate(var(--r));animation:gxfall 2.2s var(--d) ease-in forwards}@keyframes gxfall{to{top:105%;transform:rotate(calc(var(--r) + 540deg))}}
+.gx-cam{position:fixed;inset:0;z-index:200;background:#000;display:grid;place-items:center;align-content:center;gap:16px;color:#fff;padding:20px}.gx-cam video{width:100%;max-width:520px;border-radius:20px;background:#111}.gx-cam__f{position:absolute;width:min(60vw,260px);aspect-ratio:1;border:3px solid #fff;border-radius:24px;box-shadow:0 0 0 100vmax rgba(0,0,0,.45)}.gx-cam__f i{position:absolute;left:8%;right:8%;height:3px;background:#5b8cff;animation:gxscan 1.8s ease-in-out infinite alternate}@keyframes gxscan{from{top:8%}to{top:90%}}
+.gx-inl{display:grid;gap:10px;margin-top:12px}.gx-inl .gx-num{font-size:16px;min-height:48px;letter-spacing:.04em}
+.gf-btn--gold{background:#f5b942;color:#3b2a00;box-shadow:0 10px 22px rgba(245,185,66,.4)}
+@media(max-width:820px){.gx{grid-template-columns:minmax(0,1fr);gap:22px;padding-top:18px}.gx-main{max-width:none}.gx-duo{height:clamp(200px,58vw,300px)}.gx-pad button{min-height:58px}}
+@media(prefers-reduced-motion:reduce){.gx *{animation-duration:.01s!important;transition-duration:.01s!important}}

@@ -157,10 +157,15 @@
     } else {
       c.fillStyle = ink; c.textAlign = "left"; c.font = "800 52px " + SANS; c.fillText(o.program === "restaurant" ? "Use at any participating restaurant" : "Use on JulaDirect", 110, 330);
       c.font = "500 30px " + SANS; c.globalAlpha = .9;
-      const lines = o.program === "restaurant"
-        ? ["1. Show this card or scan the QR code at the restaurant.", "2. Give the staff your 6-digit PIN to approve the amount.", "3. Use your balance across several visits and restaurants.", "Balance and history: juladirect.pages.dev/gift"]
+      const phys = o.format === "physical";
+      const lines = phys ? ["1. Scratch the silver panel to reveal your activation code.", "2. Activate at juladirect.pages.dev/gift-cards.html#/activate", "3. Set your own passcode. Staff will ask for it to approve a payment."]
+        : o.program === "restaurant"
+        ? ["1. Show this card or scan the QR code at the restaurant.", "2. Give the staff your passcode to approve the amount.", "3. Use your balance across several visits and restaurants.", "Balance and history: juladirect.pages.dev/gift"]
         : ["1. Scan the QR code to open your gift and see your balance.", "2. Sign in to JulaDirect to manage your card.", "3. Keep your PIN private. JulaDirect will never ask for it.", "Balance and history: juladirect.pages.dev/gift"];
       lines.forEach((l, i) => c.fillText(l, 110, 410 + i * 56)); c.globalAlpha = 1;
+      if (phys) { const x = 110, y = 620, w = 700, h = 170, g = c.createLinearGradient(x, y, x + w, y + h); g.addColorStop(0, "#d9dde5"); g.addColorStop(.35, "#f6f7fa"); g.addColorStop(.6, "#bfc5d0"); g.addColorStop(1, "#e8ebf0");
+        c.save(); c.shadowColor = "rgba(0,0,0,.28)"; c.shadowBlur = 18; c.shadowOffsetY = 6; rr(c, x, y, w, h, 22); c.fillStyle = g; c.fill(); c.restore(); c.save(); rr(c, x, y, w, h, 22); c.clip(); c.globalAlpha = .35; c.strokeStyle = "#fff"; c.lineWidth = 3; for (let k = -h; k < w; k += 26) { c.beginPath(); c.moveTo(x + k, y + h); c.lineTo(x + k + h, y); c.stroke(); } c.restore();
+        c.fillStyle = "#4b5565"; c.textAlign = "center"; c.font = "900 40px " + SANS; c.letterSpacing = "6px"; c.fillText("SCRATCH TO ACTIVATE", x + w / 2, y + 80); c.letterSpacing = "0px"; c.font = "600 24px " + SANS; c.fillText("One-time code. Do not share it.", x + w / 2, y + 125); c.textAlign = "left"; }
       if (o.qrUrl) drawQR(c, o.qrUrl, W - 330, H - 330, 230, "#0a1a3f");
       c.font = "600 24px " + SANS; c.globalAlpha = .7; if (o.code || o.codeHint) c.fillText("Card " + (o.code || o.codeHint), 110, H - 90); c.globalAlpha = 1;
     }

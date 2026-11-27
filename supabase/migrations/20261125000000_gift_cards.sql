@@ -87,6 +87,9 @@ create table if not exists public.gift_cards (
   locked_until timestamptz,
   deliver_at timestamptz,
   activated_at timestamptz,
+  activated_by uuid references auth.users(id) on delete set null,
+  activation_hash text, activation_failures integer not null default 0, activation_locked_until timestamptz,
+  frozen_at timestamptz,
   created_at timestamptz not null default now()
 );
 create index if not exists gift_cards_purchaser_idx on public.gift_cards(purchaser_id);
@@ -387,7 +390,7 @@ begin
   insert into public.gift_attempts(kind,actor_id,subject,ok) values ('lookup',v_uid,null,v_found);
   if not v_found or c.program <> 'restaurant' then return jsonb_build_object('ok',false,'error','NOT_FOUND'); end if;
   if not public.gift_restaurant_eligible(p_restaurant) then return jsonb_build_object('ok',false,'error','RESTAURANT_NOT_ENROLLED'); end if;
-  return jsonb_build_object('ok',true,'card_id',c.id,'ref','JD-R-••••-••••-'||right(c.code,4),'balance',c.balance,'status',c.status,'usable',c.status in ('active','partially_redeemed') and (c.locked_until is null or c.locked_until < now()),'locked',c.locked_until is not null and c.locked_until > now(),'recipient_name',c.design->>'recipient_name');
+  return jsonb_build_object('ok',true,'card_id',c.id,'ref','JD-R-••••-••••-'||right(c.code,4),'balance',c.balance,'status',c.status,'usable',c.status in ('active','partially_redeemed') and c.frozen_at is null and (c.locked_until is null or c.locked_until < now()),'frozen',c.frozen_at is not null,'locked',c.locked_until is not null and c.locked_until > now(),'recipient_name',c.design->>'recipient_name');
 end $$;
 grant execute on function public.gift_lookup(uuid,text) to authenticated;
 
@@ -415,8 +418,9 @@ begin
   end if;
   if c.locked_until is not null and c.locked_until > now() then return jsonb_build_object('ok',false,'error','LOCKED','until',c.locked_until); end if;
   if c.status not in ('active','partially_redeemed') then return jsonb_build_object('ok',false,'error','CARD_NOT_USABLE','status',c.status); end if;
+  if c.frozen_at is not null then return jsonb_build_object('ok',false,'error','CARD_FROZEN'); end if;
   if c.pin_hash is null then return jsonb_build_object('ok',false,'error','PIN_NOT_SET'); end if;
-  if p_pin is null or p_pin !~ '^[0-9]{6}$' or crypt(p_pin, c.pin_hash) <> c.pin_hash then
+  if p_pin is null or p_pin !~ '^[0-9]{4,6}$' or crypt(p_pin, c.pin_hash) <> c.pin_hash then
     update public.gift_cards set
       locked_until = case when pin_failures + 1 >= s.max_pin_failures then now() + make_interval(mins => s.lock_minutes) else locked_until end,
       pin_failures = case when pin_failures + 1 >= s.max_pin_failures then 0 else pin_failures + 1 end where id = c.id;
@@ -589,7 +593,6 @@ begin
   select * into o from public.gift_orders where id = p_order for update;
   if not found or o.format <> 'physical' or o.payment_status <> 'paid' then return jsonb_build_object('ok',false,'error','NOT_FOUND'); end if;
   update public.gift_orders set fulfilment_status = p_status, fulfilment_note = p_note, updated_at = now() where id = o.id;
-  if p_status = 'delivered' then update public.gift_cards set status = 'active', activated_at = now() where id = o.card_id and status = 'pending_activation'; end if;
   perform public.gift_audit_log('fulfilment','gift_order',o.id::text,jsonb_build_object('status',p_status,'note',p_note));
   return jsonb_build_object('ok',true);
 end $$;
@@ -631,7 +634,7 @@ revoke all on sequence public.gift_ledger_id_seq, public.gift_audit_id_seq, publ
 
 grant select on public.gift_settings, public.gift_templates to anon, authenticated;
 grant select on public.gift_orders, public.gift_ledger, public.gift_audit, public.gift_restaurants, public.gift_restaurant_staff, public.gift_settlements, public.gift_redemptions, public.gift_merchant_credits to authenticated;
-grant select (id,code,share_token,program,format,initial_amount,balance,status,purchaser_id,recipient_user_id,order_id,template_slug,design,deliver_at,activated_at,created_at,locked_until) on public.gift_cards to authenticated;
+grant select (id,code,share_token,program,format,initial_amount,balance,status,purchaser_id,recipient_user_id,order_id,template_slug,design,deliver_at,activated_at,created_at,locked_until,frozen_at) on public.gift_cards to authenticated;
 
 drop policy if exists gs_read on public.gift_settings; create policy gs_read on public.gift_settings for select to anon, authenticated using (true);
 drop policy if exists gt_read on public.gift_templates; create policy gt_read on public.gift_templates for select to anon, authenticated using (active or public.gift_is_admin());
